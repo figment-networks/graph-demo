@@ -2,6 +2,7 @@ package connectivity
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 )
 
@@ -11,7 +12,12 @@ type Response interface {
 }
 
 type Request interface {
-	Arguments() []interface{}
+	Arguments() []json.RawMessage
+}
+
+type FunctionCallHandler interface {
+	Get(name string) (h Handler, ok bool)
+	Add(name string, h Handler)
 }
 
 type Handler func(ctx context.Context, req Request, resp Response)
