@@ -6,7 +6,7 @@ import (
 )
 
 const t1 = `query GetBlock($height: Int) {
-    block( $height: Int = 0 ) {
+    block(height: $height ) {
       height
       time
       id
