@@ -1,4 +1,4 @@
-export function callGQL<ResponseType>(graphName: Network,  query: string, arr: object): GraphQLResponse<ResponseType>;
+export function callGQL<Response>(graphName: Network,  query: string, arr: object): GraphQLResponse<Response>;
 export function storeRecord(type: string,  record: object): any;
 export function printA(a: any);
 
@@ -11,7 +11,7 @@ export interface GraphQLResponse<T> {
     data: T;
 }
 
-export interface Block {
+export interface BlockResponse {
     id: string;
     height: number;
     time: Date;

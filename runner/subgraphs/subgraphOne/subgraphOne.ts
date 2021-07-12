@@ -1,21 +1,18 @@
 
-import { callGQL, Block, SubgraphNewBlock, storeRecord, printA } from "../graph";
+import { callGQL, BlockResponse, SubgraphNewBlock, storeRecord, printA } from "../graph";
 
-class SubgraphStoreBlock {
+class BlockEntity {
   id: string;
   height: number;
   time: Date;
   myNote: string;
 
-  constructor( height: number, id: string, time: Date, myNote: string ) {
-      this.height = height;
-      this.time = time;
-      this.id = id;
-      this.myNote = myNote;
+  constructor(...args: any[]) {
+    Object.assign(this, args);
   }
 }
 
-const QUERY_1 = `query GetBlock($height: Int) {
+const GET_BLOCK = `query GetBlock($height: Int) {
     block( $height: Int = 0 ) {
       height
       time
@@ -23,12 +20,18 @@ const QUERY_1 = `query GetBlock($height: Int) {
     }
   }`;
 
-
+// This is called by the mapping runtime when a new block is available to be processed
 function handleNewBlock(newBlock: SubgraphNewBlock) {
-    const resp = callGQL<Block>(newBlock.network, QUERY_1, { height: newBlock.height });
-    printA(JSON.stringify(resp));
+    const { data, error } = callGQL<BlockResponse>(newBlock.network, GET_BLOCK, { height: newBlock.height });
+    if (error) {
+      printA(JSON.stringify(error));
+      return;
+    }
+    printA(JSON.stringify(data));
 
-    const { height, id, time } = resp.data;
-    printA(JSON.stringify(new SubgraphStoreBlock(height, id, time, "ok" )));
-    storeRecord("SubgraphStoreBlock", new SubgraphStoreBlock(height, id, time, "ok" ))
+    const { height, id, time } = data;
+    const entity = new BlockEntity(height, id, time, "ok");
+
+    printA(JSON.stringify(entity));
+    storeRecord("SubgraphStoreBlock", entity);
 }
