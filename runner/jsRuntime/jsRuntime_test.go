@@ -29,8 +29,8 @@ func TestLoader_LoadJS(t *testing.T) {
 			name: "a",
 			args: args{
 				"one",
-				"../subgraphs/subgraphOne/subgraphOne.js",
-				"../subgraphs/subgraphOne/schema.graphql"},
+				"../subgraphs/test/test-subgraph.js",
+				"../subgraphs/test/schema.graphql"},
 		},
 	}
 	for _, tt := range tests {

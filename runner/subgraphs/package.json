@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "build:all": "tsc --lib es2019 ./test/*.ts && tsc --lib es2019 ./subgraphOne/*.ts"
+  },
+  "dependencies": {
+    "typescript": "^4.3.5"
+  }
+}
