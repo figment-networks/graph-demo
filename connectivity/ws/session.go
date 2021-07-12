@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"time"
 
 	"github.com/figment-networks/graph-demo/connectivity"
@@ -162,6 +163,14 @@ type SessionResponse struct {
 
 	SessionContext context.Context
 	RespCh         chan jsonrpc.Response
+}
+
+func (sR *SessionResponse) Send(io.ReadCloser, error) error {
+	return nil
+}
+
+func (sR *SessionResponse) Write(p []byte) (n int, err error) {
+	return 0, nil
 }
 
 type SessionRequest struct {
