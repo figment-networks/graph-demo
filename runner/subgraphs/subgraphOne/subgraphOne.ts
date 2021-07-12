@@ -1,5 +1,5 @@
 
-import { callGQL, GetBlockResponse, GrapQLResponse, SubgraphNewBlock, storeRecord, printA } from "../graph";
+import { callGQL, Block, SubgraphNewBlock, storeRecord, printA } from "../graph";
 
 class SubgraphStoreBlock {
   id: string;
@@ -24,10 +24,11 @@ const QUERY_1 = `query GetBlock($height: Int) {
   }`;
 
 
-function handleNewBlock(nb: SubgraphNewBlock) {
-    const resp = callGQL("networkOne", QUERY_1, {height: nb.height}) as GrapQLResponse;
-    const data = resp.data as  GetBlockResponse;
+function handleNewBlock(newBlock: SubgraphNewBlock) {
+    const resp = callGQL<Block>(newBlock.network, QUERY_1, { height: newBlock.height });
     printA(JSON.stringify(resp));
-    printA(JSON.stringify(new SubgraphStoreBlock(data.height, data.id, data.time, "ok" )));
-    storeRecord("SubgraphStoreBlock", new SubgraphStoreBlock(data.height, data.id, data.time, "ok" ))
+
+    const { height, id, time } = resp.data;
+    printA(JSON.stringify(new SubgraphStoreBlock(height, id, time, "ok" )));
+    storeRecord("SubgraphStoreBlock", new SubgraphStoreBlock(height, id, time, "ok" ))
 }
