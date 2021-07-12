@@ -1,6 +1,6 @@
 export function callGQL<Response>(graphName: Network,  query: string, arr: object): GraphQLResponse<Response>;
 export function storeRecord(type: string,  record: object): any;
-export function printA(a: any);
+export function logInfo(msg: string);
 
 export enum Network {
     COSMOS = 'cosmos',
@@ -17,7 +17,7 @@ export interface BlockResponse {
     time: Date;
 }
 
-export interface SubgraphNewBlock {
+export interface NewBlockEvent {
     height: number;
     network: Network;
 }

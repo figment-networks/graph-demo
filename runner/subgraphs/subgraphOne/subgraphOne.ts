@@ -1,5 +1,5 @@
 
-import { callGQL, BlockResponse, SubgraphNewBlock, storeRecord, printA } from "../graph";
+import { callGQL, BlockResponse, NewBlockEvent, storeRecord, logInfo } from "../graph";
 
 class BlockEntity {
   id: string;
@@ -20,18 +20,35 @@ const GET_BLOCK = `query GetBlock($height: Int) {
     }
   }`;
 
-// This is called by the mapping runtime when a new block is available to be processed
-function handleNewBlock(newBlock: SubgraphNewBlock) {
-    const { data, error } = callGQL<BlockResponse>(newBlock.network, GET_BLOCK, { height: newBlock.height });
+/**
+ * This would be defined in the subgraph.yaml.
+ * 
+ * Ex:
+ * ```yaml
+ * # ...
+ * mapping:
+ *  kind: cosmos/events
+ *  apiVersion: 0.0.1
+ *  language: wasm/assemblyscript
+ *  blockHandlers:
+ *    - function: handleNewBlock
+ * ```
+ */
+function handleNewBlock(newBlockEvent: NewBlockEvent) {
+    const { data, error } = callGQL<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
+
     if (error) {
-      printA(JSON.stringify(error));
+      logInfo(JSON.stringify(error));
       return;
     }
-    printA(JSON.stringify(data));
+
+    logInfo(JSON.stringify(data));
 
     const { height, id, time } = data;
     const entity = new BlockEntity(height, id, time, "ok");
 
-    printA(JSON.stringify(entity));
+    logInfo(JSON.stringify(entity));
+
+    // replace with `entity.save()` for graph-ts
     storeRecord("SubgraphStoreBlock", entity);
 }
