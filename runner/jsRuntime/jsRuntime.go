@@ -106,13 +106,13 @@ func cleanJS(code []byte) string {
 			b.WriteString("\n")
 		}
 	}
-	m1 := regexp.MustCompile("([^=[:space:]\\{]*)callGQL")
+	m1 := regexp.MustCompile(`([^=[:space:]\\{]*)callGQL`)
 	res1 := m1.ReplaceAllString(b.String(), " callGQL")
 
-	m3 := regexp.MustCompile("([^=[:space:]\\{]*)printA")
+	m3 := regexp.MustCompile(`([^=[:space:]\\{]*)printA`)
 	res2 := m3.ReplaceAllString(res1, " printA")
 
-	m2 := regexp.MustCompile("([^=[:space:]\\{]*)storeRecord")
+	m2 := regexp.MustCompile(`([^=[:space:]\\{]*)storeRecord`)
 	a := m2.ReplaceAllString(res2, " storeRecord")
 
 	return a
