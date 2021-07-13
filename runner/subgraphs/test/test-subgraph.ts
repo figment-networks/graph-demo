@@ -1,14 +1,17 @@
 
 import { callGQL, BlockResponse, NewBlockEvent, storeRecord, logInfo } from "../graph";
 
-export class BlockEntity {
+class BlockEntity {
   id: string;
   height: number;
   time: Date;
   myNote: string;
 
-  constructor(...args: any[]) {
-    Object.assign(this, args);
+  constructor(height: number, id: string, time: Date, myNote: string) {
+    this.id = id;
+    this.height = height;
+    this.time = time;
+    this.myNote = myNote;
   }
 }
 
@@ -35,5 +38,5 @@ function handleNewBlock(newBlockEvent: NewBlockEvent) {
 
     logInfo(JSON.stringify(entity));
 
-    storeRecord("SubgraphStoreBlock", entity);
+    storeRecord("StoreBlock", entity);
 }

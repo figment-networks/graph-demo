@@ -44,7 +44,7 @@ func TestLoader_LoadJS(t *testing.T) {
 			cli := &http.Client{}
 			rqstr := requester.NewRqstr(cli)
 			rqstr.AddDestination(requester.Destination{
-				Name:    "networkOne",
+				Name:    "testNetwork",
 				Kind:    "http",
 				Address: testServer.URL,
 			})
@@ -70,7 +70,8 @@ func TestLoader_LoadJS(t *testing.T) {
 			}
 
 			m := map[string]interface{}{
-				"height": 1234,
+				"network": "testNetwork",
+				"height":  1234,
 			}
 			if err := l.CallSubgraphHandler(tt.args.name,
 				&SubgraphHandler{
