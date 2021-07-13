@@ -13,8 +13,6 @@ import (
 )
 
 func main() {
-	// ctx, cancel := context.WithCancel(context.Background())
-
 	rcfg := &logger.RollbarConfig{
 		AppEnv: "development",
 	}
@@ -70,7 +68,8 @@ func main() {
 		logger.Error(fmt.Errorf("Loader.NewBlockEvent() error = %v", err))
 	}
 
-	/* 	mux := http.NewServeMux()
+	/* 	ctx, cancel := context.WithCancel(context.Background())
+		mux := http.NewServeMux()
 		httpapi.AttachMux(*mux)
 
 		server := &http.Server{
