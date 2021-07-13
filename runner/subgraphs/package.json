@@ -1,7 +1,8 @@
 {
   "scripts": {
     "build:test": "tsc --lib es2020 ./test/*.ts",
-    "build:simple-example": "tsc --lib es2020 ./simple-example/*.ts"
+    "build:simple-example": "tsc --lib es2020 ./simple-example/*.ts",
+    "build": "npm run build:test; npm run build:simple-example"
   },
   "dependencies": {
     "typescript": "^4.3.5"
