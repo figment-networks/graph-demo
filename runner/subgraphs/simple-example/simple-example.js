@@ -20,6 +20,7 @@ exports.BlockEntity = BlockEntity;
 // callGQL returns string. Parse that to JSON object
 function query(network, query, args) {
     var stringResponse = graph_1.callGQL(network, query, args);
+    graph_1.printA('GQL call raw response: ' + JSON.stringify(stringResponse));
     return JSON.parse(stringResponse);
 }
 /**
@@ -42,9 +43,7 @@ var GET_BLOCK = "query GetBlock($height: Int) {\n  block( $height: Int = 0 ) {\n
  */
 function handleNewBlock(newBlockEvent) {
     graph_1.printA('newEventData: ' + JSON.stringify(newBlockEvent));
-    var response = query(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
-    graph_1.printA('GQL call raw response: ' + JSON.stringify(response));
-    var error = response.error, data = response.data;
+    var _a = query(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }), error = _a.error, data = _a.data;
     if (error) {
         graph_1.printA('GQL call error: ' + JSON.stringify(error));
         return;
@@ -53,10 +52,10 @@ function handleNewBlock(newBlockEvent) {
         graph_1.printA('GQL call returned no data');
         return;
     }
-    graph_1.printA('graphQL response: ' + JSON.stringify(data));
+    graph_1.printA('GQL call data: ' + JSON.stringify(data));
     var height = data.height, id = data.id, time = data.time;
     var entity = new BlockEntity(height, id, time, "ok");
-    graph_1.printA('entity: ' + JSON.stringify(entity));
+    graph_1.printA('Entity: ' + JSON.stringify(entity));
     // replace with `entity.save()` for graph-ts
     graph_1.storeRecord("SubgraphStoreBlock", entity);
 }

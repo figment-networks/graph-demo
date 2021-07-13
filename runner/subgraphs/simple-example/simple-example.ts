@@ -19,6 +19,7 @@ export class BlockEntity {
 // callGQL returns string. Parse that to JSON object
 function query<T>(network: Network, query: string, args: {}): GraphQLResponse<T> {
   const stringResponse = callGQL(network, query, args);
+  printA('GQL call raw response: ' + JSON.stringify(stringResponse));
   return JSON.parse(stringResponse);
 }
 
@@ -50,11 +51,7 @@ const GET_BLOCK = `query GetBlock($height: Int) {
 function handleNewBlock(newBlockEvent: NewBlockEvent) {
   printA('newEventData: ' + JSON.stringify(newBlockEvent));
 
-  const response = query<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
-
-  printA('GQL call raw response: ' + JSON.stringify(response));
-
-  const {error, data} = response;
+  const {error, data} = query<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
 
   if (error) {
     printA('GQL call error: ' + JSON.stringify(error));
@@ -66,12 +63,12 @@ function handleNewBlock(newBlockEvent: NewBlockEvent) {
     return;
   }
 
-  printA('graphQL response: ' + JSON.stringify(data));
+  printA('GQL call data: ' + JSON.stringify(data));
 
   const { height, id, time } = data;
   const entity = new BlockEntity(height, id, time, "ok");
 
-  printA('entity: ' + JSON.stringify(entity));
+  printA('Entity: ' + JSON.stringify(entity));
 
   // replace with `entity.save()` for graph-ts
   storeRecord("SubgraphStoreBlock", entity);
