@@ -35,7 +35,7 @@ func main() {
 	rqstr.AddDestination(requester.Destination{
 		Name:    "cosmos",
 		Kind:    "http",
-		Address: "http://0.0.0.0:5001", // Manager address
+		Address: "http://0.0.0.0:5001", // TODO manager address
 	})
 
 	schemas := schema.NewSchemas()
