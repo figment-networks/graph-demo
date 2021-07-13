@@ -39,5 +39,8 @@ func AttachMux(mux http.ServeMux) {
 		req := &JSONGraphQLRequest{}
 		dec.Decode(req)
 
+		w.WriteHeader(http.StatusOK)
+		resp.Data = json.RawMessage([]byte("ok"))
+		enc.Encode(resp)
 	})
 }
