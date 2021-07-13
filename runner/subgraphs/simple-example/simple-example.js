@@ -17,6 +17,7 @@ var BlockEntity = /** @class */ (function () {
     return BlockEntity;
 }());
 exports.BlockEntity = BlockEntity;
+// callGQL returns string. Parse that to JSON object
 function query(network, query, args) {
     var stringResponse = graph_1.callGQL(network, query, args);
     return JSON.parse(stringResponse);
@@ -42,8 +43,7 @@ var GET_BLOCK = "query GetBlock($height: Int) {\n  block( $height: Int = 0 ) {\n
 function handleNewBlock(newBlockEvent) {
     graph_1.printA('newEventData: ' + JSON.stringify(newBlockEvent));
     var response = query(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
-    graph_1.printA('GQL call response: ' + JSON.stringify(response));
-    // TODO a is a string. This doesn't work.
+    graph_1.printA('GQL call raw response: ' + JSON.stringify(response));
     var error = response.error, data = response.data;
     if (error) {
         graph_1.printA('GQL call error: ' + JSON.stringify(error));

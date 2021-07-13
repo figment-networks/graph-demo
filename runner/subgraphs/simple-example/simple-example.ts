@@ -16,6 +16,7 @@ export class BlockEntity {
   }
 }
 
+// callGQL returns string. Parse that to JSON object
 function query<T>(network: Network, query: string, args: {}): GraphQLResponse<T> {
   const stringResponse = callGQL(network, query, args);
   return JSON.parse(stringResponse);
