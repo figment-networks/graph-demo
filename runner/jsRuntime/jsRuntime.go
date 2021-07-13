@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"regexp"
 	"strings"
 	"sync"
@@ -53,6 +54,23 @@ func (l *Loader) CallSubgraphHandler(subgraph string, handler *SubgraphHandler) 
 	return err
 }
 
+type NewBlockEvent map[string]interface{}
+
+func (l *Loader) NewBlockEvent(evt NewBlockEvent) error {
+	log.Println(fmt.Printf("Event received %v \n", evt))
+
+	for name := range l.subgraphs {
+		if err := l.CallSubgraphHandler(name,
+			&SubgraphHandler{
+				name:   "handleNewBlock",
+				values: []interface{}{evt},
+			}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (l *Loader) LoadJS(name string, path string) error {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -71,7 +89,7 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	storeRecord, _ := v8go.NewFunctionTemplate(iso, subgr.storeRecord)
 
 	print, _ := v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
-		fmt.Printf("print:  %+v  \n", info.Args()[0])
+		fmt.Printf("printA:  %+v  \n", info.Args()[0])
 		return nil
 	})
 

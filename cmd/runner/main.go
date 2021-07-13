@@ -33,8 +33,8 @@ func main() {
 		schema string
 	}{
 		"simple-example",
-		"../../subgraphs/simple-example/simple-example.js",
-		"../../subgraphs/simple-example/schema.graphql",
+		"./runner/subgraphs/simple-example/simple-example.js",
+		"./runner/subgraphs/simple-example/schema.graphql",
 	}
 
 	cli := &http.Client{}
@@ -47,7 +47,10 @@ func main() {
 
 	schemas := schema.NewSchemas()
 	logger.Info(fmt.Sprintf("Loading subgraph schema file %s", subgraph.schema))
-	schemas.LoadFromFile(subgraph.name, subgraph.schema)
+	if err := schemas.LoadFromFile(subgraph.name, subgraph.schema); err != nil {
+		logger.Error(fmt.Errorf("Loader.LoadFromFile() error = %v", err))
+		return
+	}
 
 	sStore := memap.NewSubgraphStore()
 
@@ -64,8 +67,13 @@ func main() {
 	loader := jsRuntime.NewLoader(rqstr, sStore)
 
 	logger.Info(fmt.Sprintf("Loading subgraph js file %s", subgraph.path))
-	if err := loader.LoadJS(subgraph.name, subgraph.path); err == nil {
+	if err := loader.LoadJS(subgraph.name, subgraph.path); err != nil {
 		logger.Error(fmt.Errorf("Loader.LoadJS() error = %v", err))
+		return
+	}
+
+	if err := loader.NewBlockEvent(jsRuntime.NewBlockEvent{"network": "cosmos", "height": 1234}); err != nil {
+		logger.Error(fmt.Errorf("Loader.NewBlockEvent() error = %v", err))
 	}
 
 	mux := http.NewServeMux()
@@ -83,7 +91,7 @@ func main() {
 	signal.Notify(osSig, syscall.SIGTERM)
 	signal.Notify(osSig, syscall.SIGINT)
 
-	go runHTTP(server, "5000", logger.GetLogger(), exit)
+	//go runHTTP(server, "5000", logger.GetLogger(), exit)
 
 RunLoop:
 	for {

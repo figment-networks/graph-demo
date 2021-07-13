@@ -42,21 +42,22 @@ const GET_BLOCK = `query GetBlock($height: Int) {
  * ```
  */
 function handleNewBlock(newBlockEvent: NewBlockEvent) {
-    const { data, error } = callGQL<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
+  printA('newEventData: ' + JSON.stringify(newBlockEvent));
 
-    if (error) {
-      printA(JSON.stringify(error));
-      return;
-    }
+  const { data, error } = callGQL<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
 
-    printA(JSON.stringify(data));
+  if (error) {
+    printA('jsError: ' + JSON.stringify(error));
+    return;
+  }
 
-    const { height, id, time } = data;
-    const entity = new BlockEntity(height, id, time, "ok");
+  printA('graphQL response: ' + JSON.stringify(data));
 
-    // log.info
-    printA(JSON.stringify(entity));
+  const { height, id, time } = data;
+  const entity = new BlockEntity(height, id, time, "ok");
 
-    // replace with `entity.save()` for graph-ts
-    storeRecord("SubgraphStoreBlock", entity);
+  printA('entity: ' + JSON.stringify(entity));
+
+  // replace with `entity.save()` for graph-ts
+  storeRecord("SubgraphStoreBlock", entity);
 }

@@ -69,7 +69,7 @@ func TestLoader_LoadJS(t *testing.T) {
 				t.Errorf("Loader.LoadJS() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			m := map[string]interface{}{
+			m := NewBlockEvent{
 				"network": "testNetwork",
 				"height":  1234,
 			}
