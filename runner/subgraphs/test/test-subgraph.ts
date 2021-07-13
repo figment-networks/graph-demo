@@ -1,3 +1,4 @@
+// This test is used by jsRunner_test.go
 
 import { callGQL, BlockResponse, NewBlockEvent, storeRecord, logInfo } from "../graph";
 
