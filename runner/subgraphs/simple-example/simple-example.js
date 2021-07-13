@@ -17,6 +17,10 @@ var BlockEntity = /** @class */ (function () {
     return BlockEntity;
 }());
 exports.BlockEntity = BlockEntity;
+function query(network, query, args) {
+    var stringResponse = graph_1.callGQL(network, query, args);
+    return JSON.parse(stringResponse);
+}
 /**
  * Mapping
  */
@@ -37,9 +41,10 @@ var GET_BLOCK = "query GetBlock($height: Int) {\n  block( $height: Int = 0 ) {\n
  */
 function handleNewBlock(newBlockEvent) {
     graph_1.printA('newEventData: ' + JSON.stringify(newBlockEvent));
-    var a = graph_1.callGQL(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
-    graph_1.printA('GQL call response: ' + JSON.stringify(a));
-    var error = a.error, data = a.data;
+    var response = query(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
+    graph_1.printA('GQL call response: ' + JSON.stringify(response));
+    // TODO a is a string. This doesn't work.
+    var error = response.error, data = response.data;
     if (error) {
         graph_1.printA('GQL call error: ' + JSON.stringify(error));
         return;

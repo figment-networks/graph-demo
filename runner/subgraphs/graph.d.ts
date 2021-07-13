@@ -1,5 +1,5 @@
 // These functions hook into the Go V8 runtime
-export function callGQL<Response>(graphName: Network,  query: string, arr: object): GraphQLResponse<Response>;
+export function callGQL(graphName: Network,  query: string, arr: object): string;
 export function storeRecord(type: string,  record: object): any;
 export function printA(msg: string);
 

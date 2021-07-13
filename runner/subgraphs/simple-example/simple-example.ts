@@ -1,5 +1,5 @@
 
-import { callGQL, BlockResponse, NewBlockEvent, storeRecord, printA } from "../graph";
+import { callGQL, BlockResponse, NewBlockEvent, storeRecord, printA, Network, GraphQLResponse } from "../graph";
 
 /***
  * Generated
@@ -14,6 +14,11 @@ export class BlockEntity {
   constructor(...args: any[]) {
     Object.assign(this, args);
   }
+}
+
+function query<T>(network: Network, query: string, args: {}): GraphQLResponse<T> {
+  const stringResponse = callGQL(network, query, args);
+  return JSON.parse(stringResponse);
 }
 
 /**
@@ -44,11 +49,11 @@ const GET_BLOCK = `query GetBlock($height: Int) {
 function handleNewBlock(newBlockEvent: NewBlockEvent) {
   printA('newEventData: ' + JSON.stringify(newBlockEvent));
 
-  const a = callGQL<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
+  const response = query<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
 
-  printA('GQL call response: ' + JSON.stringify(a));
+  printA('GQL call raw response: ' + JSON.stringify(response));
 
-  const {error, data } = a;
+  const {error, data} = response;
 
   if (error) {
     printA('GQL call error: ' + JSON.stringify(error));

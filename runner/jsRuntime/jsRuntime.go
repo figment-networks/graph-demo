@@ -186,7 +186,7 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a)
 	if err != nil {
 		log.Println(fmt.Printf("callGQL error %v \n", err))
-		erro, _ := v8go.NewValue(iso, err.Error())
+		erro, _ := v8go.NewValue(iso, "{\"error\":\""+strings.ReplaceAll(err.Error(), "\"", "\\\"")+"\"}")
 		return erro
 	}
 
