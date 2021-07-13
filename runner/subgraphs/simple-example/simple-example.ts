@@ -17,8 +17,8 @@ export class BlockEntity {
 }
 
 // callGQL returns string. Parse that to JSON object
-function query<T>(network: Network, query: string, args: {}): GraphQLResponse<T> {
-  const stringResponse = callGQL(network, query, args);
+function query<T>(network: Network, query: string, args: {}, version: string): GraphQLResponse<T> {
+  const stringResponse = callGQL(network, query, args, version);
   printA('GQL call raw response: ' + JSON.stringify(stringResponse));
   return JSON.parse(stringResponse);
 }
@@ -51,7 +51,7 @@ const GET_BLOCK = `query GetBlock($height: Int) {
 function handleNewBlock(newBlockEvent: NewBlockEvent) {
   printA('newEventData: ' + JSON.stringify(newBlockEvent));
 
-  const {error, data} = query<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
+  const {error, data} = query<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }, "0.0.1");
 
   if (error) {
     printA('GQL call error: ' + JSON.stringify(error));
