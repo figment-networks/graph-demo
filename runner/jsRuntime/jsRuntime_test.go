@@ -73,12 +73,9 @@ func TestLoader_LoadJS(t *testing.T) {
 				"network": "testNetwork",
 				"height":  1234,
 			}
-			if err := l.CallSubgraphHandler(tt.args.name,
-				&SubgraphHandler{
-					name:   "handleNewBlock",
-					values: []interface{}{m},
-				}); err != nil {
-				t.Errorf("Loader.CallSubgraphHandler() error = %v", err)
+
+			if err := l.NewBlockEvent(m); err != nil {
+				t.Errorf("Loader.NewBlockEvent() error = %v", err)
 			}
 
 			st, err := sStore.Get(context.Background(), tt.args.name, "StoreBlock", "id", "qazxsw23edcvfr45tgbnhyujm")
