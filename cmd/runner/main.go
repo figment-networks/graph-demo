@@ -28,14 +28,20 @@ func main() {
 		"./runner/subgraphs/simple-example/schema.graphql",
 	}
 
+	// For GraphQL queries
 	cli := &http.Client{}
 	rqstr := requester.NewRqstr(cli)
 	rqstr.AddDestination(requester.Destination{
 		Name:    "cosmos",
 		Kind:    "http",
-		Address: "http://0.0.0.0:5001", // TODO manager address
+		Address: "http://0.0.0.0:5001/network/cosmos", // TODO manager address
 	})
 
+	// For GraphQL subscriptions
+	// TODO ws + subscription
+	// https://github.com/hasura/go-graphql-client
+
+	// Load GraphQL schema for subgraph
 	schemas := schema.NewSchemas()
 	logger.Info(fmt.Sprintf("Loading subgraph schema file %s", subgraph.schema))
 	if err := schemas.LoadFromFile(subgraph.name, subgraph.schema); err != nil {
@@ -43,6 +49,7 @@ func main() {
 		return
 	}
 
+	// Using in-memory store. Create entity collections.
 	sStore := memap.NewSubgraphStore()
 	for _, sg := range schemas.Subgraphs {
 		for _, ent := range sg.Entities {
