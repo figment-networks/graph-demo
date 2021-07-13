@@ -63,7 +63,7 @@ func main() {
 		return
 	}
 
-	// TODO should be called via "connectivity" between manager -> runner
+	// TODO should be called via connectivity between manager -> runner
 	if err := loader.NewBlockEvent(jsRuntime.NewBlockEvent{"network": "cosmos", "height": 1234}); err != nil {
 		logger.Error(fmt.Errorf("Loader.NewBlockEvent() error = %v", err))
 	}
