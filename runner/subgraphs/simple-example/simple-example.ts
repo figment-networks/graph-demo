@@ -1,5 +1,5 @@
 
-import { callGQL, BlockResponse, NewBlockEvent, storeRecord, logInfo } from "../graph";
+import { callGQL, BlockResponse, NewBlockEvent, storeRecord, printA } from "../graph";
 
 /***
  * Generated
@@ -45,17 +45,17 @@ function handleNewBlock(newBlockEvent: NewBlockEvent) {
     const { data, error } = callGQL<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
 
     if (error) {
-      logInfo(JSON.stringify(error));
+      printA(JSON.stringify(error));
       return;
     }
 
-    logInfo(JSON.stringify(data));
+    printA(JSON.stringify(data));
 
     const { height, id, time } = data;
     const entity = new BlockEntity(height, id, time, "ok");
 
     // log.info
-    logInfo(JSON.stringify(entity));
+    printA(JSON.stringify(entity));
 
     // replace with `entity.save()` for graph-ts
     storeRecord("SubgraphStoreBlock", entity);

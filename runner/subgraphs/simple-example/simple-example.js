@@ -38,14 +38,14 @@ var GET_BLOCK = "query GetBlock($height: Int) {\n  block( $height: Int = 0 ) {\n
 function handleNewBlock(newBlockEvent) {
     var _a = graph_1.callGQL(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }), data = _a.data, error = _a.error;
     if (error) {
-        graph_1.logInfo(JSON.stringify(error));
+        graph_1.printA(JSON.stringify(error));
         return;
     }
-    graph_1.logInfo(JSON.stringify(data));
+    graph_1.printA(JSON.stringify(data));
     var height = data.height, id = data.id, time = data.time;
     var entity = new BlockEntity(height, id, time, "ok");
     // log.info
-    graph_1.logInfo(JSON.stringify(entity));
+    graph_1.printA(JSON.stringify(entity));
     // replace with `entity.save()` for graph-ts
     graph_1.storeRecord("SubgraphStoreBlock", entity);
 }

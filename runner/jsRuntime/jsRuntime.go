@@ -79,7 +79,7 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	if err != nil {
 		return err
 	}
-	global.Set("logInfo", print)
+	global.Set("printA", print)
 	global.Set("callGQL", callGQL)
 	global.Set("storeRecord", storeRecord)
 
@@ -109,8 +109,8 @@ func cleanJS(code []byte) string {
 	m1 := regexp.MustCompile(`([^=[:space:]\\{]*)callGQL`)
 	res1 := m1.ReplaceAllString(b.String(), " callGQL")
 
-	m3 := regexp.MustCompile(`([^=[:space:]\\{]*)logInfo`)
-	res2 := m3.ReplaceAllString(res1, " logInfo")
+	m3 := regexp.MustCompile(`([^=[:space:]\\{]*)printA`)
+	res2 := m3.ReplaceAllString(res1, " printA")
 
 	m2 := regexp.MustCompile(`([^=[:space:]\\{]*)storeRecord`)
 	a := m2.ReplaceAllString(res2, " storeRecord")
