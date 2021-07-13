@@ -47,7 +47,12 @@ function handleNewBlock(newBlockEvent: NewBlockEvent) {
   const { data, error } = callGQL<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
 
   if (error) {
-    printA('jsError: ' + JSON.stringify(error));
+    printA('GQLError: ' + JSON.stringify(error));
+    return;
+  }
+
+  if (!data) {
+    printA('GQL call returned no data');
     return;
   }
 

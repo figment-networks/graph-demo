@@ -39,7 +39,11 @@ function handleNewBlock(newBlockEvent) {
     graph_1.printA('newEventData: ' + JSON.stringify(newBlockEvent));
     var _a = graph_1.callGQL(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }), data = _a.data, error = _a.error;
     if (error) {
-        graph_1.printA('jsError: ' + JSON.stringify(error));
+        graph_1.printA('GQLError: ' + JSON.stringify(error));
+        return;
+    }
+    if (!data) {
+        graph_1.printA('GQL call returned no data');
         return;
     }
     graph_1.printA('graphQL response: ' + JSON.stringify(data));
