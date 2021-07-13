@@ -37,9 +37,11 @@ var GET_BLOCK = "query GetBlock($height: Int) {\n  block( $height: Int = 0 ) {\n
  */
 function handleNewBlock(newBlockEvent) {
     graph_1.printA('newEventData: ' + JSON.stringify(newBlockEvent));
-    var _a = graph_1.callGQL(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }), data = _a.data, error = _a.error;
+    var a = graph_1.callGQL(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
+    graph_1.printA('GQL call response: ' + JSON.stringify(a));
+    var error = a.error, data = a.data;
     if (error) {
-        graph_1.printA('GQLError: ' + JSON.stringify(error));
+        graph_1.printA('GQL call error: ' + JSON.stringify(error));
         return;
     }
     if (!data) {

@@ -44,10 +44,14 @@ const GET_BLOCK = `query GetBlock($height: Int) {
 function handleNewBlock(newBlockEvent: NewBlockEvent) {
   printA('newEventData: ' + JSON.stringify(newBlockEvent));
 
-  const { data, error } = callGQL<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
+  const a = callGQL<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
+
+  printA('GQL call response: ' + JSON.stringify(a));
+
+  const {error, data } = a;
 
   if (error) {
-    printA('GQLError: ' + JSON.stringify(error));
+    printA('GQL call error: ' + JSON.stringify(error));
     return;
   }
 

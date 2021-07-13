@@ -44,7 +44,6 @@ func main() {
 	}
 
 	sStore := memap.NewSubgraphStore()
-
 	for _, sg := range schemas.Subgraphs {
 		for _, ent := range sg.Entities {
 			indexed := []store.NT{}
@@ -56,14 +55,13 @@ func main() {
 	}
 
 	loader := jsRuntime.NewLoader(rqstr, sStore)
-
 	logger.Info(fmt.Sprintf("Loading subgraph js file %s", subgraph.path))
 	if err := loader.LoadJS(subgraph.name, subgraph.path); err != nil {
 		logger.Error(fmt.Errorf("Loader.LoadJS() error = %v", err))
 		return
 	}
 
-	// TODO should be called via connectivity between manager -> runner
+	// TODO should be called via graphql subscription handler
 	if err := loader.NewBlockEvent(jsRuntime.NewBlockEvent{"network": "cosmos", "height": 1234}); err != nil {
 		logger.Error(fmt.Errorf("Loader.NewBlockEvent() error = %v", err))
 	}
