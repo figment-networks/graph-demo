@@ -83,7 +83,8 @@ func main() {
 
 	initGraphQLSubscription(subClient, loader, logger.GetLogger())
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := subClient.GetContext()
+	_, cancel := context.WithCancel(ctx)
 	osSig := make(chan os.Signal)
 	exit := make(chan string, 2)
 	signal.Notify(osSig, syscall.SIGTERM)
