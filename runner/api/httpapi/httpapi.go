@@ -38,6 +38,5 @@ func AttachMux(mux http.ServeMux) {
 		dec := json.NewDecoder(r.Body)
 		req := &JSONGraphQLRequest{}
 		dec.Decode(req)
-
 	})
 }

@@ -1,22 +1,24 @@
-export function callGQL(subgraph: string,  query: string, arr: object): any;
+// These functions hook into the Go V8 runtime
+export function callGQL(graphName: Network, query: string, args: object, version?: string): string;
 export function storeRecord(type: string,  record: object): any;
-export function printA(a: any);
+export function printA(msg: string);
 
-
-
-export interface GrapQLResponse {
-    error: any;
-    data: any;
+export enum Network {
+    COSMOS = 'cosmos',
 }
 
-export interface GetBlockResponse {
+export interface GraphQLResponse<T> {
+    error: any;
+    data: T;
+}
+
+export interface BlockResponse {
     id: string;
     height: number;
     time: Date;
 }
 
-export interface SubgraphNewBlock {
+export interface NewBlockEvent {
     height: number;
+    network: Network;
 }
-
-

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"regexp"
 	"strings"
 	"sync"
@@ -53,6 +54,23 @@ func (l *Loader) CallSubgraphHandler(subgraph string, handler *SubgraphHandler) 
 	return err
 }
 
+type NewBlockEvent map[string]interface{}
+
+func (l *Loader) NewBlockEvent(evt NewBlockEvent) error {
+	log.Println(fmt.Printf("Event received %v \n", evt))
+
+	for name := range l.subgraphs {
+		if err := l.CallSubgraphHandler(name,
+			&SubgraphHandler{
+				name:   "handleNewBlock",
+				values: []interface{}{evt},
+			}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (l *Loader) LoadJS(name string, path string) error {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -71,7 +89,7 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	storeRecord, _ := v8go.NewFunctionTemplate(iso, subgr.storeRecord)
 
 	print, _ := v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
-		fmt.Printf("print:  %+v  \n", info.Args()[0])
+		fmt.Printf("printA:  %+v  \n", info.Args()[0])
 		return nil
 	})
 
@@ -106,13 +124,13 @@ func cleanJS(code []byte) string {
 			b.WriteString("\n")
 		}
 	}
-	m1 := regexp.MustCompile("([^=[:space:]\\{]*)callGQL")
+	m1 := regexp.MustCompile(`([^=[:space:]\\{]*)callGQL`)
 	res1 := m1.ReplaceAllString(b.String(), " callGQL")
 
-	m3 := regexp.MustCompile("([^=[:space:]\\{]*)printA")
+	m3 := regexp.MustCompile(`([^=[:space:]\\{]*)printA`)
 	res2 := m3.ReplaceAllString(res1, " printA")
 
-	m2 := regexp.MustCompile("([^=[:space:]\\{]*)storeRecord")
+	m2 := regexp.MustCompile(`([^=[:space:]\\{]*)storeRecord`)
 	a := m2.ReplaceAllString(res2, " storeRecord")
 
 	return a
@@ -167,7 +185,8 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	iso, _ := info.Context().Isolate()
 	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a)
 	if err != nil {
-		erro, _ := v8go.NewValue(iso, err.Error())
+		log.Println(fmt.Printf("callGQL error %v \n", err))
+		erro, _ := v8go.NewValue(iso, "{\"error\":\""+strings.ReplaceAll(err.Error(), "\"", "\\\"")+"\"}")
 		return erro
 	}
 
