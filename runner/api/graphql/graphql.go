@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
-	"regexp"
 
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/parser"
 	"github.com/graphql-go/graphql/language/source"
 )
 
-var (
-	partRegxp = regexp.MustCompile("\\s*([a-zA-Z0-9_-]+)\\s*(|\\(?[a-zA-Z0-9\\=\\,\\s\\.\\$\\_\\-\\:\"\\!]*\\))\\s*({?)\\n")
-	params    = regexp.MustCompile("\\s*([a-zA-Z0-9_-]+)\\s*(|\\(?[a-zA-Z0-9\\=\\,\\s\\.\\$\\_\\-\\:\"\\!]*\\))\\s*({?)\\n")
-)
+// var (
+// 	partRegxp = regexp.MustCompile("\\s*([a-zA-Z0-9_-]+)\\s*(|\\(?[a-zA-Z0-9\\=\\,\\s\\.\\$\\_\\-\\:\"\\!]*\\))\\s*({?)\\n")
+// 	params    = regexp.MustCompile("\\s*([a-zA-Z0-9_-]+)\\s*(|\\(?[a-zA-Z0-9\\=\\,\\s\\.\\$\\_\\-\\:\"\\!]*\\))\\s*({?)\\n")
+// )
 
 type GraphQuery struct {
 	Q       Part
@@ -33,6 +32,11 @@ type Part struct {
 	Params map[string]Param
 }
 
+type Field struct {
+	Name   string
+	Params map[string]Part
+	Fields map[string]Field
+}
 type Param struct {
 	Field    string
 	Type     string // TODO(lukanus): type
@@ -40,15 +44,19 @@ type Param struct {
 	Value    interface{}
 }
 
-func NewParam(inputObjects map[string]Param, value interface{}, field, variableType string) (p Param, err error) {
+func NewParam(inputObjects map[string]Param, variableType ast.Type, value interface{}, field string) (p Param, err error) {
 	p.Field = field
-	p.Type = variableType
 
-	if p.Variable, err = getVariable(inputObjects, value, variableType); err != nil {
+	p.Type, err = getType(variableType)
+	if err != nil {
 		return Param{}, err
 	}
 
-	if p.Value, err = getValue(inputObjects, value, field, variableType); err != nil {
+	if p.Variable, err = getVariable(inputObjects, value, p.Type); err != nil {
+		return Param{}, err
+	}
+
+	if p.Value, err = getValue(inputObjects, value, field, p.Type); err != nil {
 		return Param{}, err
 	}
 
@@ -70,7 +78,7 @@ func getType(t ast.Type) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return fmt.Sprintf("[]%s", typeStr), nil
+		return fmt.Sprintf("[%s]", typeStr), nil
 	default:
 		return "", errors.New("Unknown input type")
 	}
@@ -80,11 +88,11 @@ func getVariable(inputParams map[string]Param, v interface{}, variableType strin
 	switch variableType {
 	case "Int":
 		variableStr = "uint64"
-	case "[]Int":
+	case "[Int]":
 		variableStr = "[]uint64"
 	case "String":
 		variableStr = "string"
-	case "[]String":
+	case "[String]":
 		variableStr = "[]string"
 
 	default:
@@ -107,19 +115,20 @@ func getValue(inputParams map[string]Param, v interface{}, field, variableType s
 
 	switch variableType {
 	case "Int":
-		var int32Val int32
-		if int32Val, err = int32Value(v); err != nil {
+		var float64Val float64
+		if float64Val, err = float64Value(v); err != nil {
 			return nil, err
 		}
-		return uint64Value(int32Val), nil
+		return uint64Value(float64Val), nil
+
 	case "[]Int":
-		value = make([]*big.Int, len(v.([]int32)))
-		for i, str := range v.([]int32) {
-			int32Val, err := int32Value(str)
+		value = make([]*big.Int, len(v.([]float64)))
+		for i, str := range v.([]float64) {
+			float64Val, err := float64Value(str)
 			if err != nil {
 				return nil, err
 			}
-			value.([]*big.Int)[i] = uint64Value(int32Val)
+			value.([]*big.Int)[i] = uint64Value(float64Val)
 		}
 		return value, nil
 
@@ -164,11 +173,11 @@ func getValue(inputParams map[string]Param, v interface{}, field, variableType s
 	}
 }
 
-func int32Value(val interface{}) (int32, error) {
-	if reflect.TypeOf(val).Kind() != reflect.Int32 {
-		return 0, errors.New("Value is not int32")
+func float64Value(val interface{}) (float64, error) {
+	if reflect.TypeOf(val).Kind() != reflect.Float64 {
+		return 0, errors.New("Value is not float64")
 	}
-	return val.(int32), nil
+	return val.(float64), nil
 }
 
 func stringValue(val interface{}) (string, error) {
@@ -183,12 +192,6 @@ func (p *Param) String() (string, error) {
 		return "", errors.New("Value is not a string")
 	}
 	return p.Value.(string), nil
-}
-
-type Field struct {
-	Name   string
-	Params map[string]Part
-	Fields map[string]Field
 }
 
 func ParseQuery(query string, variables map[string]interface{}) (GraphQuery, error) {
@@ -241,20 +244,14 @@ func ParseQuery(query string, variables map[string]interface{}) (GraphQuery, err
 	}
 
 	return q, nil
-
 }
 
-func parseInputObjectValue(inputObjects map[string]Param, fields []*ast.InputValueDefinition) (map[string]Param, error) {
-	objFields := make(map[string]Param)
+func parseInputObjectValue(inputObjects map[string]Param, fields []*ast.InputValueDefinition) (objFields map[string]Param, err error) {
+	objFields = make(map[string]Param)
 	for _, f := range fields {
 		field := f.Name.Value
 
-		variableType, err := getType(f.Type)
-		if err != nil {
-			return nil, err
-		}
-
-		if objFields[field], err = NewParam(inputObjects, nil, field, variableType); err != nil {
+		if objFields[field], err = NewParam(inputObjects, f.Type, nil, field); err != nil {
 			return nil, err
 		}
 	}
@@ -308,12 +305,7 @@ func (q *GraphQuery) queryQParams(inputObjects map[string]Param, variableDefinit
 			return errors.New("Missing input variable")
 		}
 
-		variableType, err := getType(vd.Type)
-		if err != nil {
-			return err
-		}
-
-		pField, err := NewParam(inputObjects, value, field, variableType)
+		pField, err := NewParam(inputObjects, vd.Type, value, field)
 		if err != nil {
 			return err
 		}
@@ -326,7 +318,7 @@ func (q *GraphQuery) queryQParams(inputObjects map[string]Param, variableDefinit
 	return nil
 }
 
-func uint64Value(value int32) *big.Int {
+func uint64Value(value float64) *big.Int {
 	return new(big.Int).SetInt64(int64(value))
 }
 
@@ -366,130 +358,23 @@ func (q *GraphQuery) queryFields(selections []ast.Selection, i int) {
 	q.Queries[i].Fields = fields
 }
 
-/*
-
-func ParseQuery(query string, variables map[string]interface{}) (q Query, err error) {
-	q = Query{}
-	pos := strings.Index(query, "{")
-	if pos < 0 {
-		return q, errors.New("invalid graphql")
-	}
-
-	initialPortion := query[0 : pos+1]
-	if strings.Contains(initialPortion, "query") {
-		parts := partRegxp.FindAllStringSubmatch(initialPortion+"\n", -1)
-		log.Println("parts", parts)
-		if len(parts) == 1 {
-			parsedP, err := parseParams(parts[0][2])
-			if err != nil {
-				return q, err
+func MapQueryToResponse(queries []Query) (map[string]interface{}, error) {
+	rawResp := make(map[string]interface{})
+	for _, query := range queries {
+		fields := make(map[string]interface{})
+		for _, field := range query.Fields {
+			if field.Params == nil {
+				return nil, errors.New("Empty response parameter value")
 			}
-			q.Q = Part{
-				Name:   parts[0][1],
-				Params: parsedP,
+
+			value, ok := field.Params[field.Name]
+			if !ok {
+				return nil, errors.New("Missing response parameter value")
 			}
+
+			fields[field.Name] = value
 		}
+		rawResp[query.Name] = fields
 	}
-
-	parts := partRegxp.FindAllStringSubmatch(query[pos+1:], -1)
-	for _, p := range parts {
-
-		parsedP, err := parseParams(parts[0][2])
-		if err != nil {
-			return q, err
-		}
-
-		//	q.Params[] = Part{
-	//		Name:   parts[0][1],
-	//		Params: parsedP,
-	//	}
-	}
-
-	return q, nil
+	return rawResp, nil
 }
-
-func parseParams(paramS string) (map[string]Param, error) {
-	if paramS[0] == '(' {
-		paramS = paramS[1:]
-	}
-
-	if paramS[len(paramS)-1] == ')' {
-		paramS = paramS[:len(paramS)-2]
-	}
-
-	paramsA := strings.Split(paramS, ",")
-	params := make(map[string]Param)
-
-	for _, p := range paramsA {
-		paramPart := strings.Split(p, ":")
-		if len(paramPart) < 2 {
-			return nil, errors.New("params in wrong format")
-		}
-		val := strings.Trim(paramPart[1], " ")
-
-		param := Param{
-			Field: strings.Trim(paramPart[0], " "),
-		}
-		if val[0] == '$' {
-			param.Variable = val[1:]
-		} else {
-			if val[0] == '"' {
-				param.Type = "string"
-				param.Value = val[1 : len(val)-2]
-			} else {
-				param.Value = val
-			}
-		}
-
-		params[param.Field] = param
-	}
-
-	return params, nil
-}
-
-func parseQueryParams(paramS string) (map[string]Param, error) {
-	if paramS[0] == '(' {
-		paramS = paramS[1:]
-	}
-
-	if paramS[len(paramS)-1] == ')' {
-		paramS = paramS[:len(paramS)-2]
-	}
-
-	paramsA := strings.Split(paramS, ",")
-	params := make(map[string]Param)
-
-	for _, p := range paramsA {
-		paramPart := strings.Split(p, ":")
-		if len(paramPart) < 2 {
-			return nil, errors.New("params in wrong format")
-		}
-		val := strings.Trim(paramPart[1], " ")
-
-		param := Param{
-			Field: strings.Trim(paramPart[0], " "),
-		}
-		if val[0] == '$' {
-			param.Variable = val[1:]
-		} else {
-			if val[0] == '"' {
-				param.Type = "string"
-				param.Value = val[1 : len(val)-2]
-			} else {
-				param.Value = val
-			}
-		}
-
-		params[param.Field] = param
-	}
-
-	return params, nil
-}
-
-func ParseInnerQuery(query []string, variables map[string]interface{}) (q Query, err error) {
-
-	for _, v := range v {
-
-	}
-}
-*/

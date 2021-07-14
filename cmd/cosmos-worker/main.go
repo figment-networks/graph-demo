@@ -16,14 +16,11 @@ import (
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/cmd/cosmos-worker/config"
 	"github.com/figment-networks/graph-demo/cosmos-worker/api"
-	"github.com/figment-networks/graph-demo/cosmos-worker/client"
-	"github.com/figment-networks/indexer-manager/worker/connectivity"
-	grpcIndexer "github.com/figment-networks/indexer-manager/worker/transport/grpc"
-	grpcProtoIndexer "github.com/figment-networks/indexer-manager/worker/transport/grpc/indexer"
+	"github.com/figment-networks/graph-demo/manager/worker/connectivity"
+	grpcIndexer "github.com/figment-networks/graph-demo/manager/worker/transport/grpc"
+	grpcProtoIndexer "github.com/figment-networks/graph-demo/manager/worker/transport/grpc/indexer"
 
 	"github.com/figment-networks/indexing-engine/health"
-	"github.com/figment-networks/indexing-engine/metrics"
-	"github.com/figment-networks/indexing-engine/metrics/prometheusmetrics"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -59,17 +56,6 @@ func main() {
 
 	logger.Info(config.IdentityString())
 	defer logger.Sync()
-
-	// Initialize metrics
-	prom := prometheusmetrics.New()
-	err = metrics.AddEngine(prom)
-	if err != nil {
-		logger.Error(err)
-	}
-	err = metrics.Hotload(prom.Name())
-	if err != nil {
-		logger.Error(err)
-	}
 
 	workerRunID, err := uuid.NewRandom() // UUID V4
 	if err != nil {

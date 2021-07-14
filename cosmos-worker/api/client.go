@@ -21,9 +21,12 @@ type ClientConfig struct {
 
 // Client
 type Client struct {
-	logger *zap.Logger
-	cli    *grpc.ClientConn
-	Sbc    *SimpleBlockCache
+	chainID string
+	network string
+
+	log *zap.Logger
+	cli *grpc.ClientConn
+	Sbc *SimpleBlockCache
 
 	// GRPC
 	txServiceClient    tx.ServiceClient
@@ -41,7 +44,7 @@ func NewClient(logger *zap.Logger, cli *grpc.ClientConn, cfg *ClientConfig) *Cli
 	rateLimiterGRPC := rate.NewLimiter(rate.Limit(cfg.ReqPerSecond), cfg.ReqPerSecond)
 
 	return &Client{
-		logger:             logger,
+		log:                logger,
 		Sbc:                NewSimpleBlockCache(400),
 		tmServiceClient:    tmservice.NewServiceClient(cli),
 		txServiceClient:    tx.NewServiceClient(cli),
