@@ -13,7 +13,6 @@ require (
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/graphql-go/graphql v0.7.9 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/rollbar/rollbar-go v1.2.0
 	github.com/stretchr/testify v1.7.0
 	github.com/tendermint/tendermint v0.34.9
 	go.uber.org/zap v1.18.1

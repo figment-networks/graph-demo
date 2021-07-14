@@ -11,14 +11,6 @@ var (
 	Log Logger
 )
 
-type RollbarConfig struct {
-	RollbarAccessToken string
-	RollbarServerRoot  string
-	AppEnv             string
-	Version            string
-	ChainIDs           []string
-}
-
 type Logger struct {
 	*zap.Logger
 	Level zap.AtomicLevel
@@ -32,7 +24,7 @@ func GetLogger() *zap.Logger {
 	return Log.Logger
 }
 
-func Init(encoding, logLevel string, logOutputs []string, rollbarConfig *RollbarConfig) error {
+func Init(encoding, logLevel string, logOutputs []string) error {
 
 	lLev := zap.NewAtomicLevelAt(getLevel(logLevel))
 	logConfig := zap.Config{
