@@ -110,16 +110,16 @@ RunLoop:
 	}
 }
 
+type subscription struct {
+	NewEvent struct {
+		Time    graphql.Int
+		Type    graphql.String
+		Content graphql.String
+	}
+}
+
 // Example at https://github.com/hasura/go-graphql-client/blob/master/example/subscription/main.go
 func initGraphQLSubscription(client *graphql.SubscriptionClient, loader *jsRuntime.Loader, logger *zap.Logger) error {
-	type subscription struct {
-		NewEvent struct {
-			Time    graphql.Int
-			Type    graphql.String
-			Content graphql.String
-		}
-	}
-
 	query := subscription{}
 
 	logger.Info("Establishing graphQL subscription")
