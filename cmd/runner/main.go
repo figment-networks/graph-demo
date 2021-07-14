@@ -108,15 +108,15 @@ RunLoop:
 	}
 }
 
-type subscription struct {
-	NewEvent struct {
-		Time    graphql.Int
-		Type    graphql.String
-		Content graphql.String
-	}
-}
-
 func initGraphQLSubscription(client *graphql.SubscriptionClient, loader *jsRuntime.Loader, logger *zap.Logger) error {
+	type subscription struct {
+		NewEvent struct {
+			Time    graphql.Int
+			Type    graphql.String
+			Content graphql.String
+		}
+	}
+
 	query := subscription{}
 
 	logger.Info("Establishing graphQL subscription")
