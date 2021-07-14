@@ -21,10 +21,7 @@ import (
 )
 
 func main() {
-	rcfg := &logger.RollbarConfig{
-		AppEnv: "development",
-	}
-	logger.Init("console", "debug", []string{"stderr"}, rcfg)
+	logger.Init("console", "debug", []string{"stderr"})
 
 	subgraph := struct {
 		name   string
