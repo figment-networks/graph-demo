@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/figment-networks/graph-demo/runner/schema"
 	"github.com/figment-networks/graph-demo/runner/store"
 	"github.com/figment-networks/graph-demo/runner/store/memap"
+	"github.com/hasura/go-graphql-client"
 )
 
 func main() {
@@ -36,10 +38,6 @@ func main() {
 		Kind:    "http",
 		Address: "http://0.0.0.0:5001/network/cosmos", // TODO manager address
 	})
-
-	// For GraphQL subscriptions
-	// TODO ws + subscription
-	// https://github.com/hasura/go-graphql-client
 
 	// Load GraphQL schema for subgraph
 	schemas := schema.NewSchemas()
@@ -68,8 +66,49 @@ func main() {
 		return
 	}
 
-	// TODO should be called via graphql subscription handler
-	if err := loader.NewBlockEvent(jsRuntime.NewBlockEvent{"network": "cosmos", "height": 1234}); err != nil {
-		logger.Error(fmt.Errorf("Loader.NewBlockEvent() error = %v", err))
+	go initGraphQLSubscription(loader)
+}
+
+func initGraphQLSubscription(loader *jsRuntime.Loader) error {
+	// For GraphQL subscriptions
+	// https://github.com/hasura/go-graphql-client
+	client := graphql.NewSubscriptionClient("wss://0.0.0.0:5002/network/cosmos")
+	defer client.Close()
+
+	type subscription struct {
+		NewEvent struct {
+			Time    graphql.Int
+			Type    graphql.String
+			Content graphql.String
+		}
 	}
+
+	query := subscription{}
+
+	_, err := client.Subscribe(&query, nil, func(dataValue *json.RawMessage, errValue error) error {
+		if errValue != nil {
+			// if returns error, it will failback to `onError` event
+			return nil
+		}
+		data := subscription{}
+		err := json.Unmarshal(*dataValue, &data)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(query.NewEvent.Time)
+
+		if err := loader.NewBlockEvent(jsRuntime.NewBlockEvent{"network": "cosmos", "height": 1234}); err != nil {
+			logger.Error(fmt.Errorf("Loader.NewBlockEvent() error = %v", err))
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

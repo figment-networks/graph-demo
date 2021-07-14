@@ -18,8 +18,8 @@ var BlockEntity = /** @class */ (function () {
 }());
 exports.BlockEntity = BlockEntity;
 // callGQL returns string. Parse that to JSON object
-function query(network, query, args) {
-    var stringResponse = graph_1.callGQL(network, query, args);
+function query(network, query, args, version) {
+    var stringResponse = graph_1.callGQL(network, query, args, version);
     graph_1.printA('GQL call raw response: ' + JSON.stringify(stringResponse));
     return JSON.parse(stringResponse);
 }
@@ -43,7 +43,7 @@ var GET_BLOCK = "query GetBlock($height: Int) {\n  block( $height: Int = 0 ) {\n
  */
 function handleNewBlock(newBlockEvent) {
     graph_1.printA('newEventData: ' + JSON.stringify(newBlockEvent));
-    var _a = query(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }), error = _a.error, data = _a.data;
+    var _a = query(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }, "0.0.1"), error = _a.error, data = _a.data;
     if (error) {
         graph_1.printA('GQL call error: ' + JSON.stringify(error));
         return;
