@@ -110,6 +110,7 @@ RunLoop:
 	}
 }
 
+// Example at https://github.com/hasura/go-graphql-client/blob/master/example/subscription/main.go
 func initGraphQLSubscription(client *graphql.SubscriptionClient, loader *jsRuntime.Loader, logger *zap.Logger) error {
 	type subscription struct {
 		NewEvent struct {
@@ -123,16 +124,13 @@ func initGraphQLSubscription(client *graphql.SubscriptionClient, loader *jsRunti
 
 	logger.Info("Establishing graphQL subscription")
 	_, err := client.Subscribe(&query, nil, func(dataValue *json.RawMessage, errValue error) error {
-
 		if errValue != nil {
-			logger.Error("client.Subscribe() error = %v", zap.Error(errValue))
-			// if returns error, it will failback to `onError` event
-			return nil
+			return errValue // falls back to `onError` event
 		}
 		data := subscription{}
 		err := json.Unmarshal(*dataValue, &data)
 		if err != nil {
-			logger.Error("could not parse graphQL response. error = %v", zap.Error(err))
+			logger.Error("could not parse graphQL response error = %v", zap.Error(err))
 			return err
 		}
 
@@ -147,7 +145,7 @@ func initGraphQLSubscription(client *graphql.SubscriptionClient, loader *jsRunti
 	})
 
 	if err != nil {
-		logger.Error("client.Subscribe() error = %v", zap.Error(err))
+		logger.Error("subscription client handler error = %v", zap.Error(err))
 		return err
 	}
 
