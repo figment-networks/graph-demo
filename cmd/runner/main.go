@@ -81,14 +81,15 @@ func main() {
 		})
 	defer subClient.Close()
 
-	go initGraphQLSubscription(subClient, loader, logger.GetLogger())
-	go subClient.Run()
+	initGraphQLSubscription(subClient, loader, logger.GetLogger())
 
-	_, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	osSig := make(chan os.Signal)
 	exit := make(chan string, 2)
 	signal.Notify(osSig, syscall.SIGTERM)
 	signal.Notify(osSig, syscall.SIGINT)
+
+	go subClient.Run()
 
 RunLoop:
 	for {
