@@ -41,6 +41,8 @@ type Config struct {
 
 	TimeoutBlockCall       time.Duration `json:"timeout_block_call" envconfig:"TIMEOUT_BLOCK_CALL" default:"30s"`
 	TimeoutTransactionCall time.Duration `json:"timeout_transaction_call" envconfig:"TIMEOUT_TRANSACTION_CALL" default:"30s"`
+
+	StoreHTTPEndpoints string `json:"store_http_endpoints" envconfig:"STORE_HTTP_ENDPOINTS"`
 }
 
 // FromFile reads the config from a file
