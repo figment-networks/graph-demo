@@ -51,21 +51,10 @@ func main() {
 		log.Fatalf("error initializing config [ERR: %v]", err.Error())
 	}
 
-	if cfg.RollbarServerRoot == "" {
-		cfg.RollbarServerRoot = "github.com/figment-networks/graph-demo/cosmos-worker"
-	}
-	rcfg := &logger.RollbarConfig{
-		AppEnv:             cfg.AppEnv,
-		RollbarAccessToken: cfg.RollbarAccessToken,
-		RollbarServerRoot:  cfg.RollbarServerRoot,
-		Version:            config.GitSHA,
-		ChainIDs:           []string{cfg.ChainID},
-	}
-
 	if cfg.AppEnv == "development" || cfg.AppEnv == "local" {
-		logger.Init("console", "debug", []string{"stderr"}, rcfg)
+		logger.Init("console", "debug", []string{"stderr"})
 	} else {
-		logger.Init("json", "info", []string{"stderr"}, rcfg)
+		logger.Init("json", "info", []string{"stderr"})
 	}
 
 	logger.Info(config.IdentityString())
