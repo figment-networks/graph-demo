@@ -9,6 +9,7 @@ import (
 
 	"github.com/figment-networks/graph-demo/connectivity"
 	"github.com/figment-networks/graph-demo/connectivity/jsonrpc"
+
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )
@@ -91,9 +92,9 @@ func (s *Session) Recv() {
 		}
 
 		go h(s.ctx, &SessionRequest{args: req.Params}, &SessionResponse{
-			ID:             req.ID,
-			SessionContext: ctx,
-			RespCh:         s.send,
+			// ID:             req.ID,
+			// SessionContext: ctx,
+			RespCh: s.send,
 		})
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/figment-networks/graph-demo/runner/schema"
 	"github.com/figment-networks/graph-demo/runner/store"
 	"github.com/figment-networks/graph-demo/runner/store/memap"
+
 	"github.com/stretchr/testify/require"
 )
 

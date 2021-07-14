@@ -123,8 +123,6 @@ func main() {
 	go monitor.RunChecks(ctx, cfg.HealthCheckInterval)
 	monitor.AttachHttp(mux)
 
-	attachDynamic(ctx, mux)
-
 	s := &http.Server{
 		Addr:         "0.0.0.0:" + cfg.HTTPPort,
 		Handler:      mux,
