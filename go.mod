@@ -15,7 +15,6 @@ require (
 	github.com/hasura/go-graphql-client v0.2.0 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/klauspost/compress v1.13.1 // indirect
-	github.com/rollbar/rollbar-go v1.2.0
 	github.com/stretchr/testify v1.7.0
 	github.com/tendermint/tendermint v0.34.9
 	go.uber.org/zap v1.18.1
