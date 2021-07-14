@@ -73,14 +73,7 @@ func main() {
 		return
 	}
 
-	_, cancel := context.WithCancel(context.Background())
-	osSig := make(chan os.Signal)
-	exit := make(chan string, 2)
-	signal.Notify(osSig, syscall.SIGTERM)
-	signal.Notify(osSig, syscall.SIGINT)
-
 	// For GraphQL subscriptions
-	// https://github.com/hasura/go-graphql-client
 	client := graphql.NewSubscriptionClient("wss://0.0.0.0:5002/network/cosmos").
 		WithLog(log.Println).
 		OnError(func(subClient *graphql.SubscriptionClient, err error) error {
@@ -92,16 +85,24 @@ func main() {
 	go initGraphQLSubscription(client, loader, logger.GetLogger())
 	go client.Run()
 
+	_, cancel := context.WithCancel(context.Background())
+	osSig := make(chan os.Signal)
+	exit := make(chan string, 2)
+	signal.Notify(osSig, syscall.SIGTERM)
+	signal.Notify(osSig, syscall.SIGINT)
+
 RunLoop:
 	for {
 		select {
 		case sig := <-osSig:
 			logger.Info("Stopping runner... ", zap.String("signal", sig.String()))
 			cancel()
+			client.Close()
 			break RunLoop
 		case k := <-exit:
 			logger.Info("Stopping runner... ", zap.String("reason", k))
 			cancel()
+			client.Close()
 			break RunLoop
 		}
 	}
