@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/figment-networks/graph-demo/connectivity"
+
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )

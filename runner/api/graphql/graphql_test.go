@@ -5,8 +5,23 @@ import (
 	"testing"
 )
 
-const t1 = `query GetBlock($height: Int) {
-    block(height: $height ) {
+const t1 = `input Sth {
+	str: String
+}
+
+input ReviewInput {
+	stars: Int!
+	commentary: [String]
+	additional: Sth
+  }
+  
+  query GetBlock($height: Int, $review: ReviewInput) {
+    secondBlock(sHeight: $height) {
+		height
+		hash
+	  }
+	
+	block(height: $height ) {
       height
       time
       id
@@ -25,7 +40,8 @@ func TestParseQuery(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "simple", args: args{
-			query: t1,
+			query:     t1,
+			variables: map[string]interface{}{"height": int32(120), "review": map[string]interface{}{"stars": int32(3), "commentary": []string{"a", "b"}, "b": 2, "additional": map[string]interface{}{"str": "Hello it's me"}}},
 		}},
 	}
 	for _, tt := range tests {
