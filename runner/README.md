@@ -7,8 +7,8 @@ This runtime is meant to mimic the behaviors of graph-node which executes wasm s
 - `api` - APIs to interact with the runner
 - `jsRuntime` - creates the V8 runtime and executes the javascript
 - `requester` - layer to make GraphQL queries to the manager
-- `schema`
-- `store` - In-memory store for subgraph data
+- `schema` - model for loading graphQL schemas from subgraphs
+- `store` - in-memory store for subgraph data
 - `subgraphs` - sample subgraphs (typescript + graphQL schema)
 
 ## Subgraphs

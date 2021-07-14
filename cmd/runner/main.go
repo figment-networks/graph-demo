@@ -66,6 +66,7 @@ func main() {
 		}
 	}
 
+	// Init the javascript runtime
 	loader := jsRuntime.NewLoader(rqstr, sStore)
 	logger.Info(fmt.Sprintf("Loading subgraph js file %s", subgraph.path))
 	if err := loader.LoadJS(subgraph.name, subgraph.path); err != nil {
@@ -73,17 +74,18 @@ func main() {
 		return
 	}
 
-	// For GraphQL subscriptions
-	client := graphql.NewSubscriptionClient("wss://0.0.0.0:5002/network/cosmos").
+	// For GraphQL subscriptions (new events from manager)
+	// TODO manager ws endpoint
+	subClient := graphql.NewSubscriptionClient("wss://0.0.0.0:5002/network/cosmos").
 		WithLog(log.Println).
 		OnError(func(subClient *graphql.SubscriptionClient, err error) error {
 			logger.Error(fmt.Errorf("graphql.NewSubscriptionClient error = %v", err))
 			return err
 		})
-	defer client.Close()
+	defer subClient.Close()
 
-	go initGraphQLSubscription(client, loader, logger.GetLogger())
-	go client.Run()
+	go initGraphQLSubscription(subClient, loader, logger.GetLogger())
+	go subClient.Run()
 
 	_, cancel := context.WithCancel(context.Background())
 	osSig := make(chan os.Signal)
@@ -97,12 +99,12 @@ RunLoop:
 		case sig := <-osSig:
 			logger.Info("Stopping runner... ", zap.String("signal", sig.String()))
 			cancel()
-			client.Close()
+			subClient.Close()
 			break RunLoop
 		case k := <-exit:
 			logger.Info("Stopping runner... ", zap.String("reason", k))
 			cancel()
-			client.Close()
+			subClient.Close()
 			break RunLoop
 		}
 	}
