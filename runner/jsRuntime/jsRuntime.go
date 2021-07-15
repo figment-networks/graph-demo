@@ -164,11 +164,9 @@ func (s *Subgraph) storeRecord(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	mj, _ := args[1].MarshalJSON()
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
-	iso, _ := info.Context().Isolate()
 
 	if err := s.stor.Store(context.Background(), s.name, args[0].String(), a); err != nil {
-		erro, _ := v8go.NewValue(iso, err.Error())
-		return erro
+		return jsonError(info.Context(), err)
 	}
 
 	return nil
@@ -182,17 +180,19 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
-	//iso, _ := info.Context().Isolate()
 	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a)
 	if err != nil {
 		log.Println(fmt.Printf("callGQL error %v \n", err))
-		erro, _ := v8go.JSONParse(info.Context(), "{\"error\":\""+strings.ReplaceAll(err.Error(), "\"", "\\\"")+"\"}")
-		//erro, _ := v8go.NewValue(iso, "{\"error\":\""+strings.ReplaceAll(err.Error(), "\"", "\\\"")+"\"}")
-		return erro
+		return jsonError(info.Context(), err)
 	}
 
 	p, _ := v8go.JSONParse(info.Context(), string(resp))
 	return p
+}
+
+func jsonError(ctx *v8go.Context, err error) *v8go.Value {
+	erro, _ := v8go.JSONParse(ctx, "{\"error\":{\"message\":\""+strings.ReplaceAll(err.Error(), "\"", "\\\"")+"\"}}")
+	return erro
 }
 
 type SubgraphHandler struct {

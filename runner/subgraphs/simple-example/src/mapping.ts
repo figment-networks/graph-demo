@@ -64,5 +64,8 @@ function handleBlock(newBlockEvent: NewBlockEvent) {
   printA('Entity: ' + JSON.stringify(entity));
 
   // replace with `entity.save()` for graph-ts
-  storeRecord("SubgraphStoreBlock", entity);
+  const {storeErr} = storeRecord("SubgraphStoreBlock", entity);
+  if (storeErr) {
+    printA('Error storing entity: ' + JSON.stringify(storeErr));
+  }
 }

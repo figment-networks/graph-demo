@@ -13,7 +13,7 @@ var BlockEntity = /** @class */ (function () {
 }());
 var GET_BLOCK = "query GetBlock($height: Int) {\n    block( $height: Int = 0 ) {\n      height\n      time\n      id\n    }\n  }";
 function handleBlock(newBlockEvent) {
-    var _a = graph_1.call(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }), data = _a.data, error = _a.error;
+    var _a = graph_1.graphql.call(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }), data = _a.data, error = _a.error;
     if (error) {
         graph_1.printA(JSON.stringify(error));
         return;
