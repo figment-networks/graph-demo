@@ -13,7 +13,7 @@
             "env": {
                 "CHAIN_ID": "mainnet",
                 "NETWORK": "cosmos",
-                "COSMOS_GRPC_ADDR": "localhost:26657",
+                "COSMOS_GRPC_ADDR": "0.0.0.0:9090",
             }
         },
         {
@@ -43,6 +43,9 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/runner",
+            "env": {
+                "MANAGER_URL": "http://0.0.0.0:8088"
+            }
         }
     ]
 }

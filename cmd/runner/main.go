@@ -5,11 +5,10 @@ import (
 	"net/http"
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
-	"github.com/figment-networks/graph-demo/runner/jsRuntime"
-	"github.com/figment-networks/graph-demo/runner/requester"
-	"github.com/figment-networks/graph-demo/runner/schema"
-	"github.com/figment-networks/graph-demo/runner/store"
-	"github.com/figment-networks/graph-demo/runner/store/memap"
+	"github.com/figment-networks/graph-demo/cmd/runner/config"
+	"github.com/figment-networks/graph-demo/runner/api/httpapi"
+	"github.com/figment-networks/graph-demo/runner/api/service"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -53,6 +52,22 @@ func main() {
 			}
 			sStore.NewStore(subgraph.name, ent.Name, indexed)
 		}
+	logger.Info(config.IdentityString())
+	defer logger.Sync()
+
+	mux := http.NewServeMux()
+
+	cli := http.DefaultClient
+	svc := service.New(cli, cfg.ManagerURL)
+
+	handler := httpapi.New(svc)
+	handler.AttachMux(mux)
+
+	s := &http.Server{
+		Addr:         cfg.Address + ":" + cfg.HTTPPort,
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 40 * time.Second,
 	}
 
 	// Init the javascript runtime
