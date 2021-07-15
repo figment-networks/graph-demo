@@ -71,10 +71,10 @@ func main() {
 		return
 	}
 
+	// TODO This is here just for testing until we get manager <> runner comms working
 	if err := loader.NewEvent(jsRuntime.NewEvent{"network": "cosmos", "height": 1234}); err != nil {
 		logger.Error(fmt.Errorf("Loader.NewBlockEvent() error = %v", err))
 	}
-
 	return
 
 	// For GraphQL subscriptions (new events from manager)
