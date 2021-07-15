@@ -72,13 +72,22 @@ func main() {
 	}
 
 	// TODO This is here just for testing until we get manager <> runner comms working
-	evt := jsRuntime.NewEvent{
-		Type: "block",
-		Data: map[string]interface{}{"network": "cosmos", "height": 1234},
+	evts := []jsRuntime.NewEvent{
+		{
+			Type: "block",
+			Data: map[string]interface{}{"network": "cosmos", "height": 1234},
+		},
+		{
+			Type: "transaction",
+			Data: map[string]interface{}{"network": "cosmos", "height": 1234},
+		},
 	}
-	if err := loader.NewEvent(evt); err != nil {
-		logger.Error(fmt.Errorf("Loader.NewBlockEvent() error = %v", err))
+	for _, evt := range evts {
+		if err := loader.NewEvent(evt); err != nil {
+			logger.Error(fmt.Errorf("Loader.NewBlockEvent() error = %v", err))
+		}
 	}
+
 	return
 
 	// For GraphQL subscriptions (new events from manager)

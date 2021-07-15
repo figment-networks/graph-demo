@@ -31,8 +31,10 @@ var GET_BLOCK = "query GetBlock($height: Int) {\n  block( $height: Int = 0 ) {\n
  *  kind: cosmos/blocks
  *  apiVersion: 0.0.1
  *  language: wasm/assemblyscript
+ *  transactionHandlers:
+ *    - function: handleTransaction
  *  blockHandlers:
- *    - function: handleNewBlock
+ *    - function: handleBlock
  * ```
  */
 function handleBlock(newBlockEvent) {
@@ -54,4 +56,7 @@ function handleBlock(newBlockEvent) {
     if (storeErr) {
         graph_1.log.debug('Error storing entity: ' + JSON.stringify(storeErr));
     }
+}
+function handleTransaction(newTxnEvent) {
+    graph_1.log.debug('newTxnEvent: ' + JSON.stringify(newTxnEvent));
 }
