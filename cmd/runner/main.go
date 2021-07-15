@@ -1,14 +1,8 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/runner/jsRuntime"
@@ -16,8 +10,6 @@ import (
 	"github.com/figment-networks/graph-demo/runner/schema"
 	"github.com/figment-networks/graph-demo/runner/store"
 	"github.com/figment-networks/graph-demo/runner/store/memap"
-	"github.com/hasura/go-graphql-client"
-	"go.uber.org/zap"
 )
 
 func main() {
@@ -87,87 +79,4 @@ func main() {
 			logger.Error(fmt.Errorf("Loader.NewEvent() error = %v", err))
 		}
 	}
-
-	return
-
-	// For GraphQL subscriptions (new events from manager)
-	// TODO manager ws endpoint
-	subClient := graphql.NewSubscriptionClient("wss://0.0.0.0:5002/network/cosmos").
-		WithLog(log.Println).
-		OnError(func(subClient *graphql.SubscriptionClient, err error) error {
-			logger.Error(fmt.Errorf("graphql.NewSubscriptionClient error = %v", err))
-			return err
-		})
-	defer subClient.Close()
-
-	initGraphQLSubscription(subClient, loader, logger.GetLogger())
-
-	ctx := subClient.GetContext()
-	_, cancel := context.WithCancel(ctx)
-	osSig := make(chan os.Signal)
-	exit := make(chan string, 2)
-	signal.Notify(osSig, syscall.SIGTERM)
-	signal.Notify(osSig, syscall.SIGINT)
-
-	go subClient.Run()
-
-RunLoop:
-	for {
-		select {
-		case sig := <-osSig:
-			logger.Info("Stopping runner... ", zap.String("signal", sig.String()))
-			cancel()
-			subClient.Close()
-			break RunLoop
-		case k := <-exit:
-			logger.Info("Stopping runner... ", zap.String("reason", k))
-			cancel()
-			subClient.Close()
-			break RunLoop
-		}
-	}
-}
-
-type subscription struct {
-	NewEvent struct {
-		Time    graphql.Int
-		Type    graphql.String
-		Content graphql.String
-	}
-}
-
-// Example at https://github.com/hasura/go-graphql-client/blob/master/example/subscription/main.go
-func initGraphQLSubscription(client *graphql.SubscriptionClient, loader *jsRuntime.Loader, logger *zap.Logger) error {
-	query := subscription{}
-
-	logger.Info("Establishing graphQL subscription")
-	_, err := client.Subscribe(&query, nil, func(dataValue *json.RawMessage, errValue error) error {
-		if errValue != nil {
-			return errValue // falls back to `onError` event
-		}
-		data := subscription{}
-		err := json.Unmarshal(*dataValue, &data)
-		if err != nil {
-			logger.Error("could not parse graphQL response error = %v", zap.Error(err))
-			return err
-		}
-
-		evt := jsRuntime.NewEvent{
-			Type: string(data.NewEvent.Type),
-			Data: map[string]interface{}{"network": "cosmos", "height": data.NewEvent.Time},
-		}
-		if err := loader.NewEvent(evt); err != nil {
-			logger.Error("Loader.NewBlockEvent() error = %v", zap.Error(err))
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		logger.Error("subscription client handler error = %v", zap.Error(err))
-		return err
-	}
-
-	return nil
 }
