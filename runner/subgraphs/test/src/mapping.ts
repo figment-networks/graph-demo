@@ -1,6 +1,6 @@
 // This test is used by jsRunner_test.go
 
-import { callGQL, BlockResponse, NewBlockEvent, storeRecord, printA } from "../graph";
+import { call, NewBlockEvent, storeRecord, printA } from "../../graph";
 
 class BlockEntity {
   id: string;
@@ -25,7 +25,7 @@ const GET_BLOCK = `query GetBlock($height: Int) {
   }`;
 
 function handleNewBlock(newBlockEvent: NewBlockEvent) {
-    const { data, error } = callGQL<BlockResponse>(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
+    const { data, error } = call(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
 
     if (error) {
       printA(JSON.stringify(error));

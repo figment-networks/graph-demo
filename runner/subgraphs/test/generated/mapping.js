@@ -1,7 +1,7 @@
 "use strict";
 // This test is used by jsRunner_test.go
 exports.__esModule = true;
-var graph_1 = require("../graph");
+var graph_1 = require("../../graph");
 var BlockEntity = /** @class */ (function () {
     function BlockEntity(height, id, time, myNote) {
         this.id = id;
@@ -13,7 +13,7 @@ var BlockEntity = /** @class */ (function () {
 }());
 var GET_BLOCK = "query GetBlock($height: Int) {\n    block( $height: Int = 0 ) {\n      height\n      time\n      id\n    }\n  }";
 function handleNewBlock(newBlockEvent) {
-    var _a = graph_1.callGQL(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }), data = _a.data, error = _a.error;
+    var _a = graph_1.call(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }), data = _a.data, error = _a.error;
     if (error) {
         graph_1.printA(JSON.stringify(error));
         return;
