@@ -2,11 +2,14 @@
 
 import { graphql, BlockEvent, store, log } from "../../graph";
 
+class TransactionEntity {}
+
 class BlockEntity {
   id: string;
   height: number;
   time: Date;
   myNote: string;
+  transactions: TransactionEntity[];
 
   constructor(height: number, id: string, time: Date, myNote: string) {
     this.id = id;
@@ -39,5 +42,6 @@ function handleBlock(newBlockEvent: BlockEvent) {
 
     log.debug(JSON.stringify(entity));
 
-    store.save("StoreBlock", entity);
+    // using graph-ts, this line translates to entity.save()
+    store.save("Block", entity);
 }
