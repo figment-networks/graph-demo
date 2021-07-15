@@ -1,5 +1,5 @@
 
-import { graphql, NewBlockEvent, storeRecord, printA } from "../../graph";
+import { graphql, NewBlockEvent, store, log } from "../../graph";
 
 /***
  * Generated
@@ -42,30 +42,29 @@ const GET_BLOCK = `query GetBlock($height: Int) {
  * ```
  */
 function handleBlock(newBlockEvent: NewBlockEvent) {
-  printA('newBlockEvent: ' + JSON.stringify(newBlockEvent));
+  log.debug('newBlockEvent: ' + JSON.stringify(newBlockEvent));
 
   const {error, data} = graphql.call("cosmos", GET_BLOCK, { height: newBlockEvent.height }, "0.0.1");
 
   if (error) {
-    printA('GQL call error: ' + JSON.stringify(error));
+     log.debug('GQL call error: ' + JSON.stringify(error));
     return;
   }
 
   if (!data) {
-    printA('GQL call returned no data');
+     log.debug('GQL call returned no data');
     return;
   }
 
-  printA('GQL call data: ' + JSON.stringify(data));
+   log.debug('GQL call data: ' + JSON.stringify(data));
 
   const { height, id, time } = data;
   const entity = new BlockEntity(height, id, time, "ok");
 
-  printA('Entity: ' + JSON.stringify(entity));
+  log.debug('Entity: ' + JSON.stringify(entity));
 
-  // replace with `entity.save()` for graph-ts
-  const {storeErr} = storeRecord("SubgraphStoreBlock", entity);
+  const {storeErr} = store.save("SubgraphStoreBlock", entity);
   if (storeErr) {
-    printA('Error storing entity: ' + JSON.stringify(storeErr));
+     log.debug('Error storing entity: ' + JSON.stringify(storeErr));
   }
 }

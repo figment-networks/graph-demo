@@ -1,7 +1,11 @@
 // These functions hook into the jsRuntime. The names and params must be changed in both places.
-export function call(identifier: GraphQLSourceIdentifier, query: string, variables: object, version?: string): GraphQLResponse;
-export function storeRecord(type: string,  record: object): any;
-export function printA(msg: string);
+export declare namespace store {
+    export function save(type: string,  record: object): any;
+}
+
+export declare namespace log {
+    export function debug(msg: string);
+}
 
 export declare namespace graphql {
     export function call(identifier: GraphQLSourceIdentifier, query: string, variables: object, version?: string): GraphQLResponse;

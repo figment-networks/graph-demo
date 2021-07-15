@@ -1,6 +1,6 @@
 // This test is used by jsRunner_test.go
 
-import { graphql, NewBlockEvent, storeRecord, printA } from "../../graph";
+import { graphql, NewBlockEvent, store, log } from "../../graph";
 
 class BlockEntity {
   id: string;
@@ -28,16 +28,16 @@ function handleBlock(newBlockEvent: NewBlockEvent) {
     const { data, error } = graphql.call(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
 
     if (error) {
-      printA(JSON.stringify(error));
+      log.debug(JSON.stringify(error));
       return;
     }
 
-    printA(JSON.stringify(data));
+    log.debug(JSON.stringify(data));
 
     const { height, id, time } = data;
     const entity = new BlockEntity(height, id, time, "ok");
 
-    printA(JSON.stringify(entity));
+    log.debug(JSON.stringify(entity));
 
-    storeRecord("StoreBlock", entity);
+    store.save("StoreBlock", entity);
 }

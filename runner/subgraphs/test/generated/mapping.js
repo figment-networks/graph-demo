@@ -15,12 +15,12 @@ var GET_BLOCK = "query GetBlock($height: Int) {\n    block( $height: Int = 0 ) {
 function handleBlock(newBlockEvent) {
     var _a = graph_1.graphql.call(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }), data = _a.data, error = _a.error;
     if (error) {
-        graph_1.printA(JSON.stringify(error));
+        graph_1.log.debug(JSON.stringify(error));
         return;
     }
-    graph_1.printA(JSON.stringify(data));
+    graph_1.log.debug(JSON.stringify(data));
     var height = data.height, id = data.id, time = data.time;
     var entity = new BlockEntity(height, id, time, "ok");
-    graph_1.printA(JSON.stringify(entity));
-    graph_1.storeRecord("StoreBlock", entity);
+    graph_1.log.debug(JSON.stringify(entity));
+    graph_1.store.save("StoreBlock", entity);
 }

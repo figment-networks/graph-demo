@@ -36,23 +36,22 @@ var GET_BLOCK = "query GetBlock($height: Int) {\n  block( $height: Int = 0 ) {\n
  * ```
  */
 function handleBlock(newBlockEvent) {
-    graph_1.printA('newBlockEvent: ' + JSON.stringify(newBlockEvent));
+    graph_1.log.debug('newBlockEvent: ' + JSON.stringify(newBlockEvent));
     var _a = graph_1.graphql.call("cosmos", GET_BLOCK, { height: newBlockEvent.height }, "0.0.1"), error = _a.error, data = _a.data;
     if (error) {
-        graph_1.printA('GQL call error: ' + JSON.stringify(error));
+        graph_1.log.debug('GQL call error: ' + JSON.stringify(error));
         return;
     }
     if (!data) {
-        graph_1.printA('GQL call returned no data');
+        graph_1.log.debug('GQL call returned no data');
         return;
     }
-    graph_1.printA('GQL call data: ' + JSON.stringify(data));
+    graph_1.log.debug('GQL call data: ' + JSON.stringify(data));
     var height = data.height, id = data.id, time = data.time;
     var entity = new BlockEntity(height, id, time, "ok");
-    graph_1.printA('Entity: ' + JSON.stringify(entity));
-    // replace with `entity.save()` for graph-ts
-    var storeErr = graph_1.storeRecord("SubgraphStoreBlock", entity).storeErr;
+    graph_1.log.debug('Entity: ' + JSON.stringify(entity));
+    var storeErr = graph_1.store.save("SubgraphStoreBlock", entity).storeErr;
     if (storeErr) {
-        graph_1.printA('error storing entity: ' + JSON.stringify(storeErr));
+        graph_1.log.debug('Error storing entity: ' + JSON.stringify(storeErr));
     }
 }
