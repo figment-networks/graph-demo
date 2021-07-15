@@ -84,7 +84,7 @@ func main() {
 	}
 	for _, evt := range evts {
 		if err := loader.NewEvent(evt); err != nil {
-			logger.Error(fmt.Errorf("Loader.NewBlockEvent() error = %v", err))
+			logger.Error(fmt.Errorf("Loader.NewEvent() error = %v", err))
 		}
 	}
 
@@ -130,8 +130,8 @@ RunLoop:
 
 type subscription struct {
 	NewEvent struct {
-		Type    graphql.String
 		Time    graphql.Int
+		Type    graphql.String
 		Content graphql.String
 	}
 }
