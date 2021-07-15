@@ -3,6 +3,10 @@ export function call(identifier: GraphQLSourceIdentifier, query: string, variabl
 export function storeRecord(type: string,  record: object): any;
 export function printA(msg: string);
 
+export declare namespace graphql {
+    export function call(identifier: GraphQLSourceIdentifier, query: string, variables: object, version?: string): GraphQLResponse;
+}
+
 export enum Network {
     COSMOS = 'cosmos',
 }

@@ -1,5 +1,5 @@
 
-import { call, NewBlockEvent, storeRecord, printA, Network } from "../../graph";
+import { graphql, NewBlockEvent, storeRecord, printA } from "../../graph";
 
 /***
  * Generated
@@ -41,10 +41,10 @@ const GET_BLOCK = `query GetBlock($height: Int) {
  *    - function: handleNewBlock
  * ```
  */
-function handleEvent(newBlockEvent: NewBlockEvent) {
-  printA('newEventData: ' + JSON.stringify(newBlockEvent));
+function handleBlock(newBlockEvent: NewBlockEvent) {
+  printA('newBlockEvent: ' + JSON.stringify(newBlockEvent));
 
-  const {error, data} = call("cosmos", GET_BLOCK, { height: newBlockEvent.height }, "0.0.1");
+  const {error, data} = graphql.call("cosmos", GET_BLOCK, { height: newBlockEvent.height }, "0.0.1");
 
   if (error) {
     printA('GQL call error: ' + JSON.stringify(error));

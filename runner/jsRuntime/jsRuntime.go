@@ -62,7 +62,7 @@ func (l *Loader) NewEvent(evt NewEvent) error {
 	for name := range l.subgraphs {
 		if err := l.CallSubgraphHandler(name,
 			&SubgraphHandler{
-				name:   "handleEvent",
+				name:   "handleBlock",
 				values: []interface{}{evt},
 			}); err != nil {
 			return err

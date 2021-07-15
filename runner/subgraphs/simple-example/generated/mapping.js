@@ -35,8 +35,8 @@ var GET_BLOCK = "query GetBlock($height: Int) {\n  block( $height: Int = 0 ) {\n
  *    - function: handleNewBlock
  * ```
  */
-function handleEvent(newBlockEvent) {
-    graph_1.printA('newEventData: ' + JSON.stringify(newBlockEvent));
+function handleBlock(newBlockEvent) {
+    graph_1.printA('newBlockEventData: ' + JSON.stringify(newBlockEvent));
     var _a = graph_1.call("cosmos", GET_BLOCK, { height: newBlockEvent.height }, "0.0.1"), error = _a.error, data = _a.data;
     if (error) {
         graph_1.printA('GQL call error: ' + JSON.stringify(error));
