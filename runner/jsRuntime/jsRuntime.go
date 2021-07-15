@@ -98,7 +98,7 @@ func (l *Loader) createRunable(name string, code []byte) error {
 		return err
 	}
 	global.Set("printA", print)
-	global.Set("callGQL", callGQL)
+	global.Set("call", callGQL)
 	global.Set("storeRecord", storeRecord)
 
 	subgr.context, err = v8go.NewContext(iso, global)
@@ -124,8 +124,8 @@ func cleanJS(code []byte) string {
 			b.WriteString("\n")
 		}
 	}
-	m1 := regexp.MustCompile(`([^=[:space:]\\{]*)callGQL`)
-	res1 := m1.ReplaceAllString(b.String(), " callGQL")
+	m1 := regexp.MustCompile(`([^=[:space:]\\{]*)call`)
+	res1 := m1.ReplaceAllString(b.String(), " call")
 
 	m3 := regexp.MustCompile(`([^=[:space:]\\{]*)printA`)
 	res2 := m3.ReplaceAllString(res1, " printA")
@@ -182,11 +182,12 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
-	iso, _ := info.Context().Isolate()
+	//iso, _ := info.Context().Isolate()
 	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a)
 	if err != nil {
 		log.Println(fmt.Printf("callGQL error %v \n", err))
-		erro, _ := v8go.NewValue(iso, "{\"error\":\""+strings.ReplaceAll(err.Error(), "\"", "\\\"")+"\"}")
+		erro, _ := v8go.JSONParse(info.Context(), "{\"error\":\""+strings.ReplaceAll(err.Error(), "\"", "\\\"")+"\"}")
+		//erro, _ := v8go.NewValue(iso, "{\"error\":\""+strings.ReplaceAll(err.Error(), "\"", "\\\"")+"\"}")
 		return erro
 	}
 

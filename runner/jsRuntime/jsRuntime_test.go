@@ -29,7 +29,7 @@ func TestLoader_LoadJS(t *testing.T) {
 			name: "a",
 			args: args{
 				"one",
-				"../subgraphs/test/test-subgraph.js",
+				"../subgraphs/test/generated/mapping.js",
 				"../subgraphs/test/schema.graphql"},
 		},
 	}
@@ -69,12 +69,12 @@ func TestLoader_LoadJS(t *testing.T) {
 				t.Errorf("Loader.LoadJS() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			m := NewBlockEvent{
+			m := NewEvent{
 				"network": "testNetwork",
 				"height":  1234,
 			}
 
-			if err := l.NewBlockEvent(m); err != nil {
+			if err := l.NewEvent(m); err != nil {
 				t.Errorf("Loader.NewBlockEvent() error = %v", err)
 			}
 

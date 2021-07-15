@@ -24,7 +24,7 @@ const GET_BLOCK = `query GetBlock($height: Int) {
     }
   }`;
 
-function handleNewBlock(newBlockEvent: NewBlockEvent) {
+function handleEvent(newBlockEvent: NewBlockEvent) {
     const { data, error } = call(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
 
     if (error) {
