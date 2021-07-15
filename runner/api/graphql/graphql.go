@@ -6,8 +6,10 @@ import (
 	"math/big"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/figment-networks/graph-demo/runner/api/structs"
+	"github.com/google/uuid"
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/parser"
 	"github.com/graphql-go/graphql/language/source"
@@ -99,26 +101,23 @@ func MapBlocksToResponse(queries []structs.Query, blocksResp structs.QueriesResp
 		}
 
 		bLen := len(blocks)
+		row := map[string]interface{}{}
 		rows := make([]interface{}, bLen)
 		i := 0
-
 		for _, bAndTxs := range blocks {
-
-			row, err := fieldsResp(&query, bAndTxs)
-			if err != nil {
+			if row, err = fieldsResp(&query, bAndTxs); err != nil {
 				return nil, err
-			}
-
-			if bLen == 1 {
-				resp[query.Name] = row
-				continue
 			}
 
 			rows[i] = row
 			i++
 		}
 
-		resp[query.Name] = rows
+		if bLen == 1 {
+			resp[query.Name] = row
+		} else {
+			resp[query.Name] = rows
+		}
 	}
 
 	return resp, nil
@@ -126,88 +125,113 @@ func MapBlocksToResponse(queries []structs.Query, blocksResp structs.QueriesResp
 
 func fieldsResp(q *structs.Query, blockAndTx structs.BlockAndTx) (resp map[string]interface{}, err error) {
 	resp = make(map[string]interface{})
-	parseBlock := strings.Contains(q.Name, "block")
-	parseTransaction := strings.Contains(q.Name, "transaction")
 
-	blockFieldsMap := make(map[string]interface{})
+	qStr := strings.ToLower(q.Name)
+	parseBlock := strings.Contains(qStr, "block")
+	parseTransaction := strings.Contains(qStr, "transaction")
 
 	if parseBlock {
-		blockFieldsMap["block"] = mapStructToFields(blockAndTx.Block)
+		mapStructToFields(resp, q.Fields, blockAndTx.Block)
+		// blockFieldsMap["block"] = mapStructToFields(q.Fields, blockAndTx.Block)
 	}
 
 	if parseTransaction {
-		blockFieldsMap["txs"] = mapStructToFields(blockAndTx.Txs)
+		// blockFieldsMap["txs"] = mapStructToFields(q.Fields, blockAndTx.Txs)
 	}
 
 	return resp, err
-
-	// fields := make(map[string]structs.Part)
-	// for key, v := range q.Fields {
-	// 	if v.Params == nil {
-	// 		return nil, errors.New("Empty response parameter value")
-	// 	}
-
-	// 	for _, v := range structs.Block {
-
-	// 	}
-
-	// 	// value, ok := v.Params[key]
-	// 	// if !ok {
-	// 	// 	return errors.New("Missing response parameter value")
-	// 	// }
-
-	// 	fields[key] = value
-	// }
-	// return nil, err, fields
 }
 
-func fields(v interface{}) map[string]interface{} {
-	resp := make(map[string]interface{})
-	name := reflect.ValueOf(v).Type().Name()
+// func fields(q *structs.Query, v interface{}) map[string]interface{} {
+// 	resp := make(map[string]interface{})
+// 	name := reflect.ValueOf(v).Type().Name()
 
-	switch reflect.TypeOf(v).Kind() {
-	case reflect.Slice:
-		resp[name] = mapSliceToFields(v)
-	case reflect.Struct:
-		resp[name] = mapStructToFields(v)
-	default:
-		resp[name] = v
-	}
+// 	switch reflect.TypeOf(v).Kind() {
+// 	case reflect.Slice:
+// 		resp[name] = mapSliceToFields(q, v)
+// 	case reflect.Struct:
+// 		resp[name] = mapStructToFields(q, v)
+// 	default:
+// 		resp[name] = v
+// 	}
 
-	return resp
-}
+// 	return resp
+// }
 
-func mapStructToFields(s interface{}) map[string]interface{} {
-	resp := make(map[string]interface{})
+func mapStructToFields(resp map[string]interface{}, fields map[string]structs.Field, s interface{}) {
+
 	v := reflect.Indirect(reflect.ValueOf(s))
 
 	for i := 0; i < v.NumField(); i++ {
-		fieldName := v.Type().Field(i).Name
+		fieldName := strings.ToLower(v.Type().Field(i).Name)
 
-		field := v.Field(i)
-
-		switch reflect.TypeOf(field).Kind() {
-		case reflect.Slice:
-			resp[fieldName] = mapSliceToFields(field.Interface())
-		case reflect.Struct:
-			resp[fieldName] = mapStructToFields(field.Interface())
-		default:
-			resp[fieldName] = field.Interface()
+		field, ok := fields[fieldName]
+		if !ok {
+			// omit fields that are not defined in the graph query
+			continue
 		}
-	}
 
-	return resp
+		// for _, f := range field.Fields {
+		// 	f.Name
+		// }
+		resp[field.Name] = formatValue(v.Field(i).Interface())
+
+		// resp[f.Name] =
+
+		// field := v.Field(i)
+
+		// fmt.Println("kind", reflect.TypeOf(field).Kind())
+
+		// switch reflect.TypeOf(field).Kind() {
+		// case reflect.Slice:
+		// 	resp[fieldName] = mapSliceToFields(fields, field.Interface())
+		// case reflect.Struct:
+		// 	resp[fieldName] = mapStructToFields(fields, field.Interface())
+		// default:
+		// 	resp[fieldName] = field.Interface()
+		// }
+	}
 }
 
-func mapSliceToFields(s interface{}) []interface{} {
+func formatValue(v interface{}) (val interface{}) {
+	fmt.Println(reflect.TypeOf(v).Kind())
+	fmt.Println(reflect.TypeOf(v))
+
+	switch reflect.TypeOf(v) {
+	case reflect.TypeOf(uuid.UUID{}):
+		val = v.(uuid.UUID).String()
+	case reflect.TypeOf(time.Time{}):
+		val = v.(time.Time).Unix()
+	default:
+		val = v
+	}
+
+	return
+}
+
+func mapSliceToFields(fields map[string]structs.Field, s interface{}) []interface{} {
 	v := reflect.Indirect(reflect.ValueOf(s))
 	len := v.Len()
 	sliceResp := make([]interface{}, len)
 
 	for i := 0; i < len; i++ {
+		fieldName := v.Type().Field(i).Name
 
-		fmt.Println(v.Slice(i, len-i).Interface())
-		// v.Slice(i, len-i)
+		fmt.Println(fieldName)
+
+		// field, ok := fields[fieldName]
+		// if !ok {
+		// 	// omit fields that are not defined in the graph query
+		// 	continue
+		// }
+
+		// // for _, f := range field.Fields {
+		// // 	f.Name
+		// // }
+		// resp[field.Name] = v.Field(i).Interface()
+
+		// fmt.Println(v.Slice(i, len-i).Interface())
+		// // v.Slice(i, len-i)
 
 		// fieldName := v.Type().Field(i).Name
 
