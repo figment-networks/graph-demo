@@ -121,8 +121,8 @@ RunLoop:
 
 type subscription struct {
 	NewEvent struct {
-		Time    graphql.Int
 		Type    graphql.String
+		Time    graphql.Int
 		Content graphql.String
 	}
 }
@@ -143,9 +143,11 @@ func initGraphQLSubscription(client *graphql.SubscriptionClient, loader *jsRunti
 			return err
 		}
 
-		// TODO based on event type, call different event handlers
-
-		if err := loader.NewEvent(jsRuntime.NewEvent{"network": "cosmos", "height": data.NewEvent.Time}); err != nil {
+		evt := jsRuntime.NewEvent{
+			Type: string(data.NewEvent.Type),
+			Data: map[string]interface{}{"network": "cosmos", "height": data.NewEvent.Time},
+		}
+		if err := loader.NewEvent(evt); err != nil {
 			logger.Error("Loader.NewBlockEvent() error = %v", zap.Error(err))
 			return err
 		}
