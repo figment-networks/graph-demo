@@ -72,7 +72,11 @@ func main() {
 	}
 
 	// TODO This is here just for testing until we get manager <> runner comms working
-	if err := loader.NewEvent(jsRuntime.NewEvent{"network": "cosmos", "height": 1234}); err != nil {
+	evt := jsRuntime.NewEvent{
+		Type: "block",
+		Data: map[string]interface{}{"network": "cosmos", "height": 1234},
+	}
+	if err := loader.NewEvent(evt); err != nil {
 		logger.Error(fmt.Errorf("Loader.NewBlockEvent() error = %v", err))
 	}
 	return

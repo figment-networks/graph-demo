@@ -70,8 +70,11 @@ func TestLoader_LoadJS(t *testing.T) {
 			}
 
 			m := NewEvent{
-				"network": "testNetwork",
-				"height":  1234,
+				Type: "block",
+				Data: map[string]interface{}{
+					"network": "testNetwork",
+					"height":  1234,
+				},
 			}
 
 			if err := l.NewEvent(m); err != nil {

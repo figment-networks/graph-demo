@@ -54,7 +54,10 @@ func (l *Loader) CallSubgraphHandler(subgraph string, handler *SubgraphHandler) 
 	return err
 }
 
-type NewEvent map[string]interface{}
+type NewEvent struct {
+	Type string
+	Data map[string]interface{}
+}
 
 func (l *Loader) NewEvent(evt NewEvent) error {
 	log.Println(fmt.Printf("Event received %v \n", evt))
@@ -62,7 +65,7 @@ func (l *Loader) NewEvent(evt NewEvent) error {
 	for name := range l.subgraphs {
 		if err := l.CallSubgraphHandler(name,
 			&SubgraphHandler{
-				name:   "handleBlock",
+				name:   "handle" + strings.Title(evt.Type),
 				values: []interface{}{evt},
 			}); err != nil {
 			return err
