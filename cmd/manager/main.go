@@ -17,7 +17,6 @@ import (
 	"github.com/figment-networks/graph-demo/manager/status"
 	grpcTransport "github.com/figment-networks/graph-demo/manager/transport/grpc"
 	wsTransport "github.com/figment-networks/graph-demo/manager/transport/ws"
-	"github.com/figment-networks/indexing-engine/health"
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/cmd/manager/config"
@@ -86,10 +85,6 @@ func main() {
 	//HTTPTransport.AttachToHandler(mux)
 
 	connManager.AttachToMux(mux)
-
-	monitor := &health.Monitor{}
-	go monitor.RunChecks(ctx, cfg.HealthCheckInterval)
-	monitor.AttachHttp(mux)
 
 	s := &http.Server{
 		Addr:    cfg.Address,

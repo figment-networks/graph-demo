@@ -1,18 +1,21 @@
 package api
 
 import (
+	"context"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	"github.com/cosmos/cosmos-sdk/types/tx"
-	bankTypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	distributionTypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
-	stakingTypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	"github.com/figment-networks/graph-demo/manager/structs"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 )
 
+type GRPC interface {
+	GetBlock(ctx context.Context, height uint64) (block structs.Block, er error)
+	SearchTx(ctx context.Context, block structs.Block, height, perPage uint64) (txs []structs.Transaction, err error)
+}
 type ClientConfig struct {
 	ReqPerSecond        int
 	TimeoutBlockCall    time.Duration
@@ -25,33 +28,26 @@ type Client struct {
 	network string
 
 	log *zap.Logger
-	cli *grpc.ClientConn
 	Sbc *SimpleBlockCache
 
 	// GRPC
-	txServiceClient    tx.ServiceClient
-	tmServiceClient    tmservice.ServiceClient
-	rateLimiterGRPC    *rate.Limiter
-	bankClient         bankTypes.QueryClient
-	distributionClient distributionTypes.QueryClient
-	stakingClient      stakingTypes.QueryClient
+	txServiceClient tx.ServiceClient
+	tmServiceClient tmservice.ServiceClient
+	rateLimiterGRPC *rate.Limiter
 
 	cfg *ClientConfig
 }
 
-// NewClient returns a new client for a given endpoint
-func NewClient(logger *zap.Logger, cli *grpc.ClientConn, cfg *ClientConfig) *Client {
+// New returns a new client for a given endpoint
+func New(logger *zap.Logger, cli *grpc.ClientConn, cfg *ClientConfig) *Client {
 	rateLimiterGRPC := rate.NewLimiter(rate.Limit(cfg.ReqPerSecond), cfg.ReqPerSecond)
 
 	return &Client{
-		log:                logger,
-		Sbc:                NewSimpleBlockCache(400),
-		tmServiceClient:    tmservice.NewServiceClient(cli),
-		txServiceClient:    tx.NewServiceClient(cli),
-		bankClient:         bankTypes.NewQueryClient(cli),
-		distributionClient: distributionTypes.NewQueryClient(cli),
-		stakingClient:      stakingTypes.NewQueryClient(cli),
-		rateLimiterGRPC:    rateLimiterGRPC,
-		cfg:                cfg,
+		log:             logger,
+		Sbc:             NewSimpleBlockCache(400),
+		tmServiceClient: tmservice.NewServiceClient(cli),
+		txServiceClient: tx.NewServiceClient(cli),
+		rateLimiterGRPC: rateLimiterGRPC,
+		cfg:             cfg,
 	}
 }

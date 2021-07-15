@@ -3,7 +3,7 @@ package mapper
 import (
 	"fmt"
 
-	"github.com/figment-networks/indexing-engine/structs"
+	"github.com/figment-networks/graph-demo/manager/structs"
 
 	"github.com/cosmos/cosmos-sdk/types"
 	distribution "github.com/cosmos/cosmos-sdk/x/distribution/types"

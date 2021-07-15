@@ -3,17 +3,13 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
-	"time"
 
-	"github.com/figment-networks/graph-demo/manager/store/params"
-
-	"github.com/figment-networks/indexing-engine/structs"
+	"github.com/figment-networks/graph-demo/manager/structs"
 )
 
 const (
-	insertBlock = `INSERT INTO public.blocks("network", "chain_id", "version", "epoch", "height", "hash",  "time", "numtxs" ) VALUES
+	insertBlock = `INSERT INTO public.blocks("network", "chain_id", "epoch", "height", "hash",  "time", "numtxs" ) VALUES
 	($1, $2, $3, $4, $5, $6, $7, $8 )
 	ON CONFLICT (network, chain_id, hash)
 	DO UPDATE SET
@@ -28,7 +24,7 @@ func (d *Driver) StoreBlock(ctx context.Context, b structs.Block) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(insertBlock, b.Network, b.ChainID, b.Version, b.Block.Epoch, b.Block.Height, b.Block.Hash, b.Block.Time, b.Block.NumberOfTransactions)
+	_, err = tx.Exec(insertBlock, b.Network, b.ChainID, b.Epoch, b.Height, b.Hash, b.Time, b.NumberOfTransactions)
 	if err != nil {
 		log.Println("[DB] Rollback flushB error: ", err)
 		tx.Rollback()
@@ -37,38 +33,24 @@ func (d *Driver) StoreBlock(ctx context.Context, b structs.Block) error {
 	return tx.Commit()
 }
 
-const GetBlockForTimeQuery = `SELECT id, epoch, height, hash, time, numtxs
+const GetBlockByHeight = `SELECT id, epoch, height, hash, time, numtxs
 							FROM public.blocks
 							WHERE
 								chain_id = $1 AND
 								network = $2 AND
-								time %s $3
-							ORDER BY time ASC
-							LIMIT 1`
+								height = $3`
 
 // GetBlockForTime returns first block that comes on or after given time. If no such block exists, returns closest block that comes before given time.
-func (d *Driver) GetBlockForTime(ctx context.Context, blx structs.Block, time time.Time) (out structs.Block, isBefore bool, err error) {
-	returnBlx := structs.Block{}
-
-	row := d.db.QueryRowContext(ctx, fmt.Sprintf(GetBlockForTimeQuery, ">="), blx.ChainID, blx.Network, time)
+func (d *Driver) GetBlockBytHeight(ctx context.Context, height uint64, chainID, network string) (block structs.Block, err error) {
+	row := d.db.QueryRowContext(ctx, GetBlockByHeight, chainID, network, height)
 	if row == nil {
-		return out, isBefore, params.ErrNotFound
+		return structs.Block{}, sql.ErrNoRows
 	}
 
-	err = row.Scan(&returnBlx.ID, &returnBlx.Epoch, &returnBlx.Height, &returnBlx.Hash, &returnBlx.Time, &returnBlx.NumberOfTransactions)
+	err = row.Scan(&block.ID, &block.Epoch, &block.Height, &block.Hash, &block.Time, &block.NumberOfTransactions)
 	if err != sql.ErrNoRows {
-		return returnBlx, isBefore, err
+		return structs.Block{}, err
 	}
 
-	isBefore = true
-	row = d.db.QueryRowContext(ctx, fmt.Sprintf(GetBlockForTimeQuery, "<"), blx.ChainID, blx.Network, time)
-	if row == nil {
-		return out, isBefore, params.ErrNotFound
-	}
-	err = row.Scan(&returnBlx.ID, &returnBlx.Epoch, &returnBlx.Height, &returnBlx.Hash, &returnBlx.Time, &returnBlx.NumberOfTransactions)
-	if err == sql.ErrNoRows {
-		return returnBlx, isBefore, params.ErrNotFound
-	}
-
-	return returnBlx, isBefore, err
+	return block, nil
 }

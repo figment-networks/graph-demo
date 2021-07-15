@@ -4,14 +4,13 @@ import (
 	"context"
 	"sync"
 
-	"github.com/figment-networks/indexing-engine/structs"
+	"github.com/figment-networks/graph-demo/manager/structs"
+	"go.uber.org/zap"
 
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"google.golang.org/grpc"
 )
-
-const BLOCK_VERSION = "0.0.1"
 
 // BlocksMap map of blocks to control block map
 // with extra summary of number of transactions
@@ -30,10 +29,13 @@ type BlockErrorPair struct {
 
 // GetBlock fetches most recent block from chain
 func (c *Client) GetBlock(ctx context.Context, height uint64) (block structs.Block, er error) {
+	c.log.Debug("[COSMOS-WORKER] Getting block", zap.Uint64("height", height))
+
 	var ok bool
 	if height != 0 {
 		block, ok = c.Sbc.Get(height)
 		if ok {
+			c.log.Debug("[COSMOS-CLIENT] Got block from cache", zap.Uint64("height", height), zap.Uint64("txs", block.NumberOfTransactions))
 			return block, nil
 		}
 	}
@@ -47,6 +49,7 @@ func (c *Client) GetBlock(ctx context.Context, height uint64) (block structs.Blo
 	if height == 0 {
 		lb, err := c.tmServiceClient.GetLatestBlock(nctx, &tmservice.GetLatestBlockRequest{})
 		if err != nil {
+			c.log.Debug("[COSMOS-CLIENT] Error getting latest block", zap.Uint64("height", height), zap.Error(err), zap.Uint64("txs", block.NumberOfTransactions))
 			return block, err
 		}
 
@@ -61,11 +64,13 @@ func (c *Client) GetBlock(ctx context.Context, height uint64) (block structs.Blo
 		}
 		c.Sbc.Add(block)
 
+		c.log.Debug("[COSMOS-CLIENT] Got latest block", zap.Uint64("height", height), zap.Error(err), zap.Uint64("txs", block.NumberOfTransactions))
 		return block, nil
 	}
 
 	bbh, err := c.tmServiceClient.GetBlockByHeight(nctx, &tmservice.GetBlockByHeightRequest{Height: int64(height)}, grpc.WaitForReady(true))
 	if err != nil {
+		c.log.Debug("[COSMOS-CLIENT] Error while getting block by height", zap.Uint64("height", height), zap.Error(err), zap.Uint64("txs", block.NumberOfTransactions))
 		return block, err
 	}
 
@@ -81,6 +86,6 @@ func (c *Client) GetBlock(ctx context.Context, height uint64) (block structs.Blo
 
 	c.Sbc.Add(block)
 
+	c.log.Debug("[COSMOS-WORKER] Got block", zap.Uint64("height", height), zap.Uint64("txs", block.NumberOfTransactions))
 	return block, nil
-
 }

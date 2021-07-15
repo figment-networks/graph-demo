@@ -1,0 +1,29 @@
+version: "3.7"
+
+networks:
+  internal:
+    name: internal
+    driver: overlay
+    attachable: true
+
+volumes:
+#   cosmosworker: {}
+  postgresdatabase: {}
+#   runner: {}
+#   manager: {}
+#   managermigration: {}
+  
+
+services:
+  postgresdatabase:
+    image: postgres:12
+    networks:
+      - internal
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: manager
+      POSTGRES_PASSWORD: manager
+      POSTGRES_DB: manager
+    volumes:
+      - postgresdatabase:/var/lib/postgresql/data/

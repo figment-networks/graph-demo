@@ -22,10 +22,9 @@ const (
 
 // Config holds the configuration data
 type Config struct {
-	AppEnv   string `json:"app_env" envconfig:"APP_ENV" default:"development"`
-	Address  string `json:"address" envconfig:"ADDRESS" default:"0.0.0.0"`
-	Port     string `json:"port" envconfig:"PORT" default:"3000"`
-	HTTPPort string `json:"http_port" envconfig:"HTTP_PORT" default:"8087"`
+	AppEnv  string `json:"app_env" envconfig:"APP_ENV" default:"development"`
+	Address string `json:"address" envconfig:"ADDRESS" default:"0.0.0.0"`
+	Port    string `json:"port" envconfig:"PORT" default:"8088"`
 
 	CosmosGRPCAddr string `json:"cosmos_grpc_addr" envconfig:"COSMOS_GRPC_ADDR"`
 	ChainID        string `json:"chain_id" envconfig:"CHAIN_ID"`

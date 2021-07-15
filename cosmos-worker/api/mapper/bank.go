@@ -5,7 +5,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/types"
 	bank "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/figment-networks/indexing-engine/structs"
+	"github.com/figment-networks/graph-demo/manager/structs"
 	"github.com/gogo/protobuf/proto"
 )
 

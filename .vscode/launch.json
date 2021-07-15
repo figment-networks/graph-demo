@@ -13,7 +13,7 @@
             "env": {
                 "CHAIN_ID": "mainnet",
                 "NETWORK": "cosmos",
-                "COSMOS_GRPC_ADDR": "localhost:9944",
+                "COSMOS_GRPC_ADDR": "localhost:26657",
             }
         },
         {
@@ -24,6 +24,16 @@
             "program": "${workspaceFolder}/cmd/manager",
             "env": {
                 "ADDRESS": "0.0.0.0:8085",
+                "DATABASE_URL": "postgres://manager:manager@0.0.0.0:5432/manager?sslmode=disable"
+            }
+        },
+        {
+            "name": "Manager migration",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/manager-migration",
+            "env": {
                 "DATABASE_URL": "postgres://manager:manager@0.0.0.0:5432/manager?sslmode=disable"
             }
         },
