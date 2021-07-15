@@ -1,5 +1,5 @@
 
-import { graphql, NewBlockEvent, store, log } from "../../graph";
+import { graphql, BlockEvent, store, log, TransactionEvent } from "../../graph";
 
 /***
  * Generated
@@ -37,11 +37,13 @@ const GET_BLOCK = `query GetBlock($height: Int) {
  *  kind: cosmos/blocks
  *  apiVersion: 0.0.1
  *  language: wasm/assemblyscript
+ *  transactionHandlers:
+ *    - function: handleTransaction
  *  blockHandlers:
- *    - function: handleNewBlock
+ *    - function: handleBlock
  * ```
  */
-function handleBlock(newBlockEvent: NewBlockEvent) {
+function handleBlock(newBlockEvent: BlockEvent) {
   log.debug('newBlockEvent: ' + JSON.stringify(newBlockEvent));
 
   const {error, data} = graphql.call("cosmos", GET_BLOCK, { height: newBlockEvent.height }, "0.0.1");
@@ -67,4 +69,8 @@ function handleBlock(newBlockEvent: NewBlockEvent) {
   if (storeErr) {
      log.debug('Error storing entity: ' + JSON.stringify(storeErr));
   }
+}
+
+function handleTransaction(newTxnEvent: TransactionEvent) {
+  log.debug('newTxnEvent: ' + JSON.stringify(newTxnEvent));
 }

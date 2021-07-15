@@ -1,6 +1,6 @@
 // This test is used by jsRunner_test.go
 
-import { graphql, NewBlockEvent, store, log } from "../../graph";
+import { graphql, BlockEvent, store, log } from "../../graph";
 
 class BlockEntity {
   id: string;
@@ -24,7 +24,7 @@ const GET_BLOCK = `query GetBlock($height: Int) {
     }
   }`;
 
-function handleBlock(newBlockEvent: NewBlockEvent) {
+function handleBlock(newBlockEvent: BlockEvent) {
     const { data, error } = graphql.call(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height });
 
     if (error) {

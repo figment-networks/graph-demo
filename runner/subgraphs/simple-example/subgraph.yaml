@@ -16,5 +16,7 @@ dataSources:
       kind: cosmos/blocks
       schemaVersion: 0.0.2
       language: wasm/assemblyscript
+      transactionHandlers:
+        - function: handleTransaction
       blockHandlers:
         - function: handleBlock

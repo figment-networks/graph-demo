@@ -31,7 +31,12 @@ export interface BlockResponse {
     time: Date;
 }
 
-export interface NewBlockEvent {
+export interface BlockEvent {
+    height: number;
+    network: Network;
+}
+
+export interface TransactionEvent {
     height: number;
     network: Network;
 }
