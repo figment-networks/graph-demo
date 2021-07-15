@@ -41,10 +41,10 @@ const GET_BLOCK = `query GetBlock($height: Int) {
  *    - function: handleNewBlock
  * ```
  */
-function handleNewCosmosBlock(newBlockEvent: NewBlockEvent) {
+function handleEvent(newBlockEvent: NewBlockEvent) {
   printA('newEventData: ' + JSON.stringify(newBlockEvent));
 
-  const {error, data} = call(Network.COSMOS, GET_BLOCK, { height: newBlockEvent.height }, "0.0.1");
+  const {error, data} = call("cosmos", GET_BLOCK, { height: newBlockEvent.height }, "0.0.1");
 
   if (error) {
     printA('GQL call error: ' + JSON.stringify(error));

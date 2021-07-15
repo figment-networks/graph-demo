@@ -29,7 +29,7 @@ func main() {
 		schema string
 	}{
 		"simple-example",
-		"./runner/subgraphs/simple-example/simple-example.js",
+		"./runner/subgraphs/simple-example/generated/mapping.js",
 		"./runner/subgraphs/simple-example/schema.graphql",
 	}
 
@@ -70,6 +70,12 @@ func main() {
 		logger.Error(fmt.Errorf("Loader.LoadJS() error = %v", err))
 		return
 	}
+
+	if err := loader.NewEvent(jsRuntime.NewEvent{"network": "cosmos", "height": 1234}); err != nil {
+		logger.Error(fmt.Errorf("Loader.NewBlockEvent() error = %v", err))
+	}
+
+	return
 
 	// For GraphQL subscriptions (new events from manager)
 	// TODO manager ws endpoint
@@ -135,7 +141,7 @@ func initGraphQLSubscription(client *graphql.SubscriptionClient, loader *jsRunti
 
 		// TODO based on event type, call different event handlers
 
-		if err := loader.NewBlockEvent(jsRuntime.NewBlockEvent{"network": "cosmos", "height": data.NewEvent.Time}); err != nil {
+		if err := loader.NewEvent(jsRuntime.NewEvent{"network": "cosmos", "height": data.NewEvent.Time}); err != nil {
 			logger.Error("Loader.NewBlockEvent() error = %v", zap.Error(err))
 			return err
 		}
