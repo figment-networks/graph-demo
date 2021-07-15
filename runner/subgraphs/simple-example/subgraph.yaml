@@ -1,0 +1,15 @@
+specVersion: 0.0.9
+description: Example subgraph for graph-demo
+repository: https://github.com/figment-networks/simple-example
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: cosmos
+    name: SimpleExample
+    network: cosmos
+    mapping:
+      kind: cosmos/blocks
+      apiVersion: 0.0.4
+      language: wasm/assemblyscript
+      blockHandlers:
+        - function: handleNewCosmosBlock

@@ -1,5 +1,5 @@
-// These functions hook into the Go V8 runtime
-export function callGQL(graphName: Network, query: string, args: object, version?: string): string;
+// These functions hook into the jsRuntime. The names and params must be changed in both places.
+export function call(identifier: GraphQLSourceIdentifier, query: string, variables: object, version?: string): GraphQLResponse;
 export function storeRecord(type: string,  record: object): any;
 export function printA(msg: string);
 
@@ -7,9 +7,14 @@ export enum Network {
     COSMOS = 'cosmos',
 }
 
-export interface GraphQLResponse<T> {
-    error: any;
-    data: T;
+type SubgraphId = string;
+type Self = 'Self';
+
+export type GraphQLSourceIdentifier = Network | SubgraphId | Self;
+
+export interface GraphQLResponse {
+    error: Error;
+    data: any;
 }
 
 export interface BlockResponse {
