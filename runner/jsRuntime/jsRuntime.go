@@ -91,8 +91,8 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	callGQL, _ := v8go.NewFunctionTemplate(iso, subgr.callGQL)
 	storeRecord, _ := v8go.NewFunctionTemplate(iso, subgr.storeRecord)
 
-	print, _ := v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
-		fmt.Printf("printA:  %+v  \n", info.Args()[0])
+	logDebug, _ := v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		fmt.Printf("v8LogDebug:  %+v  \n", info.Args()[0])
 		return nil
 	})
 
@@ -100,9 +100,9 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	if err != nil {
 		return err
 	}
-	global.Set("printA", print)
-	global.Set("call", callGQL)
-	global.Set("storeRecord", storeRecord)
+	global.Set("v8LogDebug", logDebug)
+	global.Set("v8Call", callGQL)
+	global.Set("v8StoreSave", storeRecord)
 
 	subgr.context, err = v8go.NewContext(iso, global)
 	if err != nil {
@@ -128,13 +128,13 @@ func cleanJS(code []byte) string {
 		}
 	}
 	m1 := regexp.MustCompile(`([^=[:space:]\\{]*)graphql.call`)
-	res1 := m1.ReplaceAllString(b.String(), " call")
+	res1 := m1.ReplaceAllString(b.String(), " v8Call")
 
 	m3 := regexp.MustCompile(`([^=[:space:]\\{]*)log.debug`)
-	res2 := m3.ReplaceAllString(res1, " printA")
+	res2 := m3.ReplaceAllString(res1, " v8LogDebug")
 
 	m2 := regexp.MustCompile(`([^=[:space:]\\{]*)store.save`)
-	a := m2.ReplaceAllString(res2, " storeRecord")
+	a := m2.ReplaceAllString(res2, " v8StoreSave")
 
 	return a
 
