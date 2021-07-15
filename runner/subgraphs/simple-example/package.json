@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "build": "tsc --lib es2020 ./simple-example/src/mapping.ts && mv ./simple-example/src/mapping.js ./simple-example/generated/mapping.js"
+    "build": "tsc --lib es2020 ./src/*.ts --outDir ./generated/"
   },
   "dependencies": {
     "typescript": "^4.3.5"
