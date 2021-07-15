@@ -4,11 +4,10 @@ repository: https://github.com/figment-networks/simple-example
 schema:
   file: ./schema.graphql
 dataSources:
-  - kind: subgraph
-    name: OtherSubgraphWithDataINeed
-    id: xyz123ipfshash
-    version: 0.0.3
-
+ # - kind: subgraph
+ #   name: OtherSubgraphWithDataINeed
+ #   id: xyz123ipfshash
+ #   version: 0.0.3
   - kind: cosmos
     name: SimpleExample
     network: cosmos

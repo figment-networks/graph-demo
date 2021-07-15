@@ -14,11 +14,9 @@ export declare namespace graphql {
 export enum Network {
     COSMOS = 'cosmos',
 }
-
-type SubgraphId = string;
-type Self = 'Self';
-
-export type GraphQLSourceIdentifier = Network | SubgraphId | Self;
+// type SubgraphId = string;
+// type Self = 'Self';
+export type GraphQLSourceIdentifier = Network; // | SubgraphId | Self;
 
 export interface GraphQLResponse {
     error: Error;
