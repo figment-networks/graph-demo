@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/figment-networks/graph-demo/cosmos-worker/api/mapper"
-	"github.com/figment-networks/indexing-engine/structs"
+	"github.com/figment-networks/graph-demo/manager/structs"
 
 	codec_types "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types"
@@ -20,8 +20,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-const TRANSACTION_VERSION = "0.0.1"
-
 var (
 	errUnknownMessageType = fmt.Errorf("unknown message type")
 )
@@ -30,6 +28,8 @@ var curencyRegex = regexp.MustCompile("([0-9\\.\\,\\-\\s]+)([^0-9\\s]+)$")
 
 // SearchTx is making search api call
 func (c *Client) SearchTx(ctx context.Context, block structs.Block, height, perPage uint64) (txs []structs.Transaction, err error) {
+	c.log.Debug("[COSMOS-WORKER] Getting transactions", zap.Uint64("height", height), zap.Uint64("txs", block.NumberOfTransactions))
+
 	pag := &query.PageRequest{
 		CountTotal: true,
 		Limit:      perPage,
@@ -76,7 +76,7 @@ func (c *Client) SearchTx(ctx context.Context, block structs.Block, height, perP
 
 	}
 
-	c.log.Debug("[COSMOS-API] Sending requests ", zap.Int("number", len(txs)))
+	c.log.Debug("[COSMOS-WORKER] Got transactions", zap.Uint64("height", height), zap.Uint64("txs", block.NumberOfTransactions))
 	return txs, nil
 }
 

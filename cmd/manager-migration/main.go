@@ -2,15 +2,12 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/figment-networks/graph-demo/cmd/manager-migration/config"
-	"github.com/figment-networks/graph-demo/manager/store/loader"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -42,37 +39,16 @@ func main() {
 		log.Fatal(fmt.Errorf("error initializing config [ERR: %+v]", err))
 	}
 
-	if cfg.EnvDBConfig == "" && cfg.DatabaseURL == "" {
-		log.Fatal(err)
+	if cfg.DatabaseURL == "" {
+		log.Fatal("Database url is empty")
 	}
 
-	if cfg.EnvDBConfig != "" {
-		rc := &RunConfig{}
-		dec := json.NewDecoder(strings.NewReader(cfg.EnvDBConfig))
-		if err = dec.Decode(rc); err != nil {
-			log.Fatal(err)
-		}
+	if configFlags.verbose {
+		log.Println("Using migrations from: ", configFlags.migrationPath, " for db url")
+	}
 
-		for _, conn := range rc.Connections {
-			if configFlags.verbose {
-				log.Println("Using migrations from: ", configFlags.migrationPath, " ", conn.Name)
-			}
-
-			err := migrateDB(conn.URL)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-		return
-	} else if cfg.DatabaseURL != "" {
-
-		if configFlags.verbose {
-			log.Println("Using migrations from: ", configFlags.migrationPath, " for db url")
-		}
-		err := migrateDB(cfg.DatabaseURL)
-		if err != nil {
-			log.Fatal(err)
-		}
+	if err = migrateDB(cfg.DatabaseURL); err != nil {
+		log.Fatal(err)
 	}
 
 }
@@ -146,8 +122,4 @@ func migrateTo(srcPath, dbURL string, version uint) error {
 	defer m.Close()
 
 	return m.Migrate(version)
-}
-
-type RunConfig struct {
-	Connections []loader.DatabaseConfig `json:"connections"`
 }

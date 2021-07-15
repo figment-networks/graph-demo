@@ -5,10 +5,8 @@ import (
 	"math/big"
 	"strings"
 
-	// "github.com/figment-networks/graph-demo/cosmos-worker/api/types"
-	// "github.com/figment-networks/graph-demo/cosmos-worker/api/util"
 	"github.com/figment-networks/graph-demo/cosmos-worker/api/util"
-	"github.com/figment-networks/indexing-engine/structs"
+	"github.com/figment-networks/graph-demo/manager/structs"
 
 	"github.com/cosmos/cosmos-sdk/types"
 )

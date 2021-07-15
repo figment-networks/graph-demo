@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/figment-networks/graph-demo/runner/api/graphql"
+	"github.com/figment-networks/graph-demo/runner/api/service"
 	"github.com/figment-networks/graph-demo/runner/store"
 )
 
@@ -28,29 +28,49 @@ type errorMessage struct {
 	Message string `json:"message",omitempty`
 }
 
-func AttachMux(mux *http.ServeMux) {
-	mux.HandleFunc("/subgraph", func(w http.ResponseWriter, r *http.Request) {
-		enc := json.NewEncoder(w)
-		resp := JSONGraphQLResponse{}
-
-		ct := r.Header.Get("Content-Type")
-		if ct != "" && !strings.Contains(ct, "json") {
-			w.WriteHeader(http.StatusNotAcceptable)
-			resp.Errors = []errorMessage{{Message: "wrong content type"}}
-			enc.Encode(resp)
-			return
-		}
-
-		dec := json.NewDecoder(r.Body)
-		req := &JSONGraphQLRequest{}
-		dec.Decode(req)
-	})
+type Handler struct {
+	service service.Service
 }
 
-func fetchData(q *graphql.GraphQuery) error {
-	for _, q := range q.Queries {
-		fmt.Println(q)
+func (h *Handler) HandleGraphql(w http.ResponseWriter, r *http.Request) {
+	enc := json.NewEncoder(w)
+	resp := JSONGraphQLResponse{}
+
+	ct := r.Header.Get("Content-Type")
+	if ct != "" && !strings.Contains(ct, "json") {
+		w.WriteHeader(http.StatusNotAcceptable)
+		resp.Errors = []errorMessage{{Message: "wrong content type"}}
+		enc.Encode(resp)
+		return
 	}
 
-	return nil
+	dec := json.NewDecoder(r.Body)
+	req := &JSONGraphQLRequest{}
+	dec.Decode(req)
+
+	response, err := h.service.ProcessGraphqlQuery(req.Variables, req.Query)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		resp.Errors = []errorMessage{{Message: err.Error()}}
+		enc.Encode(resp)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	rawData, err := json.Marshal(response)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		resp.Errors = []errorMessage{{Message: fmt.Sprintf("Error while marshalling response: %w", err)}}
+		enc.Encode(resp)
+		return
+	}
+
+	resp.Data = rawData
+	enc.Encode(resp)
+	return
+}
+
+func (h *Handler) AttachMux(mux *http.ServeMux) {
+	mux.HandleFunc("/subgraph", h.HandleGraphql)
 }

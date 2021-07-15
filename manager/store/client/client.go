@@ -5,8 +5,7 @@ import (
 
 	"github.com/figment-networks/graph-demo/manager/store"
 	"github.com/figment-networks/graph-demo/manager/store/params"
-
-	"github.com/figment-networks/indexing-engine/structs"
+	"github.com/figment-networks/graph-demo/manager/structs"
 
 	"go.uber.org/zap"
 )
@@ -32,7 +31,7 @@ func (hc *Client) SearchTransactions(ctx context.Context, ts structs.Transaction
 		Epoch:        ts.Epoch,
 		Hash:         ts.Hash,
 		Height:       ts.Height,
-		Type:         params.SearchArr{Value: ts.Type},
+		Type:         params.SearchArr{Value: ts.Type.Value},
 		BlockHash:    ts.BlockHash,
 		Account:      ts.Account,
 		Sender:       ts.Sender,

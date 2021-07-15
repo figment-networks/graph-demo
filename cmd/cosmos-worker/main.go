@@ -5,22 +5,16 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/cmd/cosmos-worker/config"
+	handler "github.com/figment-networks/graph-demo/cosmos-worker"
 	"github.com/figment-networks/graph-demo/cosmos-worker/api"
-	"github.com/figment-networks/graph-demo/manager/worker/connectivity"
-	grpcIndexer "github.com/figment-networks/graph-demo/manager/worker/transport/grpc"
-	grpcProtoIndexer "github.com/figment-networks/graph-demo/manager/worker/transport/grpc/indexer"
-
-	"github.com/figment-networks/indexing-engine/health"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -63,22 +57,12 @@ func main() {
 		return
 	}
 
-	managers := strings.Split(cfg.Managers, ",")
 	hostname := cfg.Hostname
 	if hostname == "" {
 		hostname = cfg.Address
 	}
 
 	logger.Info(fmt.Sprintf("Self-hostname (%s) is %s:%s ", workerRunID.String(), hostname, cfg.Port))
-
-	c := connectivity.NewWorkerConnections(workerRunID.String(), hostname+":"+cfg.Port, "cosmos", cfg.ChainID, "0.0.1")
-	for _, m := range managers {
-		c.AddManager(m + "/client_ping")
-	}
-
-	logger.Info(fmt.Sprintf("Connecting to managers (%s)", strings.Join(managers, ",")))
-
-	go c.Run(ctx, logger.GetLogger(), cfg.ManagerInterval)
 
 	if cfg.CosmosGRPCAddr == "" {
 		logger.Error(fmt.Errorf("cosmos grpc address is not set"))
@@ -91,26 +75,19 @@ func main() {
 	}
 	defer grpcConn.Close()
 
-	apiClient := api.NewClient(logger.GetLogger(), grpcConn, &api.ClientConfig{
+	apiClient := api.New(logger.GetLogger(), grpcConn, &api.ClientConfig{
 		ReqPerSecond:        int(cfg.RequestsPerSecond),
 		TimeoutBlockCall:    cfg.TimeoutBlockCall,
 		TimeoutSearchTxCall: cfg.TimeoutTransactionCall,
 	})
 
-	grpcServer := grpc.NewServer()
-	workerClient := client.NewIndexerClient(ctx, logger.GetLogger(), apiClient, uint64(cfg.MaximumHeightsToGet))
-
-	worker := grpcIndexer.NewIndexerServer(ctx, workerClient, logger.GetLogger())
-	grpcProtoIndexer.RegisterIndexerServiceServer(grpcServer, worker)
-
 	mux := http.NewServeMux()
 
-	monitor := &health.Monitor{}
-	go monitor.RunChecks(ctx, cfg.HealthCheckInterval)
-	monitor.AttachHttp(mux)
+	httpHandler := handler.New(apiClient)
+	httpHandler.AttachToMux(mux)
 
 	s := &http.Server{
-		Addr:         "0.0.0.0:" + cfg.HTTPPort,
+		Addr:         "0.0.0.0:" + cfg.Port,
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -121,8 +98,7 @@ func main() {
 	signal.Notify(osSig, syscall.SIGTERM)
 	signal.Notify(osSig, syscall.SIGINT)
 
-	go runGRPC(grpcServer, cfg.Port, logger.GetLogger(), exit)
-	go runHTTP(s, cfg.HTTPPort, logger.GetLogger(), exit)
+	go runHTTP(s, cfg.Port, logger.GetLogger(), exit)
 
 RunLoop:
 	for {
@@ -131,8 +107,6 @@ RunLoop:
 			logger.Info("Stopping worker... ", zap.String("signal", sig.String()))
 			cancel()
 			logger.Info("Canceled context, gracefully stopping grpc")
-			grpcServer.Stop()
-			logger.Info("Stopped grpc, stopping http")
 			err := s.Shutdown(ctx)
 			if err != nil {
 				logger.GetLogger().Error("Error stopping http server ", zap.Error(err))
@@ -147,8 +121,6 @@ RunLoop:
 				if err != nil {
 					logger.GetLogger().Error("Error stopping http server ", zap.Error(err))
 				}
-			} else {
-				grpcServer.Stop()
 			}
 			break RunLoop
 		}
@@ -173,22 +145,6 @@ func initConfig(path string) (*config.Config, error) {
 	}
 
 	return cfg, nil
-}
-
-func runGRPC(grpcServer *grpc.Server, port string, logger *zap.Logger, exit chan<- string) {
-	defer logger.Sync()
-
-	logger.Info(fmt.Sprintf("[GRPC] Listening on 0.0.0.0:%s", port))
-	lis, err := net.Listen("tcp", "0.0.0.0:"+port)
-	if err != nil {
-		logger.Error("[GRPC] failed to listen", zap.Error(err))
-		exit <- "grpc"
-		return
-	}
-
-	// (lukanus): blocking call on grpc server
-	grpcServer.Serve(lis)
-	exit <- "grpc"
 }
 
 func runHTTP(s *http.Server, port string, logger *zap.Logger, exit chan<- string) {

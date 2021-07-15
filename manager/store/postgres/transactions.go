@@ -11,8 +11,7 @@ import (
 	"strings"
 
 	"github.com/figment-networks/graph-demo/manager/store/params"
-
-	"github.com/figment-networks/indexing-engine/structs"
+	"github.com/figment-networks/graph-demo/manager/structs"
 
 	"github.com/lib/pq"
 )
@@ -30,7 +29,6 @@ type AdditionalFields struct {
 	Types      []string
 
 	Network string
-	Version string
 }
 
 // StoreTransactions adds transactions to storage buffer
@@ -42,7 +40,6 @@ func (d *Driver) StoreTransactions(ctx context.Context, txs []structs.Transactio
 	for _, tx := range txs {
 		af := AdditionalFields{
 			Network: tx.Network,
-			Version: tx.Version,
 		}
 
 		// (lukanus): candidate for goroutine
@@ -100,8 +97,8 @@ func (d *Driver) StoreTransactions(ctx context.Context, txs []structs.Transactio
 
 const (
 	txInsert = `INSERT INTO public.transaction_events
-			("network", "chain_id", "version", "epoch", "height", "hash", "block_hash", "time", "type", "parties", "senders", "recipients", "amount", "fee", "gas_wanted", "gas_used", "memo", "data", "raw", "raw_log", "fulltext_col") VALUES
-			( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, to_tsvector('english', $21) )
+			("network", "chain_id", "epoch", "height", "hash", "block_hash", "time", "type", "parties", "senders", "recipients", "amount", "fee", "gas_wanted", "gas_used", "memo", "data", "raw", "raw_log", "fulltext_col") VALUES
+			( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, to_tsvector('english', $20) )
 	 ON CONFLICT (network, chain_id, hash, height)
 		DO UPDATE SET height = EXCLUDED.height,
 		time = EXCLUDED.time,
@@ -127,7 +124,7 @@ func storeTx(ctx context.Context, db *sql.DB, t structs.Transaction, af Addition
 		return err
 	}
 
-	_, err = tx.Exec(txInsert, af.Network, t.ChainID, af.Version, t.Epoch, t.Height, t.Hash, t.BlockHash, t.Time,
+	_, err = tx.Exec(txInsert, af.Network, t.ChainID, t.Epoch, t.Height, t.Hash, t.BlockHash, t.Time,
 		pq.Array(af.Types), pq.Array(af.Parties), pq.Array(af.Senders), pq.Array(af.Recipients), pq.Array([]float64{.0}),
 		fee, t.GasWanted, t.GasUsed, strings.Map(removeCharacters, t.Memo), events.String(), t.Raw, t.RawLog,
 		strings.Map(removeCharacters, t.Memo)+" "+strings.Join(af.Parties, " "))
@@ -337,7 +334,7 @@ func (d *Driver) GetTransactions(ctx context.Context, tsearch params.Transaction
 	}
 
 	qBuilder := strings.Builder{}
-	qBuilder.WriteString("SELECT id, chain_id, version, epoch, fee, height, hash, block_hash, time, gas_wanted, gas_used, memo, data, (type @> '{error}') as has_errors")
+	qBuilder.WriteString("SELECT id, chain_id, epoch, fee, height, hash, block_hash, time, gas_wanted, gas_used, memo, data, (type @> '{error}') as has_errors")
 
 	if tsearch.WithRaw {
 		qBuilder.WriteString(", raw ")
@@ -390,13 +387,13 @@ func (d *Driver) GetTransactions(ctx context.Context, tsearch params.Transaction
 		byteFee := []byte{}
 
 		if tsearch.WithRaw && tsearch.WithRawLog {
-			err = rows.Scan(&tx.ID, &tx.ChainID, &tx.Version, &tx.Epoch, &byteFee, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.HasErrors, &tx.Raw, &tx.RawLog)
+			err = rows.Scan(&tx.ID, &tx.ChainID, &tx.Epoch, &byteFee, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.HasErrors, &tx.Raw, &tx.RawLog)
 		} else if tsearch.WithRaw {
-			err = rows.Scan(&tx.ID, &tx.ChainID, &tx.Version, &tx.Epoch, &byteFee, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.HasErrors, &tx.Raw)
+			err = rows.Scan(&tx.ID, &tx.ChainID, &tx.Epoch, &byteFee, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.HasErrors, &tx.Raw)
 		} else if tsearch.WithRawLog {
-			err = rows.Scan(&tx.ID, &tx.ChainID, &tx.Version, &tx.Epoch, &byteFee, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.HasErrors, &tx.RawLog)
+			err = rows.Scan(&tx.ID, &tx.ChainID, &tx.Epoch, &byteFee, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.HasErrors, &tx.RawLog)
 		} else {
-			err = rows.Scan(&tx.ID, &tx.ChainID, &tx.Version, &tx.Epoch, &byteFee, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.HasErrors)
+			err = rows.Scan(&tx.ID, &tx.ChainID, &tx.Epoch, &byteFee, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.HasErrors)
 		}
 		br.Reset(byteFee)
 		feeDec.Decode(&tx.Fee)
