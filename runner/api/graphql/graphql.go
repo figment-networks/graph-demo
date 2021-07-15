@@ -130,13 +130,12 @@ func fieldsResp(q *structs.Query, blockAndTx structs.BlockAndTx) (resp map[strin
 	parseBlock := strings.Contains(qStr, "block")
 	parseTransaction := strings.Contains(qStr, "transaction")
 
-	if parseBlock {
+	if parseBlock && !parseTransaction {
 		mapStructToFields(resp, q.Fields, blockAndTx.Block)
-		// blockFieldsMap["block"] = mapStructToFields(q.Fields, blockAndTx.Block)
-	}
-
-	if parseTransaction {
-		// blockFieldsMap["txs"] = mapStructToFields(q.Fields, blockAndTx.Txs)
+	} else if !parseBlock && parseTransaction {
+		resp[q.Name] = mapSliceToFields(q.Fields, blockAndTx.Txs)
+	} else {
+		mapStructToFields(resp, q.Fields, blockAndTx)
 	}
 
 	return resp, err
@@ -159,11 +158,14 @@ func fieldsResp(q *structs.Query, blockAndTx structs.BlockAndTx) (resp map[strin
 // }
 
 func mapStructToFields(resp map[string]interface{}, fields map[string]structs.Field, s interface{}) {
-
 	v := reflect.Indirect(reflect.ValueOf(s))
 
 	for i := 0; i < v.NumField(); i++ {
 		fieldName := strings.ToLower(v.Type().Field(i).Name)
+
+		if nameIsStrict(fieldName) {
+			continue
+		}
 
 		field, ok := fields[fieldName]
 		if !ok {
@@ -171,26 +173,33 @@ func mapStructToFields(resp map[string]interface{}, fields map[string]structs.Fi
 			continue
 		}
 
-		// for _, f := range field.Fields {
-		// 	f.Name
-		// }
-		resp[field.Name] = formatValue(v.Field(i).Interface())
+		fmt.Println(reflect.TypeOf(v.Field(i).Interface()).Kind())
+		fmt.Println(reflect.Slice)
 
-		// resp[f.Name] =
+		fieldType := reflect.TypeOf(v.Field(i).Interface())
+		fieldKind := fieldType.Kind()
 
-		// field := v.Field(i)
+		switch fieldType {
+		case reflect.TypeOf(time.Time{}):
+			resp[field.Name] = formatValue(v.Field(i).Interface())
+		default:
+			switch fieldKind {
+			case reflect.Slice:
+				resp[field.Name] = mapSliceToFields(field.Fields, v.Field(i).Interface())
+			case reflect.Struct:
+				blockResp := make(map[string]interface{})
+				mapStructToFields(blockResp, field.Fields, v.Field(i).Interface())
+				resp[field.Name] = blockResp
+			default:
+				resp[field.Name] = formatValue(v.Field(i).Interface())
+			}
+		}
 
-		// fmt.Println("kind", reflect.TypeOf(field).Kind())
-
-		// switch reflect.TypeOf(field).Kind() {
-		// case reflect.Slice:
-		// 	resp[fieldName] = mapSliceToFields(fields, field.Interface())
-		// case reflect.Struct:
-		// 	resp[fieldName] = mapStructToFields(fields, field.Interface())
-		// default:
-		// 	resp[fieldName] = field.Interface()
-		// }
 	}
+}
+
+func nameIsStrict(name string) bool {
+	return name == "id"
 }
 
 func formatValue(v interface{}) (val interface{}) {
@@ -215,9 +224,11 @@ func mapSliceToFields(fields map[string]structs.Field, s interface{}) []interfac
 	sliceResp := make([]interface{}, len)
 
 	for i := 0; i < len; i++ {
-		fieldName := v.Type().Field(i).Name
+		strFields := make(map[string]interface{})
+		mapStructToFields(strFields, fields, v.Index(i).Interface())
+		sliceResp[i] = strFields
 
-		fmt.Println(fieldName)
+		// fmt.Println(fieldName)
 
 		// field, ok := fields[fieldName]
 		// if !ok {
@@ -414,7 +425,7 @@ func parseOperationDefinition(q *structs.GraphQuery, od *ast.OperationDefinition
 		}
 
 		fields := selection.GetSelectionSet().Selections
-		queryFields(q, fields, i)
+		q.Queries[i].Fields = queryFields(fields)
 	}
 
 	return nil
@@ -467,17 +478,21 @@ func queryParams(q *structs.GraphQuery, arguments []*ast.Argument, i int) error 
 	return nil
 }
 
-func queryFields(q *structs.GraphQuery, selections []ast.Selection, i int) {
-	var f structs.Field
+func queryFields(selections []ast.Selection) map[string]structs.Field {
 	fields := make(map[string]structs.Field)
 
 	for _, s := range selections {
+		var f structs.Field
 		field := ast.NewField(s.(*ast.Field))
 		f.Name = field.Name.Value
+
+		if field.SelectionSet != nil {
+			f.Fields = queryFields(field.SelectionSet.Selections)
+		}
 		fields[f.Name] = f
 	}
 
-	q.Queries[i].Fields = fields
+	return fields
 }
 
 func float64Value(val interface{}) (float64, error) {
