@@ -8,14 +8,15 @@ dataSources:
  #   name: OtherSubgraphWithDataINeed
  #   id: xyz123ipfshash
  #   version: 0.0.3
-  - kind: cosmos
+  - kind: network-graph
     name: SimpleExample
     network: cosmos
     mapping:
-      kind: cosmos/blocks
+      kind: cosmos/events
       schemaVersion: 0.0.2
       language: wasm/assemblyscript
-      transactionHandlers:
-        - function: handleTransaction
-      blockHandlers:
-        - function: handleBlock
+      eventHandlers:
+        - event: newTransaction
+          handler: handleTransaction
+        - event: newBlock
+          handler: handleBlock
