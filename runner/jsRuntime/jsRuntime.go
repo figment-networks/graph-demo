@@ -17,7 +17,7 @@ import (
 )
 
 type GQLCaller interface {
-	CallGQL(ctx context.Context, name, query string, variables map[string]interface{}) ([]byte, error)
+	CallGQL(ctx context.Context, name, query string, variables map[string]interface{}, version string) ([]byte, error)
 }
 
 type callback func(info *v8go.FunctionCallbackInfo) *v8go.Value
@@ -54,16 +54,19 @@ func (l *Loader) CallSubgraphHandler(subgraph string, handler *SubgraphHandler) 
 	return err
 }
 
-type NewBlockEvent map[string]interface{}
+type NewEvent struct {
+	Type string
+	Data map[string]interface{}
+}
 
-func (l *Loader) NewBlockEvent(evt NewBlockEvent) error {
+func (l *Loader) NewEvent(evt NewEvent) error {
 	log.Println(fmt.Printf("Event received %v \n", evt))
 
 	for name := range l.subgraphs {
 		if err := l.CallSubgraphHandler(name,
 			&SubgraphHandler{
-				name:   "handleNewBlock",
-				values: []interface{}{evt},
+				name:   "handle" + strings.Title(evt.Type),
+				values: []interface{}{evt.Data},
 			}); err != nil {
 			return err
 		}
@@ -88,8 +91,8 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	callGQL, _ := v8go.NewFunctionTemplate(iso, subgr.callGQL)
 	storeRecord, _ := v8go.NewFunctionTemplate(iso, subgr.storeRecord)
 
-	print, _ := v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
-		fmt.Printf("printA:  %+v  \n", info.Args()[0])
+	logDebug, _ := v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		fmt.Printf("v8LogDebug:  %+v  \n", info.Args()[0])
 		return nil
 	})
 
@@ -97,9 +100,9 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	if err != nil {
 		return err
 	}
-	global.Set("printA", print)
-	global.Set("callGQL", callGQL)
-	global.Set("storeRecord", storeRecord)
+	global.Set("v8LogDebug", logDebug)
+	global.Set("v8Call", callGQL)
+	global.Set("v8StoreSave", storeRecord)
 
 	subgr.context, err = v8go.NewContext(iso, global)
 	if err != nil {
@@ -124,14 +127,14 @@ func cleanJS(code []byte) string {
 			b.WriteString("\n")
 		}
 	}
-	m1 := regexp.MustCompile(`([^=[:space:]\\{]*)callGQL`)
-	res1 := m1.ReplaceAllString(b.String(), " callGQL")
+	m1 := regexp.MustCompile(`([^=[:space:]\\{]*)graphql.call`)
+	res1 := m1.ReplaceAllString(b.String(), " v8Call")
 
-	m3 := regexp.MustCompile(`([^=[:space:]\\{]*)printA`)
-	res2 := m3.ReplaceAllString(res1, " printA")
+	m3 := regexp.MustCompile(`([^=[:space:]\\{]*)log.debug`)
+	res2 := m3.ReplaceAllString(res1, " v8LogDebug")
 
-	m2 := regexp.MustCompile(`([^=[:space:]\\{]*)storeRecord`)
-	a := m2.ReplaceAllString(res2, " storeRecord")
+	m2 := regexp.MustCompile(`([^=[:space:]\\{]*)store.save`)
+	a := m2.ReplaceAllString(res2, " v8StoreSave")
 
 	return a
 
@@ -164,11 +167,9 @@ func (s *Subgraph) storeRecord(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	mj, _ := args[1].MarshalJSON()
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
-	iso, _ := info.Context().Isolate()
 
 	if err := s.stor.Store(context.Background(), s.name, args[0].String(), a); err != nil {
-		erro, _ := v8go.NewValue(iso, err.Error())
-		return erro
+		return jsonError(info.Context(), err)
 	}
 
 	return nil
@@ -182,16 +183,19 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
-	iso, _ := info.Context().Isolate()
-	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a)
+	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a, args[3].String())
 	if err != nil {
 		log.Println(fmt.Printf("callGQL error %v \n", err))
-		erro, _ := v8go.NewValue(iso, "{\"error\":\""+strings.ReplaceAll(err.Error(), "\"", "\\\"")+"\"}")
-		return erro
+		return jsonError(info.Context(), err)
 	}
 
 	p, _ := v8go.JSONParse(info.Context(), string(resp))
 	return p
+}
+
+func jsonError(ctx *v8go.Context, err error) *v8go.Value {
+	erro, _ := v8go.JSONParse(ctx, "{\"error\":{\"message\":\""+strings.ReplaceAll(err.Error(), "\"", "\\\"")+"\"}}")
+	return erro
 }
 
 type SubgraphHandler struct {

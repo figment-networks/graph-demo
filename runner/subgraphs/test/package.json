@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "build": "tsc --lib es2020 ./src/*.ts --outDir ./generated/"
+  },
+  "dependencies": {
+    "typescript": "^4.3.5"
+  }
+}
