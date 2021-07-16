@@ -81,7 +81,7 @@ func TestLoader_LoadJS(t *testing.T) {
 				t.Errorf("Loader.NewBlockEvent() error = %v", err)
 			}
 
-			st, err := sStore.Get(context.Background(), tt.args.name, "StoreBlock", "id", "qazxsw23edcvfr45tgbnhyujm")
+			st, err := sStore.Get(context.Background(), tt.args.name, "Block", "id", "qazxsw23edcvfr45tgbnhyujm")
 			if err != nil {
 				t.Errorf("mStore.Get error = %v, wantErr %v", err, tt.wantErr)
 			}

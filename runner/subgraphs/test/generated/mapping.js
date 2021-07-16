@@ -9,6 +9,9 @@ var graph_1 = require("../../graph");
 var TransactionEntity = /** @class */ (function () {
     function TransactionEntity() {
     }
+    TransactionEntity.prototype.save = function () {
+        return graph_1.store.save("Transaction", this);
+    };
     return TransactionEntity;
 }());
 var BlockEntity = /** @class */ (function () {
@@ -18,6 +21,9 @@ var BlockEntity = /** @class */ (function () {
         this.time = time;
         this.myNote = myNote;
     }
+    BlockEntity.prototype.save = function () {
+        return graph_1.store.save("Block", this);
+    };
     return BlockEntity;
 }());
 /**
@@ -25,15 +31,14 @@ var BlockEntity = /** @class */ (function () {
  */
 var GET_BLOCK = "query GetBlock($height: Int) {\n    block( $height: Int = 0 ) {\n      height\n      time\n      id\n    }\n  }";
 function handleBlock(newBlockEvent) {
-    var _a = graph_1.graphql.call(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }), data = _a.data, error = _a.error;
+    var _a = graph_1.graphql.call(newBlockEvent.network, GET_BLOCK, { height: newBlockEvent.height }, "0.0.1"), data = _a.data, error = _a.error;
     if (error) {
         graph_1.log.debug(JSON.stringify(error));
         return;
     }
-    graph_1.log.debug(JSON.stringify(data));
+    graph_1.log.debug('data from query: ' + JSON.stringify(data));
     var height = data.height, id = data.id, time = data.time;
     var entity = new BlockEntity(height, id, time, "ok");
-    graph_1.log.debug(JSON.stringify(entity));
-    // using graph-ts, this line translates to entity.save()
-    graph_1.store.save("Block", entity);
+    graph_1.log.debug('saving: ' + JSON.stringify(entity));
+    entity.save();
 }

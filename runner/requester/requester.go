@@ -46,12 +46,12 @@ type GQLResponse struct {
 	Errors []interface{} `json:"errors"`
 }
 
-func (r *Rqstr) CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}) ([]byte, error) {
+func (r *Rqstr) CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}, version string) ([]byte, error) {
 	r.llock.RLock()
 	d, ok := r.list[name]
 	r.llock.RUnlock()
 	if !ok {
-		return nil, errors.New("graph not found")
+		return nil, errors.New("graph not found: " + name)
 	}
 
 	buff := new(bytes.Buffer)

@@ -8,6 +8,9 @@ var graph_1 = require("../../graph");
 var TransactionEntity = /** @class */ (function () {
     function TransactionEntity() {
     }
+    TransactionEntity.prototype.save = function () {
+        return graph_1.store.save("Transaction", this);
+    };
     return TransactionEntity;
 }());
 var BlockEntity = /** @class */ (function () {
@@ -18,6 +21,9 @@ var BlockEntity = /** @class */ (function () {
         }
         Object.assign(this, args);
     }
+    BlockEntity.prototype.save = function () {
+        return graph_1.store.save("Block", this);
+    };
     return BlockEntity;
 }());
 /**
@@ -55,7 +61,7 @@ function handleBlock(newBlockEvent) {
     var height = data.height, id = data.id, time = data.time;
     var entity = new BlockEntity(height, id, time, "ok");
     graph_1.log.debug('Entity: ' + JSON.stringify(entity));
-    var storeErr = graph_1.store.save("Block", entity).storeErr;
+    var storeErr = entity.save().storeErr;
     if (storeErr) {
         graph_1.log.debug('Error storing entity: ' + JSON.stringify(storeErr));
     }

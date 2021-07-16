@@ -17,7 +17,7 @@ import (
 )
 
 type GQLCaller interface {
-	CallGQL(ctx context.Context, name, query string, variables map[string]interface{}) ([]byte, error)
+	CallGQL(ctx context.Context, name, query string, variables map[string]interface{}, version string) ([]byte, error)
 }
 
 type callback func(info *v8go.FunctionCallbackInfo) *v8go.Value
@@ -66,7 +66,7 @@ func (l *Loader) NewEvent(evt NewEvent) error {
 		if err := l.CallSubgraphHandler(name,
 			&SubgraphHandler{
 				name:   "handle" + strings.Title(evt.Type),
-				values: []interface{}{evt},
+				values: []interface{}{evt.Data},
 			}); err != nil {
 			return err
 		}
@@ -183,7 +183,7 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
-	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a)
+	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a, args[3].String())
 	if err != nil {
 		log.Println(fmt.Printf("callGQL error %v \n", err))
 		return jsonError(info.Context(), err)
