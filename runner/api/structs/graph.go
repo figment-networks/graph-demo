@@ -7,6 +7,7 @@ type GraphQuery struct {
 
 type Query struct {
 	Name   string
+	Order  int
 	Params map[string]Part
 	Fields map[string]Field
 }
@@ -18,6 +19,7 @@ type Part struct {
 
 type Field struct {
 	Name   string
+	Order  int
 	Params map[string]Part
 	Fields map[string]Field
 }

@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/cosmos/cosmos-sdk v0.42.7
+	github.com/elliotchance/orderedmap v1.4.0 // indirect
 	github.com/figment-networks/indexing-engine v0.4.4
 	github.com/gogo/protobuf v1.3.3
 	github.com/golang-migrate/migrate/v4 v4.14.1 // indirect

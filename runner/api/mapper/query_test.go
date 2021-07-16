@@ -1,19 +1,37 @@
-package graphql
+package mapper_test
 
 import (
 	"reflect"
 	"testing"
+
+	"github.com/figment-networks/graph-demo/runner/api/structs"
 )
 
-const t1 = `query GetBlock($height: Int) {
-    block(height: $height ) {
-      height
-      time
-      id
-    }
-
-	blockHash(height: $height ) {
+const t1 = `query GetBlock($height: Int = 6940033) {
+	block(height: 6940034) {
+	  height
+	  time
+	  id
+	  unknwonField
+	}
+	getTransactions(height: $height) {
 	  hash
+	  time
+	  id
+	  unknwonField
+	}
+	getBlockHashAndTransactionHashes(height: $height) {
+	  block {
+		height
+		time
+		hash
+		id
+	  }
+	  unknownField
+	  txs {
+		hash
+		time
+	  }
 	}
   }`
 
@@ -25,7 +43,7 @@ func TestParseQuery(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    Query
+		want    structs.GraphQuery
 		wantErr bool
 	}{
 		{name: "simple", args: args{
