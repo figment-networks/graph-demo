@@ -12,7 +12,7 @@ dataSources:
     name: SimpleExample
     network: cosmos
     mapping:
-      kind: cosmos/events
+      kind: network-graph/events
       schemaVersion: 0.0.2
       language: wasm/assemblyscript
       eventHandlers:
