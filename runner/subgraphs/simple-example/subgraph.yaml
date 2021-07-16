@@ -9,7 +9,7 @@ dataSources:
  #   id: xyz123ipfshash
  #   version: 0.0.3
   - kind: network-graph
-    name: SimpleExample
+    name: CosmosNetworkGraph
     network: cosmos
     mapping:
       kind: network-graph/events
