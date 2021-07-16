@@ -14,10 +14,10 @@ import (
 )
 
 func MapBlocksToResponse(queries []structs.Query, blocksResp structs.QueriesResp) ([]byte, error) {
-	var resp MapSlice
+	var resp mapSlice
 	var err error
 
-	resp = make([]MapItem, len(queries))
+	resp = make([]mapItem, len(queries))
 	for _, query := range queries {
 		blocks, ok := blocksResp[query.Name]
 		if !ok {
@@ -25,37 +25,32 @@ func MapBlocksToResponse(queries []structs.Query, blocksResp structs.QueriesResp
 		}
 
 		bLen := len(blocks)
-		row := MapSlice{}
-		rows := make([]MapSlice, bLen)
+		var response interface{}
+		responses := make([]interface{}, bLen)
 		i := 0
 		for _, bAndTxs := range blocks {
-			if row, err = fieldsResp(&query, bAndTxs); err != nil {
+			if response, err = fieldsResp(&query, bAndTxs); err != nil {
 				return nil, err
 			}
 
-			rows[i] = row
+			responses[i] = response
 			i++
 		}
 
-		if bLen == 1 {
-			resp[query.Order] = MapItem{
-				Key:   query.Name,
-				Value: row,
-			}
-		} else {
-			resp[query.Order] = MapItem{
-				Key:   query.Name,
-				Value: rows,
-			}
+		if bLen > 1 {
+			response = responses
+		}
+
+		resp[query.Order] = mapItem{
+			Key:   query.Name,
+			Value: response,
 		}
 	}
 
-	return resp.MarshalJSON()
+	return resp.marshalJSON()
 }
 
-func fieldsResp(q *structs.Query, blockAndTx structs.BlockAndTx) (resp MapSlice, err error) {
-	// resp = make([]MapItem, len(q.Fields))
-
+func fieldsResp(q *structs.Query, blockAndTx structs.BlockAndTx) (resp interface{}, err error) {
 	qStr := strings.ToLower(q.Name)
 	parseBlock := strings.Contains(qStr, "block")
 	parseTransaction := strings.Contains(qStr, "transaction")
@@ -63,10 +58,7 @@ func fieldsResp(q *structs.Query, blockAndTx structs.BlockAndTx) (resp MapSlice,
 	if parseBlock && !parseTransaction {
 		resp = mapStructToFields(q.Fields, blockAndTx.Block)
 	} else if !parseBlock && parseTransaction {
-		resp = []MapItem{{
-			Key:   q.Name,
-			Value: mapSliceToFields(q.Fields, blockAndTx.Txs),
-		}}
+		resp = mapSliceToFields(q.Fields, blockAndTx.Txs)
 	} else {
 		resp = mapStructToFields(q.Fields, blockAndTx)
 
@@ -75,10 +67,10 @@ func fieldsResp(q *structs.Query, blockAndTx structs.BlockAndTx) (resp MapSlice,
 	return resp, err
 }
 
-func mapStructToFields(fields map[string]structs.Field, s interface{}) MapSlice {
+func mapStructToFields(fields map[string]structs.Field, s interface{}) mapSlice {
 	var value interface{}
 	v := reflect.Indirect(reflect.ValueOf(s))
-	respMap := make(map[int]MapItem)
+	respMap := make(map[int]mapItem)
 	maxOrder := 0
 
 	for i := 0; i < v.NumField(); i++ {
@@ -113,7 +105,7 @@ func mapStructToFields(fields map[string]structs.Field, s interface{}) MapSlice 
 
 		order := field.Order
 
-		respMap[order] = MapItem{
+		respMap[order] = mapItem{
 			Key:   field.Name,
 			Value: value,
 		}
@@ -125,7 +117,7 @@ func mapStructToFields(fields map[string]structs.Field, s interface{}) MapSlice 
 	}
 
 	respLen := len(respMap)
-	ms := make([]MapItem, respLen)
+	ms := make([]mapItem, respLen)
 
 	i := 0
 	for order := 0; order <= maxOrder; order++ {
@@ -134,6 +126,10 @@ func mapStructToFields(fields map[string]structs.Field, s interface{}) MapSlice 
 			ms[i] = resp
 			i++
 		}
+	}
+
+	if i == 0 {
+		return nil
 	}
 
 	return ms
@@ -156,10 +152,10 @@ func formatValue(v interface{}) (val interface{}) {
 	return
 }
 
-func mapSliceToFields(fields map[string]structs.Field, s interface{}) []MapSlice {
+func mapSliceToFields(fields map[string]structs.Field, s interface{}) []mapSlice {
 	v := reflect.Indirect(reflect.ValueOf(s))
 	len := v.Len()
-	sliceResp := make([]MapSlice, len)
+	sliceResp := make([]mapSlice, len)
 
 	for i := 0; i < len; i++ {
 		sliceResp[i] = mapStructToFields(fields, v.Index(i).Interface())
@@ -168,50 +164,51 @@ func mapSliceToFields(fields map[string]structs.Field, s interface{}) []MapSlice
 	return sliceResp
 }
 
-type MapItem struct {
+type mapItem struct {
 	Key, Value interface{}
 }
 
-type MapSlice []MapItem
+type mapSlice []mapItem
 
-func (ms MapSlice) MarshalJSON() ([]byte, error) {
+func (ms mapSlice) marshalJSON() ([]byte, error) {
 	var b []byte
 	var err error
 	buf := &bytes.Buffer{}
-
-	fmt.Println(ms)
 
 	buf.Write([]byte{'{'})
 
 	for i, mi := range ms {
 
-		switch reflect.ValueOf(mi.Value) {
-		// case reflect.ValueOf([]interface{}{}):
-
-		case reflect.ValueOf([]MapSlice{}):
-			buf.Write([]byte{'['})
-			for i, ms := range mi.Value.([]MapSlice) {
-				b, err = ms.MarshalJSON()
+		switch reflect.ValueOf(mi.Value).Type().String() {
+		case reflect.ValueOf([]mapSlice{}).Type().String():
+			sliceValue := mi.Value.([]mapSlice)
+			sliceLen := len(sliceValue)
+			sliceBytes := []byte{'['}
+			for i, ms := range sliceValue {
+				valueBytes, err := ms.marshalJSON()
 				if err != nil {
 					return nil, err
 				}
-				buf.Write(b)
-				if i < len(ms)-1 {
-					buf.Write([]byte{','})
+				sliceBytes = append(sliceBytes, valueBytes...)
+				if i < sliceLen-1 {
+					sliceBytes = append(sliceBytes, ',')
 				}
 			}
-			buf.Write([]byte{']'})
+			b = append(sliceBytes, ']')
 
-		case reflect.ValueOf(MapSlice{}):
-			b, err = mi.Value.(MapSlice).MarshalJSON()
+		case reflect.ValueOf(mapSlice{}).Type().String():
+			b, err = mi.Value.(mapSlice).marshalJSON()
 		default:
 			b, err = json.Marshal(&mi.Value)
 		}
+
 		if err != nil {
 			return nil, err
 		}
+
 		buf.WriteString(fmt.Sprintf("%q:", fmt.Sprintf("%v", mi.Key)))
 		buf.Write(b)
+
 		if i < len(ms)-1 {
 			buf.Write([]byte{','})
 		}

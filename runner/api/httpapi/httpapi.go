@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -72,15 +73,13 @@ func (h *Handler) HandleGraphql(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 
-	// rawData, err := json.Marshal(response)
-	// if err != nil {
-	// 	w.WriteHeader(http.StatusInternalServerError)
-	// 	resp.Errors = []errorMessage{{Message: fmt.Sprintf("Error while marshalling response: %w", err)}}
-	// 	enc.Encode(resp)
-	// 	return
-	// }
-
 	resp.Data = response
-	enc.Encode(resp)
+	if err = enc.Encode(resp); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		resp.Errors = []errorMessage{{Message: fmt.Sprintf("Error while encoding response: %w", err)}}
+		enc.Encode(resp)
+		return
+	}
+
 	return
 }
