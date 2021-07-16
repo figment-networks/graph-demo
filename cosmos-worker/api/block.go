@@ -5,10 +5,10 @@ import (
 	"sync"
 
 	"github.com/figment-networks/graph-demo/manager/structs"
-	"go.uber.org/zap"
 
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	"github.com/tendermint/tendermint/libs/bytes"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 

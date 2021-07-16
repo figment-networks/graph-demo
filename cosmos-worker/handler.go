@@ -23,12 +23,12 @@ func New(c *api.Client) *Handler {
 }
 
 func (h *Handler) AttachToMux(mux *http.ServeMux) {
-	mux.HandleFunc("/get_block/", h.HandleGetBlock)
+	mux.HandleFunc("/getBlock/", h.HandleGetBlock)
 }
 
 func (h *Handler) HandleGetBlock(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	heightStr := strings.Trim(r.URL.Path, "/get_block/")
+	heightStr := strings.Trim(r.URL.Path, "/getBlock/")
 
 	heightInt, err := strconv.Atoi(heightStr)
 	if err != nil {
