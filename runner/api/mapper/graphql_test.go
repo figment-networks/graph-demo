@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/figment-networks/graph-demo/runner/api/mapper"
 	"github.com/figment-networks/graph-demo/runner/api/structs"
 )
 
@@ -53,7 +54,7 @@ func TestParseQuery(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParseQuery(tt.args.query, tt.args.variables)
+			got, err := mapper.ParseQuery(tt.args.query, tt.args.variables)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseQuery() error = %v, wantErr %v", err, tt.wantErr)
 				return

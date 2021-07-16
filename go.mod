@@ -17,6 +17,7 @@ require (
 	github.com/jackc/pgx v3.2.0+incompatible // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.10.2
+	github.com/robfig/cron v1.2.0 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/tendermint/tendermint v0.34.11
 	go.uber.org/zap v1.18.1

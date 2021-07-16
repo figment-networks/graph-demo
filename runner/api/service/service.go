@@ -143,7 +143,7 @@ func getHeightsToFetch(params map[string]rStructs.Part) ([]uint64, error) {
 func (s *Service) getBlockByHeight(ctx context.Context, height uint64) (structs.Block, []structs.Transaction, error) {
 	var getBlockResp wStructs.GetBlockResp
 
-	resp, err := http.Get(fmt.Sprintf("%s/get_block/%d", s.url, height))
+	resp, err := http.Get(fmt.Sprintf("%s/getBlock/%d", s.url, height))
 	if err != nil {
 		return structs.Block{}, nil, err
 	}
