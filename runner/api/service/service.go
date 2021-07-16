@@ -6,12 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"math/big"
 	"net/http"
 
 	wStructs "github.com/figment-networks/graph-demo/cosmos-worker/structs"
 	"github.com/figment-networks/graph-demo/manager/structs"
-	"github.com/figment-networks/graph-demo/runner/api/graphql"
+	"github.com/figment-networks/graph-demo/runner/api/mapper"
 	rStructs "github.com/figment-networks/graph-demo/runner/api/structs"
 )
 
@@ -50,8 +49,8 @@ func New(cli *http.Client, url string) *Service {
 	}
 }
 
-func (s *Service) ProcessGraphqlQuery(ctx context.Context, v map[string]interface{}, q string) (map[string]interface{}, error) {
-	queries, err := graphql.ParseQuery(q, v)
+func (s *Service) ProcessGraphqlQuery(ctx context.Context, v map[string]interface{}, q string) ([]byte, error) {
+	queries, err := mapper.ParseQuery(q, v)
 	if err != nil {
 		return nil, fmt.Errorf("Error while parsing graphql query: %w", err)
 	}
@@ -61,7 +60,7 @@ func (s *Service) ProcessGraphqlQuery(ctx context.Context, v map[string]interfac
 		return nil, fmt.Errorf("Error while fetching data: %w", err)
 	}
 
-	rawResp, err := graphql.MapBlocksToResponse(queries.Queries, blocks)
+	rawResp, err := mapper.MapBlocksToResponse(queries.Queries, blocks)
 	if err != nil {
 		return nil, fmt.Errorf("Error while mapping response: %w", err)
 	}
@@ -110,14 +109,18 @@ func getHeightsToFetch(params map[string]rStructs.Part) ([]uint64, error) {
 	var isStart, isEnd bool
 
 	for key, v := range params {
-		// fmt.Println(key, v)
+
+		val := v.Params[key].Value
+		if val == nil {
+			return nil, errors.New("Empty parameter value")
+		}
 
 		switch key {
 		case "height", "startHeight":
-			startHeight = v.Params[key].Value.(*big.Int).Uint64()
+			startHeight = val.(uint64)
 			isStart = true
 		case "endHeight":
-			endHeight = v.Params[key].Value.(*big.Int).Uint64()
+			endHeight = val.(uint64)
 			isEnd = true
 		}
 	}

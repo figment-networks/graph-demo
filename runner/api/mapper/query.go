@@ -1,9 +1,10 @@
-package graphql
+package mapper
 
 import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 
 	"github.com/figment-networks/graph-demo/runner/api/structs"
 	"github.com/graphql-go/graphql/language/ast"
@@ -178,13 +179,13 @@ func getValue(inputParams map[string]structs.Param, v interface{}, field, variab
 		return value, nil
 
 	case "[]String":
-		// value = make([]string, len(v.([]string)))
-		// for i, str := range v.([]string) {
-		// 	if value.([]string)[i], err = stringValue(str); err != nil {
-		// 		return nil, err
-		// 	}
-		// }
-		return value.([]string), nil
+		value = make([]string, len(v.([]string)))
+		for i, str := range v.([]string) {
+			if value.([]string)[i], err = stringValue(str); err != nil {
+				return nil, err
+			}
+		}
+		return value, nil
 
 	default:
 		param, ok := inputParams[variableType]
@@ -274,15 +275,40 @@ func queryQParams(q *structs.GraphQuery, inputObjects map[string]structs.Param, 
 	return nil
 }
 
-func queryParams(q *structs.GraphQuery, arguments []*ast.Argument, i int) error {
+func queryParams(q *structs.GraphQuery, arguments []*ast.Argument, i int) (err error) {
 	for _, arg := range arguments {
 		params := make(map[string]structs.Part)
+		var varValue interface{}
 		argName := arg.Name.Value
-		name := ast.NewName(arg.Value.GetValue().(*ast.Name))
 
-		nameStr := name.Value
+		value := arg.Value.GetValue()
+
+		nameStr := argName
+
+		fmt.Println(arg.Value.GetKind())
+
+		switch arg.Value.GetKind() {
+		case "IntValue":
+			intValue, err := strconv.Atoi(value.(string))
+			if err != nil {
+				return err
+			}
+			varValue = uint64(intValue)
+		// case "Variable":
+		// 	nameStr = value.(*ast.Variable).Name.Value
+		case "Variable", "Name":
+			nameStr = value.(*ast.Name).Value
+		default:
+
+		}
+		// name := ast.NewName(value.(*ast.Name))
+
+		// nameStr := name.Value
 
 		variable := q.Q.Params[nameStr]
+		if varValue != nil {
+			variable.Value = varValue
+		}
 
 		params[argName] = structs.Part{
 			Name:   argName,
@@ -328,3 +354,7 @@ func stringValue(val interface{}) (string, error) {
 	}
 	return val.(string), nil
 }
+
+// func uint64Value(value float64) *big.Int {
+// 	return new(big.Int).SetInt64(int64(value))
+// }

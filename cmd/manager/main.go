@@ -11,12 +11,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/figment-networks/graph-demo/manager/client"
-	"github.com/figment-networks/graph-demo/manager/conn/ws"
-	"github.com/figment-networks/graph-demo/manager/connectivity"
-	"github.com/figment-networks/graph-demo/manager/status"
 	grpcTransport "github.com/figment-networks/graph-demo/manager/transport/grpc"
 	wsTransport "github.com/figment-networks/graph-demo/manager/transport/ws"
+	"github.com/figment-networks/indexer-manager/conn/ws"
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/cmd/manager/config"
@@ -61,11 +58,8 @@ func main() {
 
 	// Initialize manager
 	mID, _ := uuid.NewRandom()
-	connManager := connectivity.NewManager(mID.String(), logger.GetLogger())
 
 	mux := http.NewServeMux()
-	stat := status.NewStatus(connManager)
-	stat.AttachToMux(mux)
 
 	conn := ws.NewConn(logger.GetLogger())
 	stat.Handler(conn)
@@ -73,12 +67,8 @@ func main() {
 
 	// setup grpc transport
 	grpcCli := grpcTransport.NewClient(cfg.GrpcMaxRecvSize, cfg.GrpcMaxSendSize)
-	connManager.AddTransport(grpcCli)
 
-	hClient := client.NewClient(logger.GetLogger())
-	hClient.LinkSender(connManager)
-
-	WSTransport := wsTransport.NewConnector(hClient)
+	WSTransport := wsTransport.NewConnector(grpcCli)
 	WSTransport.Handler(conn)
 
 	//HTTPTransport := httpTransport.NewConnector(hClient)
