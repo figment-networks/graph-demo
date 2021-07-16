@@ -38,7 +38,6 @@ func ParseQuery(query string, variables map[string]interface{}) (structs.GraphQu
 
 	for _, definition := range doc.Definitions {
 		kind := definition.GetKind()
-		fmt.Println("kind: ", kind)
 		switch kind {
 		case "InputObjectDefinition":
 			iod := definition.(*ast.InputObjectDefinition)
@@ -219,7 +218,6 @@ func parseOperationDefinition(q *structs.GraphQuery, od *ast.OperationDefinition
 	}
 
 	variableDefinitions := od.VariableDefinitions
-	fmt.Println("variableDefinitions ", variableDefinitions)
 
 	// root query name
 	q.Q.Name = od.Name.Value
@@ -285,8 +283,6 @@ func queryParams(q *structs.GraphQuery, arguments []*ast.Argument, i int) (err e
 
 		nameStr := argName
 
-		fmt.Println(arg.Value.GetKind())
-
 		switch arg.Value.GetKind() {
 		case "IntValue":
 			intValue, err := strconv.Atoi(value.(string))
@@ -294,16 +290,11 @@ func queryParams(q *structs.GraphQuery, arguments []*ast.Argument, i int) (err e
 				return err
 			}
 			varValue = uint64(intValue)
-		// case "Variable":
-		// 	nameStr = value.(*ast.Variable).Name.Value
 		case "Variable", "Name":
 			nameStr = value.(*ast.Name).Value
 		default:
 
 		}
-		// name := ast.NewName(value.(*ast.Name))
-
-		// nameStr := name.Value
 
 		variable := q.Q.Params[nameStr]
 		if varValue != nil {
@@ -314,8 +305,6 @@ func queryParams(q *structs.GraphQuery, arguments []*ast.Argument, i int) (err e
 			Name:   argName,
 			Params: map[string]structs.Param{nameStr: variable},
 		}
-
-		fmt.Println(map[string]structs.Param{nameStr: variable})
 
 		q.Queries[i].Params = params
 	}

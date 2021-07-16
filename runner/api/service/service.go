@@ -72,7 +72,6 @@ func (s *Service) getBlocks(ctx context.Context, query *rStructs.GraphQuery) (rS
 	qResp := make(map[string]map[uint64]rStructs.BlockAndTx)
 
 	for _, q := range query.Queries {
-		fmt.Println(q)
 		resp, err := s.getBlocksByHeight(ctx, &q)
 		if err != nil {
 			return nil, err

@@ -79,6 +79,7 @@ func mapStructToFields(fields map[string]structs.Field, s interface{}) MapSlice 
 	var value interface{}
 	v := reflect.Indirect(reflect.ValueOf(s))
 	respMap := make(map[int]MapItem)
+	maxOrder := 0
 
 	for i := 0; i < v.NumField(); i++ {
 		fieldName := strings.ToLower(v.Type().Field(i).Name)
@@ -110,17 +111,29 @@ func mapStructToFields(fields map[string]structs.Field, s interface{}) MapSlice 
 			}
 		}
 
-		respMap[field.Order] = MapItem{
+		order := field.Order
+
+		respMap[order] = MapItem{
 			Key:   field.Name,
 			Value: value,
 		}
+
+		if maxOrder < order {
+			maxOrder = order
+		}
+
 	}
 
-	ms := make([]MapItem, len(respMap))
+	respLen := len(respMap)
+	ms := make([]MapItem, respLen)
+
 	i := 0
-	for _, resp := range respMap {
-		ms[i] = resp
-		i++
+	for order := 0; order <= maxOrder; order++ {
+		resp, ok := respMap[order]
+		if ok && resp.Key != nil {
+			ms[i] = resp
+			i++
+		}
 	}
 
 	return ms
@@ -143,10 +156,10 @@ func formatValue(v interface{}) (val interface{}) {
 	return
 }
 
-func mapSliceToFields(fields map[string]structs.Field, s interface{}) []interface{} {
+func mapSliceToFields(fields map[string]structs.Field, s interface{}) []MapSlice {
 	v := reflect.Indirect(reflect.ValueOf(s))
 	len := v.Len()
-	sliceResp := make([]interface{}, len)
+	sliceResp := make([]MapSlice, len)
 
 	for i := 0; i < len; i++ {
 		sliceResp[i] = mapStructToFields(fields, v.Index(i).Interface())
@@ -166,11 +179,15 @@ func (ms MapSlice) MarshalJSON() ([]byte, error) {
 	var err error
 	buf := &bytes.Buffer{}
 
+	fmt.Println(ms)
+
 	buf.Write([]byte{'{'})
 
 	for i, mi := range ms {
 
 		switch reflect.ValueOf(mi.Value) {
+		// case reflect.ValueOf([]interface{}{}):
+
 		case reflect.ValueOf([]MapSlice{}):
 			buf.Write([]byte{'['})
 			for i, ms := range mi.Value.([]MapSlice) {
