@@ -1,4 +1,4 @@
-package mapper
+package service
 
 import (
 	"bytes"
@@ -9,11 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/figment-networks/graph-demo/graphcall"
 	"github.com/figment-networks/graph-demo/runner/api/structs"
 	"github.com/google/uuid"
 )
 
-func MapBlocksToResponse(queries []structs.Query, blocksResp structs.QueriesResp) ([]byte, error) {
+func MapBlocksToResponse(queries []graphcall.Query, blocksResp QueriesResp) ([]byte, error) {
 	var resp mapSlice
 	var err error
 
@@ -50,7 +51,7 @@ func MapBlocksToResponse(queries []structs.Query, blocksResp structs.QueriesResp
 	return resp.marshalJSON()
 }
 
-func fieldsResp(q *structs.Query, blockAndTx structs.BlockAndTx) (resp interface{}, err error) {
+func fieldsResp(q *graphcall.Query, blockAndTx structs.BlockAndTx) (resp interface{}, err error) {
 	qStr := strings.ToLower(q.Name)
 	parseBlock := strings.Contains(qStr, "block")
 	parseTransaction := strings.Contains(qStr, "transaction")
@@ -67,7 +68,7 @@ func fieldsResp(q *structs.Query, blockAndTx structs.BlockAndTx) (resp interface
 	return resp, err
 }
 
-func mapStructToFields(fields map[string]structs.Field, s interface{}) mapSlice {
+func mapStructToFields(fields map[string]graphcall.Field, s interface{}) mapSlice {
 	var value interface{}
 	v := reflect.Indirect(reflect.ValueOf(s))
 	respMap := make(map[int]mapItem)
@@ -152,7 +153,7 @@ func formatValue(v interface{}) (val interface{}) {
 	return
 }
 
-func mapSliceToFields(fields map[string]structs.Field, s interface{}) []mapSlice {
+func mapSliceToFields(fields map[string]graphcall.Field, s interface{}) []mapSlice {
 	v := reflect.Indirect(reflect.ValueOf(s))
 	len := v.Len()
 	sliceResp := make([]mapSlice, len)

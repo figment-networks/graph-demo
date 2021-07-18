@@ -1,4 +1,4 @@
-package mapper
+package graphcall
 
 import (
 	"errors"
@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/figment-networks/graph-demo/runner/api/structs"
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/parser"
 	"github.com/graphql-go/graphql/language/source"
@@ -17,7 +16,7 @@ import (
 // 	params    = regexp.MustCompile("\\s*([a-zA-Z0-9_-]+)\\s*(|\\(?[a-zA-Z0-9\\=\\,\\s\\.\\$\\_\\-\\:\"\\!]*\\))\\s*({?)\\n")
 // )
 
-func ParseQuery(query string, variables map[string]interface{}) (structs.GraphQuery, error) {
+func ParseQuery(query string, variables map[string]interface{}) (GraphQuery, error) {
 	opts := parser.ParseOptions{
 		NoSource: true,
 	}
@@ -29,7 +28,7 @@ func ParseQuery(query string, variables map[string]interface{}) (structs.GraphQu
 	})
 
 	if err != nil {
-		return structs.GraphQuery{}, fmt.Errorf("Error while parsing graphql query: %w", err)
+		return GraphQuery{}, fmt.Errorf("Error while parsing graphql query: %w", err)
 	}
 
 	q := structs.GraphQuery{}

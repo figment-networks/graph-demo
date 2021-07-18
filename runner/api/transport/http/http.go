@@ -1,4 +1,4 @@
-package httpapi
+package http
 
 import (
 	"context"
@@ -9,7 +9,26 @@ import (
 	"time"
 
 	"github.com/figment-networks/graph-demo/runner/api/service"
+	"github.com/figment-networks/graph-demo/runner/store"
 )
+
+type API struct {
+	s store.Storage
+}
+
+type JSONGraphQLRequest struct {
+	Query     string                 `json:"query"`
+	Variables map[string]interface{} `json:"variables"`
+}
+
+type JSONGraphQLResponse struct {
+	Data   json.RawMessage `json:"data"`
+	Errors []errorMessage  `json:"errors,omitempty"`
+}
+
+type errorMessage struct {
+	Message string `json:"message",omitempty`
+}
 
 type Handler struct {
 	service *service.Service
@@ -22,10 +41,10 @@ func New(svc *service.Service) *Handler {
 }
 
 func (h *Handler) AttachMux(mux *http.ServeMux) {
-	mux.HandleFunc("/getBlock", h.HandleGetBlock)
+	mux.HandleFunc("/subgraph", h.HandleGraphql)
 }
 
-func (h *Handler) HandleGetBlock(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleGraphql(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	resp := JSONGraphQLResponse{}
 

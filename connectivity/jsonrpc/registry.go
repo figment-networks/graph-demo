@@ -12,6 +12,10 @@ type RegistryHandler struct {
 	registrySync sync.RWMutex
 }
 
+func NewRegistryHandler() *RegistryHandler {
+	return &RegistryHandler{Registry: make(map[string]connectivity.Handler)}
+}
+
 func (rh *RegistryHandler) Add(name string, handler connectivity.Handler) {
 	rh.registrySync.Lock()
 	defer rh.registrySync.Unlock()

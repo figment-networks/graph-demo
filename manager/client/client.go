@@ -23,7 +23,7 @@ func New(hc *http.Client, url string) *Client {
 	}
 }
 
-func (c *Client) GetBlockByHeight(ctx context.Context, height uint64) (structs.Block, []structs.Transaction, error) {
+func (c *Client) GetByHeight(ctx context.Context, height uint64) (structs.All, error) {
 	var getBlockResp wStructs.GetBlockResp
 
 	resp, err := http.Get(fmt.Sprintf("%s/getBlock/%d", c.url, height))
@@ -41,6 +41,6 @@ func (c *Client) GetBlockByHeight(ctx context.Context, height uint64) (structs.B
 		return structs.Block{}, nil, err
 	}
 
-	return getBlockResp.Block, getBlockResp.Txs, nil
+	return All{getBlockResp.Block, getBlockResp.Txs}, nil
 
 }

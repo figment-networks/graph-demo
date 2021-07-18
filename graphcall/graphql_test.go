@@ -1,11 +1,10 @@
-package mapper_test
+package graphcall_test
 
 import (
 	"reflect"
 	"testing"
 
-	"github.com/figment-networks/graph-demo/runner/api/mapper"
-	"github.com/figment-networks/graph-demo/runner/api/structs"
+	"github.com/figment-networks/graph-demo/graphcall"
 )
 
 const t1 = `query GetBlock($height: Int = 6940033) {
@@ -44,7 +43,7 @@ func TestParseQuery(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    structs.GraphQuery
+		want    graphcall.GraphQuery
 		wantErr bool
 	}{
 		{name: "simple", args: args{
@@ -54,7 +53,7 @@ func TestParseQuery(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := mapper.ParseQuery(tt.args.query, tt.args.variables)
+			got, err := graphcall.ParseQuery(tt.args.query, tt.args.variables)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseQuery() error = %v, wantErr %v", err, tt.wantErr)
 				return

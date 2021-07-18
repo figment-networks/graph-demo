@@ -27,7 +27,7 @@ func (c *Conn) AttachToMux(ctx context.Context, mux *http.ServeMux) {
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		uConn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			//conn.l.Warn("Error upgrading connection", zap.Error(err))
+			c.l.Warn("Error upgrading connection", zap.Error(err))
 			return
 		}
 
