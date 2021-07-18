@@ -8,13 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/figment-networks/graph-demo/runner/api/service"
-	"github.com/figment-networks/graph-demo/runner/store"
+	"github.com/figment-networks/graph-demo/manager/api/service"
 )
-
-type API struct {
-	s store.Storage
-}
 
 type JSONGraphQLRequest struct {
 	Query     string                 `json:"query"`
@@ -34,17 +29,17 @@ type Handler struct {
 	service *service.Service
 }
 
-func New(svc *service.Service) *Handler {
+func NewHandler(svc *service.Service) *Handler {
 	return &Handler{
 		service: svc,
 	}
 }
 
 func (h *Handler) AttachMux(mux *http.ServeMux) {
-	mux.HandleFunc("/subgraph", h.HandleGraphql)
+	mux.HandleFunc("/graphQL", h.HandleRequest)
 }
 
-func (h *Handler) HandleGraphql(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	resp := JSONGraphQLResponse{}
 

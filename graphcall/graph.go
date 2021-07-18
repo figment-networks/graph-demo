@@ -1,4 +1,4 @@
-package structs
+package graphcall
 
 type GraphQuery struct {
 	Q       Part

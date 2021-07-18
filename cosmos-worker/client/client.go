@@ -1,4 +1,4 @@
-package api
+package client
 
 import (
 	"context"
@@ -28,7 +28,6 @@ type Client struct {
 	network string
 
 	log *zap.Logger
-	Sbc *SimpleBlockCache
 
 	// GRPC
 	txServiceClient tx.ServiceClient
@@ -44,7 +43,6 @@ func New(logger *zap.Logger, cli *grpc.ClientConn, cfg *ClientConfig) *Client {
 
 	return &Client{
 		log:             logger,
-		Sbc:             NewSimpleBlockCache(400),
 		tmServiceClient: tmservice.NewServiceClient(cli),
 		txServiceClient: tx.NewServiceClient(cli),
 		rateLimiterGRPC: rateLimiterGRPC,

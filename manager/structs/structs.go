@@ -13,29 +13,102 @@ var (
 	ErrNotFound = errors.New("record not found")
 )
 
+type All struct {
+	BlockID      BlockID       `json:"block_id,omitempty"`
+	Block        Block         `json:"block"`
+	Transactions []Transaction `json:"transactions"`
+}
+
 // Block contains the block details
 type Block struct {
-	// ID
-	ID uuid.UUID `json:"id,omitempty"`
-	// CreatedAt of block creation time in database
-	CreatedAt *time.Time `json:"created_at,omitempty"`
-	// UpdatedAt of block update time in database
-	UpdatedAt *time.Time `json:"updated_at,omitempty"`
-
 	// Hash of the Block
 	Hash string `json:"hash,omitempty"`
 	// Height of the Block
 	Height uint64 `json:"height,omitempty"`
 	// Time of the Block
 	Time time.Time `json:"time,omitempty"`
-	// Epoch number
-	Epoch string `json:"epoch,omitempty"`
-	// Network name
-	Network string `json:"network,omitempty"`
 	// ChainID
 	ChainID string `json:"chain_id,omitempty"`
 
-	NumberOfTransactions uint64 `json:"num_txs,omitempty"`
+	Header     BlockHeader       `json:"header"`
+	Data       BlockData         `json:"data"`
+	Evidence   BlockEvidenceList `json:"evidence"`
+	LastCommit *Commit           `json:"last_commit,omitempty"`
+}
+
+type BlockHeader struct {
+	// basic block info
+	Version Consensus `json:"version"`
+	ChainID string    `json:"chain_id,omitempty"`
+	Height  int64     `json:"height,omitempty"`
+	Time    time.Time `json:"time"`
+	// prev block info
+	LastBlockId BlockID `json:"last_block_id"`
+	// hashes of block data
+	LastCommitHash []byte `json:"last_commit_hash,omitempty"`
+	DataHash       []byte `json:"data_hash,omitempty"`
+	// hashes from the app output from the prev block
+	ValidatorsHash     []byte `json:"validators_hash,omitempty"`
+	NextValidatorsHash []byte `json:"next_validators_hash,omitempty"`
+	ConsensusHash      []byte `json:"consensus_hash,omitempty"`
+	AppHash            []byte `json:"app_hash,omitempty"`
+	LastResultsHash    []byte `json:"last_results_hash,omitempty"`
+	// consensus info
+	EvidenceHash    []byte `json:"evidence_hash,omitempty"`
+	ProposerAddress []byte `json:"proposer_address,omitempty"`
+}
+
+type BlockEvidenceList struct {
+	Evidence []BlockEvidence `json:"evidence"`
+}
+
+type BlockEvidence struct {
+	// Types that are valid to be assigned to Sum:
+	//	*Evidence_DuplicateVoteEvidence
+	//	*Evidence_LightClientAttackEvidence
+	//Sum isEvidence_Sum `protobuf_oneof:"sum"`
+}
+
+// Commit contains the evidence that a block was committed by a set of validators.
+type Commit struct {
+	Height     int64       `json:"height,omitempty"`
+	Round      int32       `json:"round,omitempty"`
+	BlockID    BlockID     `json:"block_id"`
+	Signatures []CommitSig `json:"signatures"`
+}
+
+// CommitSig is a part of the Vote included in a Commit.
+type CommitSig struct {
+	BlockIdFlag      int32     `json:"block_id_flag,omitempty"`
+	ValidatorAddress []byte    `json:"validator_address,omitempty"`
+	Timestamp        time.Time `json:"timestamp"`
+	Signature        []byte    `json:"signature,omitempty"`
+}
+
+// Data contains the set of transactions included in the block
+type BlockData struct {
+	// Txs that will be applied by state @ block.Height+1.
+	// NOTE: not all txs here are valid.  We're just agreeing on the order first.
+	// This means that block.AppHash does not include these txs.
+	Txs [][]byte `json:"txs,omitempty"`
+}
+type BlockID struct {
+	Hash          []byte        `json:"hash,omitempty"`
+	PartSetHeader PartSetHeader `json:"part_set_header"`
+}
+
+// PartsetHeader
+type PartSetHeader struct {
+	Total uint32 `json:"total,omitempty"`
+	Hash  []byte `json:"hash,omitempty"`
+}
+
+// Consensus captures the consensus rules for processing a block in the blockchain,
+// including all blockchain data structures and the rules of the application's
+// state transition machine.
+type Consensus struct {
+	Block uint64 `json:"block,omitempty"`
+	App   uint64 `json:"app,omitempty"`
 }
 
 // Transaction contains the blockchain transaction details
@@ -188,37 +261,4 @@ type AccountDetails struct {
 type SubsetEventError struct {
 	// Message from error event
 	Message string `json:"message,omitempty"`
-}
-
-type TransactionSearch struct {
-	Height    uint64    `json:"height"`
-	Type      SearchArr `json:"type"`
-	BlockHash string    `json:"block_hash"`
-	Hash      string    `json:"hash"`
-	Account   []string  `json:"account"`
-	Sender    []string  `json:"sender"`
-	Receiver  []string  `json:"receiver"`
-	Memo      string    `json:"memo"`
-
-	AfterTime  time.Time `json:"before_time"`
-	BeforeTime time.Time `json:"after_time"`
-
-	AfterHeight  uint64 `json:"after_height"`
-	BeforeHeight uint64 `json:"before_height"`
-	Limit        uint64 `json:"limit"`
-	Offset       uint64 `json:"offset"`
-
-	Network  string   `json:"network"`
-	ChainIDs []string `json:"chain_ids"`
-	Epoch    string   `json:"epoch"`
-
-	WithRaw    bool `json:"with_raw"`
-	WithRawLog bool `json:"with_raw_log"`
-
-	HasErrors bool `json:"has_errors"`
-}
-
-type SearchArr struct {
-	Value []string `json:"value"`
-	Any   bool     `json:"any"`
 }
