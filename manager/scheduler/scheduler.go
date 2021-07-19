@@ -2,12 +2,12 @@ package scheduler
 
 import (
 	"context"
+	"time"
 
 	"github.com/figment-networks/graph-demo/manager/client"
 	"github.com/figment-networks/graph-demo/manager/store"
-	"go.uber.org/zap"
-
 	"github.com/robfig/cron"
+	"go.uber.org/zap"
 )
 
 type Scheduler struct {
@@ -23,33 +23,43 @@ func New(ctx context.Context, c client.Client, s store.Store, log *zap.Logger) *
 	return &Scheduler{
 		ctx:    ctx,
 		client: c,
-		cron:   cron.New(),
 		log:    log,
 		store:  s,
 	}
 }
 
-func (s *Scheduler) Start(height uint64) {
+func (s *Scheduler) Start(ctx context.Context, height uint64) {
 	s.height = height
-	s.cron.AddFunc("@every 1m", s.fetchAndSaveBlockInDatbase)
+
+	tckr := time.NewTicker(time.Minute)
+	defer tckr.Stop()
+	for {
+		select {
+		case <-tckr.C:
+			s.fetchAndSaveBlockInDatbase()
+		case <-ctx.Done():
+			break
+		}
+	}
+
 }
 
 func (s *Scheduler) fetchAndSaveBlockInDatbase() {
 
-	block, txs, err := s.client.GetBlockByHeight(s.ctx, s.height)
+	all, err := s.client.GetByHeight(s.ctx, s.height)
 	if err != nil {
 		s.log.Error("[CRON] Error while getting block", zap.Uint64("height", s.height), zap.Error(err))
 		return
 	}
 
-	if err := s.store.StoreBlock(s.ctx, block); err != nil {
+	if err := s.store.StoreBlock(s.ctx, all.Block); err != nil {
 		s.log.Error("[CRON] Error while saving block in database", zap.Uint64("height", s.height), zap.Error(err))
 		return
 	}
 
-	if block.NumberOfTransactions > 0 {
-		if err := s.store.StoreTransactions(s.ctx, txs); err != nil {
-			s.log.Error("[CRON] Error while saving transactions in database", zap.Uint64("height", s.height), zap.Uint64("txs", block.NumberOfTransactions), zap.Error(err))
+	if all.Block.NumberOfTransactions > 0 {
+		if err := s.store.StoreTransactions(s.ctx, all.Transactions); err != nil {
+			s.log.Error("[CRON] Error while saving transactions in database", zap.Uint64("height", s.height), zap.Uint64("txs", all.Block.NumberOfTransactions), zap.Error(err))
 			return
 		}
 	}

@@ -53,6 +53,6 @@ func (s *Store) GetTransactions(ctx context.Context, tsearch params.TransactionS
 	return s.driver.GetTransactions(ctx, tsearch)
 }
 
-func (s *Store) GetBlockByHeight(ctx context.Context, height uint64, chainID, network string) (b structs.Block, err error) {
-	return s.driver.GetBlockBytHeight(ctx, height, chainID, network)
+func (s *Store) GetBlockByHeight(ctx context.Context, height uint64, chainID string) (b structs.Block, err error) {
+	return s.driver.GetBlockBytHeight(ctx, height, chainID)
 }

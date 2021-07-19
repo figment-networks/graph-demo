@@ -1,4 +1,4 @@
-package api
+package client
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/figment-networks/graph-demo/cosmos-worker/api/mapper"
+	"github.com/figment-networks/graph-demo/cosmos-worker/client/mapper"
 	"github.com/figment-networks/graph-demo/manager/structs"
 
 	codec_types "github.com/cosmos/cosmos-sdk/codec/types"
@@ -28,7 +28,7 @@ var curencyRegex = regexp.MustCompile("([0-9\\.\\,\\-\\s]+)([^0-9\\s]+)$")
 
 // SearchTx is making search api call
 func (c *Client) SearchTx(ctx context.Context, block structs.Block, height, perPage uint64) (txs []structs.Transaction, err error) {
-	c.log.Debug("[COSMOS-WORKER] Getting transactions", zap.Uint64("height", height), zap.Uint64("txs", block.NumberOfTransactions))
+	c.log.Debug("[COSMOS-WORKER] Getting transactions", zap.Uint64("height", height))
 
 	pag := &query.PageRequest{
 		CountTotal: true,
@@ -76,7 +76,7 @@ func (c *Client) SearchTx(ctx context.Context, block structs.Block, height, perP
 
 	}
 
-	c.log.Debug("[COSMOS-WORKER] Got transactions", zap.Uint64("height", height), zap.Uint64("txs", block.NumberOfTransactions))
+	c.log.Debug("[COSMOS-WORKER] Got transactions", zap.Uint64("height", height))
 	return txs, nil
 }
 
