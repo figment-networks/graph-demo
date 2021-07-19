@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/figment-networks/graph-demo/connectivity"
@@ -33,6 +34,12 @@ type Session struct {
 	// Buffered channel of outbound messages.
 	send     chan jsonrpc.Request
 	response chan jsonrpc.Response
+
+	routing     map[uint64]Waiting
+	routingLock sync.RWMutex
+}
+
+type Waiting struct {
 }
 
 func NewSession(ctx context.Context, c *websocket.Conn, l *zap.Logger, reg connectivity.FunctionCallHandler) *Session {
@@ -46,8 +53,19 @@ func NewSession(ctx context.Context, c *websocket.Conn, l *zap.Logger, reg conne
 		l:         l,
 		send:      make(chan jsonrpc.Request, 10),
 		response:  make(chan jsonrpc.Response, 10),
-	}
 
+		routing: make(map[uint64]Waiting),
+	}
+}
+
+func (s *Session) Send(req jsonrpc.Request) {
+	s.send <- req
+}
+
+func (s *Session) SendSync(req jsonrpc.Request) {
+
+	//s.routingLock[]
+	s.send <- req
 }
 
 func (s *Session) Recv() {
@@ -104,7 +122,7 @@ func (s *Session) Recv() {
 	}
 }
 
-func (s *Session) Send() {
+func (s *Session) Req() {
 
 	tckr := time.NewTicker(pingTime)
 	defer tckr.Stop()

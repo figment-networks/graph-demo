@@ -1,4 +1,8 @@
 package client
 
-type FetchFlow struct {
+type NetworkGraphClient struct {
+}
+
+func Call() {
+
 }
