@@ -13,7 +13,7 @@ var (
 	ErrNotFound = errors.New("record not found")
 )
 
-type All struct {
+type BlockAndTx struct {
 	BlockID      BlockID       `json:"block_id,omitempty"`
 	Block        Block         `json:"block"`
 	Transactions []Transaction `json:"transactions"`
@@ -119,9 +119,6 @@ type Transaction struct {
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// Updated at
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
-
-	// Network name
-	Network string `json:"network,omitempty"`
 
 	// Hash of the transaction
 	Hash string `json:"hash,omitempty"`

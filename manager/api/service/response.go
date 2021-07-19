@@ -11,10 +11,11 @@ import (
 
 	"github.com/figment-networks/graph-demo/graphcall"
 	"github.com/figment-networks/graph-demo/runner/api/structs"
+
 	"github.com/google/uuid"
 )
 
-func MapBlocksToResponse(queries []graphcall.Query, blocksResp QueriesResp) ([]byte, error) {
+func MapBlocksToResponse(queries []graphcall.Query, blocksResp structs.QueriesResp) ([]byte, error) {
 	var resp mapSlice
 	var err error
 

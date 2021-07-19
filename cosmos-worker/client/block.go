@@ -2,9 +2,12 @@ package client
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"sync"
 
 	"github.com/figment-networks/graph-demo/manager/structs"
+	"github.com/stretchr/testify/require"
 
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -28,13 +31,13 @@ type BlockErrorPair struct {
 }
 
 // GetBlock fetches most recent block from chain
-func (c *Client) GetBlock(ctx context.Context, height uint64) (block structs.Block, blockID structs.BlockID, er error) {
+func (c *Client) GetBlock(ctx context.Context, height uint64) (block structs.Block, txs []structs.Transaction, er error) {
 	c.log.Debug("[COSMOS-WORKER] Getting block", zap.Uint64("height", height))
 
 	b, err := c.tmServiceClient.GetBlockByHeight(ctx, &tmservice.GetBlockByHeightRequest{Height: int64(height)}, grpc.WaitForReady(true))
 	if err != nil {
 		c.log.Debug("[COSMOS-CLIENT] Error while getting block by height", zap.Uint64("height", height), zap.Error(err), zap.Int("txs", len(b.Block.Data.Txs)))
-		return block, blockID, err
+		return block, nil, err
 	}
 
 	bhash := bytes.HexBytes(b.BlockId.Hash)
@@ -75,9 +78,29 @@ func (c *Client) GetBlock(ctx context.Context, height uint64) (block structs.Blo
 		},
 	}
 
-	blockID = structs.BlockID{
-		Hash: b.BlockId.Hash,
+	txs = make([]structs.Transaction, 0)
+
+	for _, tx := range b.Block.Data.GetTxs() {
+
+		// tx
+		cdc := MakeCodec() // This needs to have every single module codec registered!!!
+		txStr := "ygHwYl3uCkSoo2GaChQxrczb/flZmTC8mDh3uKwKyZCnpRIUHKZpC3Ql+uFfYxDL3cCs3/DCKaMaEgoFdWF0b20SCTg3ODMzNjAwMBISCgwKBXVhdG9tEgM3NTAQwJoMGmoKJuta6YchAyB84hKBjN2wsmdC2eF1Ppz6l3VxlfSKJpYsTaL4VrrEEkDZtTnvilzE4n+7B2N2oeHi7X9nAssjSU72VgMEwOE5wSHIpHCaVb6GobgZxN9Kv/zr1kWX14QspXwBcUdW05n0"
+
+		txBz, err := base64.StdEncoding.DecodeString(txStr)
+		require.NoError(t, err)
+
+		var tx auth.StdTx
+		require.NoError(t, cdc.UnmarshalBinaryLengthPrefixed(txBz, &tx))
+		require.NotNil(t, tx)
+
+		fmt.Println(tx)
+		c.rawToTransaction(ctx, tx, nil)
+
 	}
+
+	// blockID = structs.BlockID{
+	// 	Hash: b.BlockId.Hash,
+	// }
 
 	c.log.Debug("[COSMOS-WORKER] Got block", zap.Uint64("height", height))
 	return block, blockID, nil

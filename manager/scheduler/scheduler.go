@@ -46,13 +46,13 @@ func (s *Scheduler) Start(ctx context.Context, height uint64) {
 
 func (s *Scheduler) fetchAndSaveBlockInDatbase() {
 
-	all, err := s.client.GetByHeight(s.ctx, s.height)
+	bTx, err := s.client.GetByHeight(s.ctx, s.height)
 	if err != nil {
 		s.log.Error("[CRON] Error while getting block", zap.Uint64("height", s.height), zap.Error(err))
 		return
 	}
 
-	if err := s.store.StoreBlock(s.ctx, all.Block); err != nil {
+	if err := s.store.StoreBlock(s.ctx, bTx.Block); err != nil {
 		s.log.Error("[CRON] Error while saving block in database", zap.Uint64("height", s.height), zap.Error(err))
 		return
 	}

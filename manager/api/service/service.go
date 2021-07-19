@@ -10,12 +10,11 @@ import (
 	"net/http"
 
 	"github.com/figment-networks/graph-demo/graphcall"
+	aStructs "github.com/figment-networks/graph-demo/manager/api/structs"
 	"github.com/figment-networks/graph-demo/manager/client"
 	"github.com/figment-networks/graph-demo/manager/store"
 	"github.com/figment-networks/graph-demo/manager/structs"
 )
-
-const NETWORK = "cosmos"
 
 type Service struct {
 	clients map[string]client.Client
@@ -29,54 +28,31 @@ func New(store store.Store, clients map[string]client.Client) *Service {
 	}
 }
 
-func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string) (structs.All, error) {
+func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string) (structs.BlockAndTx, error) {
 	cli, ok := s.clients[chainID]
 	if !ok {
-		return structs.All{}, errors.New("Unknown chain id")
+		return structs.BlockAndTx{}, errors.New("Unknown chain id")
 	}
 
-	block, err := s.store.GetBlockByHeight(ctx, height, chainID, NETWORK)
+	block, err := s.store.GetBlockByHeight(ctx, height, chainID)
 	if err != nil && err == sql.ErrNoRows {
 		return cli.GetByHeight(ctx, height)
 	} else {
-		return structs.All{}, err
+		return structs.BlockAndTx{}, err
 	}
 
-	if block.NumberOfTransactions == 0 {
-		return structs.All{}, nil
-	}
+	// if block.NumberOfTransactions == 0 {
+	// 	return structs.All{}, nil
+	// }
 
-	txs, err := s.store.GetTransactions(ctx, height, chainID, NETWORK)
-	if err != nil {
-		return structs.All{}, err
-	}
+	// txs, err := s.store.GetTransactions(ctx, height, chainID)
+	// if err != nil {
+	// 	return structs.All{}, err
+	// }
 
-	return block, txs, nil
+	return structs.BlockAndTx{}, nil
 
 }
-
-var (
-	blockParams map[string]struct{} = map[string]struct{}{
-		"height":      {},
-		"startHeight": {},
-		"endHeight":   {},
-	}
-
-	blockFields map[string]struct{} = map[string]struct{}{
-		"height": {},
-		"hash":   {},
-		"time":   {},
-		"txs":    {},
-	}
-
-	txsFields map[string]struct{} = map[string]struct{}{
-		"height":    {},
-		"hash":      {},
-		"time":      {},
-		"sender":    {},
-		"recipient": {},
-	}
-)
 
 func (s *Service) ProcessGraphqlQuery(ctx context.Context, v map[string]interface{}, q string) ([]byte, error) {
 	queries, err := graphcall.ParseQuery(q, v)
@@ -97,8 +73,8 @@ func (s *Service) ProcessGraphqlQuery(ctx context.Context, v map[string]interfac
 	return rawResp, nil
 }
 
-func (s *Service) getBlocks(ctx context.Context, query *graphcall.GraphQuery) (rStructs.QueriesResp, error) {
-	qResp := make(map[string]map[uint64]rStructs.BlockAndTx)
+func (s *Service) getBlocks(ctx context.Context, query *graphcall.GraphQuery) (aStructs.QueriesResp, error) {
+	qResp := make(map[string]map[uint64]aStructs.BlockAndTx)
 
 	for _, q := range query.Queries {
 		resp, err := s.getBlocksByHeight(ctx, &q)
@@ -111,19 +87,19 @@ func (s *Service) getBlocks(ctx context.Context, query *graphcall.GraphQuery) (r
 	return qResp, nil
 }
 
-func (s *Service) getBlocksByHeight(ctx context.Context, q *graphcall.Query) (map[uint64]rStructs.BlockAndTx, error) {
+func (s *Service) getBlocksByHeight(ctx context.Context, q *graphcall.Query) (map[uint64]aStructs.BlockAndTx, error) {
 	heights, err := getHeightsToFetch(q.Params)
 	if err != nil {
 		return nil, err
 	}
 
-	blocks := make(map[uint64]rStructs.BlockAndTx)
+	blocks := make(map[uint64]aStructs.BlockAndTx)
 	for _, h := range heights {
 		b, txs, err := s.getBlockByHeight(ctx, h)
 		if err != nil {
 			return nil, err
 		}
-		blocks[h] = rStructs.BlockAndTx{
+		blocks[h] = aStructs.BlockAndTx{
 			Block: b,
 			Txs:   txs,
 		}
@@ -170,7 +146,7 @@ func getHeightsToFetch(params map[string]graphcall.Part) ([]uint64, error) {
 }
 
 func (s *Service) getBlockByHeight(ctx context.Context, height uint64) (structs.Block, []structs.Transaction, error) {
-	var getBlockResp wStructs.GetBlockResp
+	var getBlockResp aStructs.GetBlockResp
 
 	resp, err := http.Get(fmt.Sprintf("%s/getBlock/%d", s.url, height))
 	if err != nil {

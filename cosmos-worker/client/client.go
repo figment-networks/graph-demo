@@ -49,3 +49,17 @@ func New(logger *zap.Logger, cli *grpc.ClientConn, cfg *ClientConfig) *Client {
 		cfg:             cfg,
 	}
 }
+
+func MakeCodec() *codec.Codec {
+	var cdc = codec.New()
+	bank.RegisterCodec(cdc)
+	staking.RegisterCodec(cdc)
+	distr.RegisterCodec(cdc)
+	slashing.RegisterCodec(cdc)
+	gov.RegisterCodec(cdc)
+	auth.RegisterCodec(cdc)
+	crisis.RegisterCodec(cdc)
+	sdk.RegisterCodec(cdc)
+	codec.RegisterCrypto(cdc)
+	return cdc
+}

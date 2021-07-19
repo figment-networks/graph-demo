@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/figment-networks/graph-demo/cosmos-worker/api"
+	"github.com/figment-networks/graph-demo/cosmos-worker/client"
 	"github.com/figment-networks/graph-demo/manager/structs"
 )
 
@@ -17,19 +17,23 @@ type GetBlockResp struct {
 	Txs   []structs.Transaction `json:"txs"`
 }
 
-type Handler struct {
-	client *api.Client
+type GetLastResp struct {
+	LastHeight uint64 `json:"last_height"`
 }
 
-func NewHandler(c *api.Client) *Handler {
+type Handler struct {
+	client *client.Client
+}
+
+func NewHandler(c *client.Client) *Handler {
 	return &Handler{
 		client: c,
 	}
 }
 
 func (h *Handler) AttachToMux(mux *http.ServeMux) {
-	mux.HandleFunc("/getLast/", h.HandleGetHeight)
 	mux.HandleFunc("/getAll/", h.HandleGetAll)
+	mux.HandleFunc("/getLast/", h.HandleGetLast)
 }
 
 func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
@@ -43,17 +47,10 @@ func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	block, err := h.client.GetBlock(ctx, uint64(heightInt))
+	block, txs, err := h.client.GetBlock(ctx, uint64(heightInt))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Error while getting a block: %w", err)))
-		return
-	}
-
-	txs, err := h.client.SearchTx(ctx, block, uint64(heightInt), 100)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Error while getting transactions: %w", err)))
 		return
 	}
 
@@ -71,35 +68,19 @@ func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-func (h *Handler) HandleGetHeight(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleGetLast(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
-	heightStr := strings.Trim(r.URL.Path, "/getBlock/")
 
-	heightInt, err := strconv.Atoi(heightStr)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Error while parsing block height: %w", err)))
-		return
-	}
-
-	block, err := h.client. (ctx, uint64(heightInt))
+	block, err := h.client.GetLatest(ctx)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Error while getting a block: %w", err)))
 		return
 	}
 
-	txs, err := h.client.SearchTx(ctx, block, uint64(heightInt), 100)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Error while getting transactions: %w", err)))
-		return
-	}
-
-	resp, err := json.Marshal(GetBlockResp{
-		Block: block,
-		Txs:   txs,
+	resp, err := json.Marshal(GetLastResp{
+		LastHeight: block.Height,
 	})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
