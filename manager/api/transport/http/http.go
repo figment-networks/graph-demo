@@ -18,10 +18,10 @@ type JSONGraphQLRequest struct {
 
 type JSONGraphQLResponse struct {
 	Data   json.RawMessage `json:"data"`
-	Errors []errorMessage  `json:"errors,omitempty"`
+	Errors []ErrorMessage  `json:"errors,omitempty"`
 }
 
-type errorMessage struct {
+type ErrorMessage struct {
 	Message string `json:"message",omitempty`
 }
 

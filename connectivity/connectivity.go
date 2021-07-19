@@ -12,6 +12,7 @@ type Response interface {
 }
 
 type Request interface {
+	ConnID() string
 	Arguments() []json.RawMessage
 }
 

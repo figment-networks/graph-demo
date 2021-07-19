@@ -33,6 +33,6 @@ func (c *Conn) AttachToMux(ctx context.Context, mux *http.ServeMux) {
 
 		sess := NewSession(ctx, uConn, c.l, c.RH)
 		go sess.Recv()
-		go sess.Resp()
+		go sess.Send()
 	})
 }
