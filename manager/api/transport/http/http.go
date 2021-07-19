@@ -46,7 +46,7 @@ func (h *Handler) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	ct := r.Header.Get("Content-Type")
 	if ct != "" && !strings.Contains(ct, "json") {
 		w.WriteHeader(http.StatusNotAcceptable)
-		resp.Errors = []errorMessage{{Message: "wrong content type"}}
+		resp.Errors = []ErrorMessage{{Message: "wrong content type"}}
 		enc.Encode(resp)
 		return
 	}
@@ -61,7 +61,7 @@ func (h *Handler) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	response, err := h.service.ProcessGraphqlQuery(ctx, req.Variables, req.Query)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		resp.Errors = []errorMessage{{Message: err.Error()}}
+		resp.Errors = []ErrorMessage{{Message: err.Error()}}
 		enc.Encode(resp)
 		return
 	}
@@ -71,7 +71,7 @@ func (h *Handler) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	resp.Data = response
 	if err = enc.Encode(resp); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		resp.Errors = []errorMessage{{Message: fmt.Sprintf("Error while encoding response: %w", err)}}
+		resp.Errors = []ErrorMessage{{Message: fmt.Sprintf("Error while encoding response: %w", err)}}
 		enc.Encode(resp)
 		return
 	}
