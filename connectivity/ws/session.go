@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/figment-networks/graph-demo/connectivity"
 	"github.com/figment-networks/graph-demo/connectivity/jsonrpc"
+	"github.com/google/uuid"
 
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
@@ -22,6 +24,7 @@ const (
 
 // Session represents websocket connection during it's livetime
 type Session struct {
+	ID        string
 	c         *websocket.Conn
 	reg       connectivity.FunctionCallHandler
 	ctx       context.Context
@@ -29,19 +32,40 @@ type Session struct {
 	l         *zap.Logger
 
 	// Buffered channel of outbound messages.
-	send chan jsonrpc.Response
+	send     chan jsonrpc.Request
+	response chan jsonrpc.Response
+
+	routing     map[uint64]Waiting
+	routingLock sync.RWMutex
+}
+
+type Waiting struct {
 }
 
 func NewSession(ctx context.Context, c *websocket.Conn, l *zap.Logger, reg connectivity.FunctionCallHandler) *Session {
 	nCtx, cancel := context.WithCancel(ctx)
 	return &Session{
+		ID:        uuid.NewString(),
 		reg:       reg,
 		c:         c,
 		ctx:       nCtx,
 		ctxCancel: cancel,
 		l:         l,
-		send:      make(chan jsonrpc.Response, 10),
+		send:      make(chan jsonrpc.Request, 10),
+		response:  make(chan jsonrpc.Response, 10),
+
+		routing: make(map[uint64]Waiting),
 	}
+}
+
+func (s *Session) Send(req jsonrpc.Request) {
+	s.send <- req
+}
+
+func (s *Session) SendSync(req jsonrpc.Request) {
+
+	//s.routingLock[]
+	s.send <- req
 }
 
 func (s *Session) Recv() {
@@ -79,7 +103,7 @@ func (s *Session) Recv() {
 		}
 
 		if req.JSONRPC != "2.0" {
-			s.send <- jsonrpc.Response{JSONRPC: "2.0", Error: &jsonrpc.Error{Code: -32700, Message: "Parse error"}}
+			s.response <- jsonrpc.Response{JSONRPC: "2.0", Error: &jsonrpc.Error{Code: -32700, Message: "Parse error"}}
 		}
 
 		if req.Result != nil {
@@ -88,18 +112,17 @@ func (s *Session) Recv() {
 
 		h, ok := s.reg.Get(req.Method)
 		if !ok {
-			s.send <- jsonrpc.Response{ID: req.ID, JSONRPC: "2.0", Error: &jsonrpc.Error{Code: -32601, Message: "Method not found"}}
+			s.response <- jsonrpc.Response{ID: req.ID, JSONRPC: "2.0", Error: &jsonrpc.Error{Code: -32601, Message: "Method not found"}}
 		}
 
-		go h(s.ctx, &SessionRequest{args: req.Params}, &SessionResponse{
-			// ID:             req.ID,
-			// SessionContext: ctx,
-			RespCh: s.send,
+		go h(s.ctx, &SessionRequest{args: req.Params, connID: s.ID}, &SessionResponse{
+			SessionContext: s.ctx,
+			RespCh:         s.response,
 		})
 	}
 }
 
-func (s *Session) Resp() {
+func (s *Session) Req() {
 
 	tckr := time.NewTicker(pingTime)
 	defer tckr.Stop()
@@ -119,7 +142,33 @@ WSLOOP:
 			<-time.After(time.Second)
 
 			break WSLOOP
+
 		case message, ok := <-s.send:
+			if !ok {
+				s.l.Info("send is closed")
+				if s.c != nil {
+					s.c.WriteMessage(websocket.CloseMessage, []byte{})
+				}
+				return
+			}
+
+			buff.Reset()
+			if err := enc.Encode(message); err != nil {
+				s.l.Info("error in encode", zap.Error(err))
+				/*	req.RespCH <- Response{
+					ID:    originalID,
+					Type:  req.Method,
+					Error: fmt.Errorf("error encoding message: %w ", err),
+				}*/
+				continue WSLOOP
+			}
+
+			if err := s.c.WriteMessage(websocket.TextMessage, buff.Bytes()); err != nil {
+				s.l.Error("error sending data websocket ", zap.Error(err))
+				break WSLOOP
+			}
+
+		case message, ok := <-s.response:
 			if !ok {
 				s.l.Info("send is closed")
 				if s.c != nil {
@@ -167,6 +216,7 @@ type SessionResponse struct {
 }
 
 func (sR *SessionResponse) Send(io.ReadCloser, error) error {
+
 	return nil
 }
 
@@ -175,9 +225,14 @@ func (sR *SessionResponse) Write(p []byte) (n int, err error) {
 }
 
 type SessionRequest struct {
-	args []json.RawMessage
+	connID string
+	args   []json.RawMessage
 }
 
 func (sR *SessionRequest) Arguments() []json.RawMessage {
 	return sR.args
+}
+
+func (sR *SessionRequest) ConnID() string {
+	return sR.connID
 }
