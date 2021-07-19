@@ -8,8 +8,8 @@ import (
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/cmd/runner/config"
-	"github.com/figment-networks/graph-demo/runner/api/httpapi"
 	"github.com/figment-networks/graph-demo/runner/api/service"
+	transportHTTP "github.com/figment-networks/graph-demo/runner/api/transport/http"
 	"go.uber.org/zap"
 )
 
@@ -44,7 +44,7 @@ func main() {
 	cli := http.DefaultClient
 	svc := service.New(cli, cfg.ManagerURL)
 
-	handler := httpapi.New(svc)
+	handler := transportHTTP.New(svc)
 	handler.AttachMux(mux)
 
 	s := &http.Server{

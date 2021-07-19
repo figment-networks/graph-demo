@@ -1,8 +1,8 @@
-package http
+package structs
 
 import "github.com/figment-networks/graph-demo/manager/structs"
 
-type All struct {
+type BlockAndTx struct {
 	Block structs.Block
 	Txs   []structs.Transaction
 }

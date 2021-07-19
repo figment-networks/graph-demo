@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	wStructs "github.com/figment-networks/graph-demo/cosmos-worker/structs"
+	wStructs "github.com/figment-networks/graph-demo/cosmos-worker/api/structs"
 	"github.com/figment-networks/graph-demo/manager/structs"
 )
 
@@ -24,7 +24,7 @@ func New(hc *http.Client, url string) *Client {
 }
 
 func (c *Client) GetByHeight(ctx context.Context, height uint64) (structs.BlockAndTx, error) {
-	var getBlockResp wStructs.GetBlockResp
+	var bTx wStructs.BlockAndTx
 
 	resp, err := http.Get(fmt.Sprintf("%s/getBlock/%d", c.url, height))
 	if err != nil {
@@ -37,10 +37,13 @@ func (c *Client) GetByHeight(ctx context.Context, height uint64) (structs.BlockA
 		return structs.BlockAndTx{}, err
 	}
 
-	if err = json.Unmarshal(byteResp, &getBlockResp); err != nil {
+	if err = json.Unmarshal(byteResp, &bTx); err != nil {
 		return structs.BlockAndTx{}, err
 	}
 
-	return structs.BlockAndTx{getBlockResp.Block, getBlockResp.Txs}, nil
+	return structs.BlockAndTx{
+		Block:        bTx.Block,
+		Transactions: bTx.Txs,
+	}, nil
 
 }

@@ -12,7 +12,7 @@ import (
 )
 
 // var (
-// 	structs.partRegxp = regexp.MustCompile("\\s*([a-zA-Z0-9_-]+)\\s*(|\\(?[a-zA-Z0-9\\=\\,\\s\\.\\$\\_\\-\\:\"\\!]*\\))\\s*({?)\\n")
+// 	partRegxp = regexp.MustCompile("\\s*([a-zA-Z0-9_-]+)\\s*(|\\(?[a-zA-Z0-9\\=\\,\\s\\.\\$\\_\\-\\:\"\\!]*\\))\\s*({?)\\n")
 // 	params    = regexp.MustCompile("\\s*([a-zA-Z0-9_-]+)\\s*(|\\(?[a-zA-Z0-9\\=\\,\\s\\.\\$\\_\\-\\:\"\\!]*\\))\\s*({?)\\n")
 // )
 
@@ -31,9 +31,9 @@ func ParseQuery(query string, variables map[string]interface{}) (GraphQuery, err
 		return GraphQuery{}, fmt.Errorf("Error while parsing graphql query: %w", err)
 	}
 
-	q := structs.GraphQuery{}
+	q := GraphQuery{}
 
-	inputObjects := make(map[string]structs.Param)
+	inputObjects := make(map[string]Param)
 
 	for _, definition := range doc.Definitions {
 		kind := definition.GetKind()
@@ -43,10 +43,10 @@ func ParseQuery(query string, variables map[string]interface{}) (GraphQuery, err
 
 			objValue, err := parseInputObjectValue(inputObjects, iod.Fields)
 			if err != nil {
-				return structs.GraphQuery{}, err
+				return GraphQuery{}, err
 			}
 
-			inputObjects[iod.Name.Value] = structs.Param{
+			inputObjects[iod.Name.Value] = Param{
 				Type:     "object",
 				Variable: iod.Name.Value,
 				Value:    objValue,
@@ -56,19 +56,19 @@ func ParseQuery(query string, variables map[string]interface{}) (GraphQuery, err
 			od := definition.(*ast.OperationDefinition)
 
 			if err = parseOperationDefinition(&q, od, inputObjects, variables); err != nil {
-				return structs.GraphQuery{}, err
+				return GraphQuery{}, err
 			}
 
 		default:
-			return structs.GraphQuery{}, errors.New("unknown graph definition")
+			return GraphQuery{}, errors.New("unknown graph definition")
 		}
 	}
 
 	return q, nil
 }
 
-func parseInputObjectValue(inputObjects map[string]structs.Param, fields []*ast.InputValueDefinition) (objFields map[string]structs.Param, err error) {
-	objFields = make(map[string]structs.Param)
+func parseInputObjectValue(inputObjects map[string]Param, fields []*ast.InputValueDefinition) (objFields map[string]Param, err error) {
+	objFields = make(map[string]Param)
 	for _, f := range fields {
 		field := f.Name.Value
 
@@ -79,20 +79,20 @@ func parseInputObjectValue(inputObjects map[string]structs.Param, fields []*ast.
 	return objFields, nil
 }
 
-func newParam(inputObjects map[string]structs.Param, variableType ast.Type, value interface{}, field string) (p structs.Param, err error) {
+func newParam(inputObjects map[string]Param, variableType ast.Type, value interface{}, field string) (p Param, err error) {
 	p.Field = field
 
 	p.Type, err = getType(variableType)
 	if err != nil {
-		return structs.Param{}, err
+		return Param{}, err
 	}
 
 	if p.Variable, err = getVariable(inputObjects, value, p.Type); err != nil {
-		return structs.Param{}, err
+		return Param{}, err
 	}
 
 	if p.Value, err = getValue(inputObjects, value, field, p.Type); err != nil {
-		return structs.Param{}, err
+		return Param{}, err
 	}
 
 	return
@@ -122,7 +122,7 @@ func getType(t ast.Type) (string, error) {
 	}
 }
 
-func getVariable(inputParams map[string]structs.Param, v interface{}, variableType string) (variableStr string, err error) {
+func getVariable(inputParams map[string]Param, v interface{}, variableType string) (variableStr string, err error) {
 	switch variableType {
 	case "Int":
 		variableStr = "uint64"
@@ -146,7 +146,7 @@ func getVariable(inputParams map[string]structs.Param, v interface{}, variableTy
 	return
 }
 
-func getValue(inputParams map[string]structs.Param, v interface{}, field, variableType string) (value interface{}, err error) {
+func getValue(inputParams map[string]Param, v interface{}, field, variableType string) (value interface{}, err error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -192,7 +192,7 @@ func getValue(inputParams map[string]structs.Param, v interface{}, field, variab
 		}
 		param.Field = field
 
-		for key, par := range param.Value.(map[string]structs.Param) {
+		for key, par := range param.Value.(map[string]Param) {
 			parValue, ok := v.(map[string]interface{})[key]
 			if !ok {
 				return nil, fmt.Errorf("Missing input variable %q", key)
@@ -203,7 +203,7 @@ func getValue(inputParams map[string]structs.Param, v interface{}, field, variab
 				return nil, err
 			}
 
-			param.Value.(map[string]structs.Param)[key] = par
+			param.Value.(map[string]Param)[key] = par
 		}
 
 		return param.Value, nil
@@ -211,7 +211,7 @@ func getValue(inputParams map[string]structs.Param, v interface{}, field, variab
 	}
 }
 
-func parseOperationDefinition(q *structs.GraphQuery, od *ast.OperationDefinition, inputObjects map[string]structs.Param, variables map[string]interface{}) error {
+func parseOperationDefinition(q *GraphQuery, od *ast.OperationDefinition, inputObjects map[string]Param, variables map[string]interface{}) error {
 	if od.Operation != "query" {
 		return errors.New("Expected query operation")
 	}
@@ -229,7 +229,7 @@ func parseOperationDefinition(q *structs.GraphQuery, od *ast.OperationDefinition
 	// queries
 	selections := od.SelectionSet.Selections
 
-	q.Queries = make([]structs.Query, len(selections))
+	q.Queries = make([]Query, len(selections))
 	for i, selection := range selections {
 		queryField := ast.NewField(selection.(*ast.Field))
 		q.Queries[i].Name = queryField.Name.Value
@@ -248,8 +248,8 @@ func parseOperationDefinition(q *structs.GraphQuery, od *ast.OperationDefinition
 	return nil
 }
 
-func queryQParams(q *structs.GraphQuery, inputObjects map[string]structs.Param, variableDefinitions []*ast.VariableDefinition, variables map[string]interface{}) error {
-	params := make(map[string]structs.Param)
+func queryQParams(q *GraphQuery, inputObjects map[string]Param, variableDefinitions []*ast.VariableDefinition, variables map[string]interface{}) error {
+	params := make(map[string]Param)
 
 	for _, vd := range variableDefinitions {
 		field := vd.Variable.Name.Value
@@ -272,9 +272,9 @@ func queryQParams(q *structs.GraphQuery, inputObjects map[string]structs.Param, 
 	return nil
 }
 
-func queryParams(q *structs.GraphQuery, arguments []*ast.Argument, i int) (err error) {
+func queryParams(q *GraphQuery, arguments []*ast.Argument, i int) (err error) {
 	for _, arg := range arguments {
-		params := make(map[string]structs.Part)
+		params := make(map[string]Part)
 		var varValue interface{}
 		argName := arg.Name.Value
 
@@ -300,9 +300,9 @@ func queryParams(q *structs.GraphQuery, arguments []*ast.Argument, i int) (err e
 			variable.Value = varValue
 		}
 
-		params[argName] = structs.Part{
+		params[argName] = Part{
 			Name:   argName,
-			Params: map[string]structs.Param{nameStr: variable},
+			Params: map[string]Param{nameStr: variable},
 		}
 
 		q.Queries[i].Params = params
@@ -311,11 +311,11 @@ func queryParams(q *structs.GraphQuery, arguments []*ast.Argument, i int) (err e
 	return nil
 }
 
-func queryFields(selections []ast.Selection) map[string]structs.Field {
-	fields := make(map[string]structs.Field)
+func queryFields(selections []ast.Selection) map[string]Field {
+	fields := make(map[string]Field)
 
 	for i, s := range selections {
-		var f structs.Field
+		var f Field
 		field := ast.NewField(s.(*ast.Field))
 		f.Name = field.Name.Value
 		f.Order = i

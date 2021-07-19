@@ -21,7 +21,7 @@ func New(store store.Store) *Service {
 }
 
 func (s *Service) GetBlockByHeight(ctx context.Context, height uint64, chainID string) (structs.Block, []structs.Transaction, error) {
-	block, err := s.store.GetBlockByHeight(ctx, height, chainID, NETWORK)
+	block, err := s.store.GetBlockByHeight(ctx, height, chainID)
 	if err != nil && err == sql.ErrNoRows {
 		return structs.Block{}, nil, err
 	}
@@ -30,7 +30,7 @@ func (s *Service) GetBlockByHeight(ctx context.Context, height uint64, chainID s
 		return block, nil, nil
 	}
 
-	txs, err := s.store.GetTransactions(ctx, height, chainID, NETWORK)
+	txs, err := s.store.GetTransactionsByHeight(ctx, height, chainID)
 	if err != nil {
 		return structs.Block{}, nil, err
 	}

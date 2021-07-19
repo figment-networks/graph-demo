@@ -29,6 +29,8 @@ type Block struct {
 	Time time.Time `json:"time,omitempty"`
 	// ChainID
 	ChainID string `json:"chain_id,omitempty"`
+	// Number of transactions
+	NumberOfTransactions uint64 `json:"tx_num,omitempty"`
 
 	Header     BlockHeader       `json:"header"`
 	Data       BlockData         `json:"data"`

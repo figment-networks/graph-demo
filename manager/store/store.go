@@ -16,9 +16,9 @@ var (
 type StoreIface interface {
 	Close() error
 
-	StoreBlock(ctx context.Context, bl structs.BlockAndTx) error
+	StoreBlock(ctx context.Context, bl structs.Block) error
 	StoreTransactions(ctx context.Context, txs []structs.Transaction) error
-	GetBlockByHeight(ctx context.Context, height uint64, chainID, network string) (structs.BlockAndTx, error)
+	GetBlockByHeight(ctx context.Context, height uint64, chainID string) (structs.Block, error)
 	GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) ([]structs.Transaction, error)
 }
 
@@ -26,7 +26,7 @@ type Store struct {
 	driver postgres.Driver
 }
 
-func New(d postgres.Driver) *Store {
+func New(d postgres.Driver) StoreIface {
 	return &Store{
 		driver: d,
 	}

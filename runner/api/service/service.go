@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/figment-networks/graph-demo/runner/api/mapper"
+	"github.com/figment-networks/graph-demo/graphcall"
 )
 
 type Service struct {
@@ -21,7 +21,7 @@ func New(cli *http.Client, url string) *Service {
 }
 
 func (s *Service) ProcessGraphqlQuery(ctx context.Context, v map[string]interface{}, q string) ([]byte, error) {
-	queries, err := mapper.ParseQuery(q, v)
+	queries, err := graphcall.ParseQuery(q, v)
 	if err != nil {
 		return nil, fmt.Errorf("Error while parsing graphql query: %w", err)
 	}

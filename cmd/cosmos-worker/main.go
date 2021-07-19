@@ -13,8 +13,8 @@ import (
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/cmd/cosmos-worker/config"
-	handler "github.com/figment-networks/graph-demo/cosmos-worker"
-	"github.com/figment-networks/graph-demo/cosmos-worker/api"
+	transportHTTP "github.com/figment-networks/graph-demo/cosmos-worker/api/transport/http"
+	"github.com/figment-networks/graph-demo/cosmos-worker/client"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -75,7 +75,7 @@ func main() {
 	}
 	defer grpcConn.Close()
 
-	apiClient := api.New(logger.GetLogger(), grpcConn, &api.ClientConfig{
+	apiClient := client.New(logger.GetLogger(), grpcConn, &client.ClientConfig{
 		ReqPerSecond:        int(cfg.RequestsPerSecond),
 		TimeoutBlockCall:    cfg.TimeoutBlockCall,
 		TimeoutSearchTxCall: cfg.TimeoutTransactionCall,
@@ -83,7 +83,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	httpHandler := handler.New(apiClient)
+	httpHandler := transportHTTP.NewHandler(apiClient)
 	httpHandler.AttachToMux(mux)
 
 	s := &http.Server{

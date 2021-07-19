@@ -57,9 +57,9 @@ func (s *Scheduler) fetchAndSaveBlockInDatbase() {
 		return
 	}
 
-	if all.Block.NumberOfTransactions > 0 {
-		if err := s.store.StoreTransactions(s.ctx, all.Transactions); err != nil {
-			s.log.Error("[CRON] Error while saving transactions in database", zap.Uint64("height", s.height), zap.Uint64("txs", all.Block.NumberOfTransactions), zap.Error(err))
+	if bTx.Block.NumberOfTransactions > 0 {
+		if err := s.store.StoreTransactions(s.ctx, bTx.Transactions); err != nil {
+			s.log.Error("[CRON] Error while saving transactions in database", zap.Uint64("height", s.height), zap.Uint64("txs", bTx.Block.NumberOfTransactions), zap.Error(err))
 			return
 		}
 	}

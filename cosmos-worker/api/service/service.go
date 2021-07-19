@@ -3,34 +3,40 @@ package service
 import (
 	"context"
 
-	"github.com/figment-networks/graph-demo/cosmos-worker/api"
-	"github.com/figment-networks/graph-demo/cosmos-worker/structs"
+	"github.com/figment-networks/graph-demo/cosmos-worker/api/structs"
+	"github.com/figment-networks/graph-demo/cosmos-worker/client"
 )
 
-type ServiceClient interface {
-	GetBlock(ctx context.Context, height uint64) (block structs.Block, er error)
-}
-
 type Service struct {
-	client ServiceClient
+	client client.GRPC
 }
 
-func NewService(c *api.Client) *Service {
+func NewService(c *client.Client) *Service {
 	return &Service{
 		client: c,
 	}
 }
 
-func (s *Service) GetAll(ctx context.Context, heightInt uint64) (*structs.All, error) {
-	block, err := s.client.GetBlock(ctx, uint64(heightInt))
+func (s *Service) GetBlockAndTransactionsByHeight(ctx context.Context, height uint64) (*structs.BlockAndTx, error) {
+	blockAndTx, err := s.client.GetBlock(ctx, height)
 	if err != nil {
 		return nil, err
 	}
 
-	txs, err := s.client.SearchTx(ctx, block, uint64(heightInt), 100)
-	return &structs.All{block, txs}, nil
+	return &structs.BlockAndTx{
+		Block: blockAndTx.Block,
+		Txs:   blockAndTx.Transactions,
+	}, nil
 }
 
-func (s *Service) GetLatest(ctx context.Context) (*structs.Latest, error) {
-	return s.client.GetLatest(ctx)
+func (s *Service) GetLatest(ctx context.Context) (*structs.BlockAndTx, error) {
+	latestBlockAndTx, err := s.client.GetLatest(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &structs.BlockAndTx{
+		Block: latestBlockAndTx.Block,
+		Txs:   latestBlockAndTx.Transactions,
+	}, nil
 }
