@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/figment-networks/graph-demo/connectivity"
@@ -37,13 +38,21 @@ type Session struct {
 
 	routing     map[uint64]Waiting
 	routingLock sync.RWMutex
+	newID       *uint64
 }
 
 type Waiting struct {
+	returnCh chan jsonrpc.Response
+}
+
+func NewWaiting() *Waiting {
+	return &Waiting{returnCh: make(chan jsonrpc.Response, 1)}
 }
 
 func NewSession(ctx context.Context, c *websocket.Conn, l *zap.Logger, reg connectivity.FunctionCallHandler) *Session {
 	nCtx, cancel := context.WithCancel(ctx)
+
+	firstCall := uint64(0)
 	return &Session{
 		ID:        uuid.NewString(),
 		reg:       reg,
@@ -53,8 +62,8 @@ func NewSession(ctx context.Context, c *websocket.Conn, l *zap.Logger, reg conne
 		l:         l,
 		send:      make(chan jsonrpc.Request, 10),
 		response:  make(chan jsonrpc.Response, 10),
-
-		routing: make(map[uint64]Waiting),
+		newID:     &firstCall,
+		routing:   make(map[uint64]Waiting),
 	}
 }
 
@@ -62,10 +71,19 @@ func (s *Session) Send(req jsonrpc.Request) {
 	s.send <- req
 }
 
-func (s *Session) SendSync(req jsonrpc.Request) {
+func (s *Session) SendSync(method string, params []json.RawMessage) (jsonrpc.Response, error) {
 
-	//s.routingLock[]
-	s.send <- req
+	w := NewWaiting()
+	defer close(w.returnCh)
+
+	s.send <- jsonrpc.Request{
+		ID:      atomic.AddUint64(s.newID, 1),
+		JSONRPC: "2.0",
+		Method:  method,
+		Params:  params,
+	}
+
+	return <-w.returnCh, nil
 }
 
 func (s *Session) Recv() {
@@ -106,8 +124,18 @@ func (s *Session) Recv() {
 			s.response <- jsonrpc.Response{JSONRPC: "2.0", Error: &jsonrpc.Error{Code: -32700, Message: "Parse error"}}
 		}
 
-		if req.Result != nil {
-			// TODO(lukanus): pass back response
+		if req.Result != nil || req.Error != nil {
+			s.routingLock.RLock()
+			waitO, ok := s.routing[req.ID]
+			s.routingLock.RUnlock()
+			if !ok {
+				s.l.Error("unexpected message", zap.Any("message", req))
+			}
+			waitO.returnCh <- jsonrpc.Response{ID: req.ID, JSONRPC: "2.0", Result: req.Result, Error: req.Error}
+			delete(s.routing, req.ID)
+			s.routingLock.RUnlock()
+
+			continue
 		}
 
 		h, ok := s.reg.Get(req.Method)

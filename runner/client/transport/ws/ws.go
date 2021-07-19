@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
-	"net/http"
 
 	"github.com/figment-networks/graph-demo/connectivity"
 	wsapi "github.com/figment-networks/graph-demo/connectivity/ws"
@@ -53,15 +51,8 @@ func (ng *NetworkGraphWSTransport) CallGQL(ctx context.Context, name string, que
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, ng.address, buff)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := ng.c.Do(req)
-	if err != nil {
-		return nil, err
-	}
+	resp, err := ng.sess.SendSync(name, []json.RawMessage{[]byte(query), buff.Bytes()})
+	buff.Reset()
 
-	respD, err := ioutil.ReadAll(resp.Body)
-	return respD, err
+	return resp.Result, err
 }
