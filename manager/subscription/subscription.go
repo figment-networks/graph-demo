@@ -76,7 +76,7 @@ type SubscriptionInstance struct {
 }
 
 func (si *SubscriptionInstance) Send(jsonrpc.Response) error {
-
+	return nil
 }
 
 func (si *SubscriptionInstance) ID() string {
