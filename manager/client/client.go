@@ -23,24 +23,24 @@ func New(hc *http.Client, url string) *Client {
 	}
 }
 
-func (c *Client) GetByHeight(ctx context.Context, height uint64) (structs.All, error) {
+func (c *Client) GetByHeight(ctx context.Context, height uint64) (structs.BlockAndTx, error) {
 	var getBlockResp wStructs.GetBlockResp
 
 	resp, err := http.Get(fmt.Sprintf("%s/getBlock/%d", c.url, height))
 	if err != nil {
-		return structs.Block{}, nil, err
+		return structs.BlockAndTx{}, err
 	}
 	defer resp.Body.Close()
 
 	byteResp, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return structs.Block{}, nil, err
+		return structs.BlockAndTx{}, err
 	}
 
 	if err = json.Unmarshal(byteResp, &getBlockResp); err != nil {
-		return structs.Block{}, nil, err
+		return structs.BlockAndTx{}, err
 	}
 
-	return All{getBlockResp.Block, getBlockResp.Txs}, nil
+	return structs.BlockAndTx{getBlockResp.Block, getBlockResp.Txs}, nil
 
 }

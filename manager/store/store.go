@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/figment-networks/graph-demo/manager/store/params"
 	"github.com/figment-networks/graph-demo/manager/store/postgres"
 	"github.com/figment-networks/graph-demo/manager/structs"
 )
@@ -17,10 +16,10 @@ var (
 type StoreIface interface {
 	Close() error
 
+	StoreBlock(ctx context.Context, bl structs.BlockAndTx) error
 	StoreTransactions(ctx context.Context, txs []structs.Transaction) error
-	StoreBlock(ctx context.Context, bl structs.Block) error
-	GetTransactions(ctx context.Context, tsearch params.TransactionSearch) ([]structs.Transaction, error)
-	GetBlockByHeight(ctx context.Context, height uint64, chainID, network string) (b structs.Block, err error)
+	GetBlockByHeight(ctx context.Context, height uint64, chainID, network string) (structs.BlockAndTx, error)
+	GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) ([]structs.Transaction, error)
 }
 
 type Store struct {
@@ -37,22 +36,18 @@ func (s *Store) Close() error {
 	return s.driver.Close()
 }
 
-func (s *Store) StoreTransactions(ctx context.Context, txs []structs.Transaction) error {
-	if len(txs) == 0 {
-		return ErrEmptyTransactionPassed
-	}
+func (s *Store) StoreBlock(ctx context.Context, b structs.Block) error {
+	return s.driver.StoreBlock(ctx, b)
+}
 
+func (s *Store) StoreTransactions(ctx context.Context, txs []structs.Transaction) error {
 	return s.driver.StoreTransactions(ctx, txs)
 }
 
-func (s *Store) StoreBlock(ctx context.Context, bl structs.Block) error {
-	return s.driver.StoreBlock(ctx, bl)
-}
-
-func (s *Store) GetTransactions(ctx context.Context, tsearch params.TransactionSearch) ([]structs.Transaction, error) {
-	return s.driver.GetTransactions(ctx, tsearch)
-}
-
-func (s *Store) GetBlockByHeight(ctx context.Context, height uint64, chainID string) (b structs.Block, err error) {
+func (s *Store) GetBlockByHeight(ctx context.Context, height uint64, chainID string) (structs.Block, error) {
 	return s.driver.GetBlockBytHeight(ctx, height, chainID)
+}
+
+func (s *Store) GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) ([]structs.Transaction, error) {
+	return s.driver.GetTransactions(ctx, height, chainID)
 }

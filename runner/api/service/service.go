@@ -8,29 +8,6 @@ import (
 	"github.com/figment-networks/graph-demo/runner/api/mapper"
 )
 
-var (
-	blockParams map[string]struct{} = map[string]struct{}{
-		"height":      {},
-		"startHeight": {},
-		"endHeight":   {},
-	}
-
-	blockFields map[string]struct{} = map[string]struct{}{
-		"height": {},
-		"hash":   {},
-		"time":   {},
-		"txs":    {},
-	}
-
-	txsFields map[string]struct{} = map[string]struct{}{
-		"height":    {},
-		"hash":      {},
-		"time":      {},
-		"sender":    {},
-		"recipient": {},
-	}
-)
-
 type Service struct {
 	url string
 	cli *http.Client
