@@ -11,14 +11,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	grpcTransport "github.com/figment-networks/graph-demo/manager/transport/grpc"
-	wsTransport "github.com/figment-networks/graph-demo/manager/transport/ws"
-	"github.com/figment-networks/indexer-manager/conn/ws"
-
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/cmd/manager/config"
 
-	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 )
@@ -57,24 +52,24 @@ func main() {
 	defer logger.Sync()
 
 	// Initialize manager
-	mID, _ := uuid.NewRandom()
+	// mID, _ := uuid.NewRandom()
 
 	mux := http.NewServeMux()
 
-	conn := ws.NewConn(logger.GetLogger())
-	stat.Handler(conn)
-	conn.AttachToMux(mux)
+	// conn := ws.NewConn(logger.GetLogger())
+	// stat.Handler(conn)
+	// conn.AttachToMux(mux)
 
 	// setup grpc transport
-	grpcCli := grpcTransport.NewClient(cfg.GrpcMaxRecvSize, cfg.GrpcMaxSendSize)
+	// grpcCli := grpcTransport.NewClient(cfg.GrpcMaxRecvSize, cfg.GrpcMaxSendSize)
 
-	WSTransport := wsTransport.NewConnector(grpcCli)
-	WSTransport.Handler(conn)
+	// WSTransport := wsTransport.NewConnector(grpcCli)
+	// WSTransport.Handler(conn)
 
 	//HTTPTransport := httpTransport.NewConnector(hClient)
 	//HTTPTransport.AttachToHandler(mux)
 
-	connManager.AttachToMux(mux)
+	// connManager.AttachToMux(mux)
 
 	s := &http.Server{
 		Addr:    cfg.Address,

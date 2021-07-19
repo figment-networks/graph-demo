@@ -11,17 +11,19 @@ import (
 
 	"github.com/figment-networks/graph-demo/graphcall"
 	"github.com/figment-networks/graph-demo/runner/api/structs"
+	rStructs "github.com/figment-networks/graph-demo/runner/api/structs"
 
 	"github.com/google/uuid"
 )
 
-func MapBlocksToResponse(queries []graphcall.Query, blocksResp structs.QueriesResp) ([]byte, error) {
+func mapBlocksToResponse(queries []graphcall.Query, qResp rStructs.QueriesResp) ([]byte, error) {
 	var resp mapSlice
 	var err error
 
 	resp = make([]mapItem, len(queries))
 	for _, query := range queries {
-		blocks, ok := blocksResp[query.Name]
+
+		blocks, ok := qResp[query.Name]
 		if !ok {
 			return nil, errors.New("Response is empty")
 		}

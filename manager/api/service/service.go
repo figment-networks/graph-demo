@@ -3,29 +3,35 @@ package service
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
+	"sync"
 
 	"github.com/figment-networks/graph-demo/graphcall"
-	aStructs "github.com/figment-networks/graph-demo/manager/api/structs"
 	"github.com/figment-networks/graph-demo/manager/client"
 	"github.com/figment-networks/graph-demo/manager/store"
 	"github.com/figment-networks/graph-demo/manager/structs"
+	rStructs "github.com/figment-networks/graph-demo/runner/api/structs"
 )
 
 type Service struct {
 	clients map[string]client.Client
 	store   store.Store
+
+	blocksByChainID map[string]map[uint64]rStructs.BlockAndTx
+	lock            sync.RWMutex
 }
 
 func New(store store.Store, clients map[string]client.Client) *Service {
 	return &Service{
-		clients: clients,
-		store:   store,
+		clients:         clients,
+		store:           store,
+		blocksByChainID: make(map[string]map[uint64]rStructs.BlockAndTx),
 	}
+}
+
+func (s *Service) Close() error {
+	return s.store.Close()
 }
 
 func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string) (structs.BlockAndTx, error) {
@@ -41,16 +47,19 @@ func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string
 		return structs.BlockAndTx{}, err
 	}
 
-	// if block.NumberOfTransactions == 0 {
-	// 	return structs.All{}, nil
-	// }
+	if block.NumberOfTransactions == 0 {
+		return structs.BlockAndTx{}, nil
+	}
 
-	// txs, err := s.store.GetTransactions(ctx, height, chainID)
-	// if err != nil {
-	// 	return structs.All{}, err
-	// }
+	txs, err := s.store.GetTransactionsByHeight(ctx, height, chainID)
+	if err != nil {
+		return structs.BlockAndTx{}, err
+	}
 
-	return structs.BlockAndTx{}, nil
+	return structs.BlockAndTx{
+		Block:        block,
+		Transactions: txs,
+	}, nil
 
 }
 
@@ -65,7 +74,7 @@ func (s *Service) ProcessGraphqlQuery(ctx context.Context, v map[string]interfac
 		return nil, fmt.Errorf("Error while fetching data: %w", err)
 	}
 
-	rawResp, err := graphcall.MapBlocksToResponse(queries.Queries, blocks)
+	rawResp, err := mapBlocksToResponse(queries.Queries, blocks)
 	if err != nil {
 		return nil, fmt.Errorf("Error while mapping response: %w", err)
 	}
@@ -73,42 +82,68 @@ func (s *Service) ProcessGraphqlQuery(ctx context.Context, v map[string]interfac
 	return rawResp, nil
 }
 
-func (s *Service) getBlocks(ctx context.Context, query *graphcall.GraphQuery) (aStructs.QueriesResp, error) {
-	qResp := make(map[string]map[uint64]aStructs.BlockAndTx)
+func (s *Service) getBlocks(ctx context.Context, query *graphcall.GraphQuery) (rStructs.QueriesResp, error) {
+	qResp := make(map[string]map[uint64]rStructs.BlockAndTx)
 
-	for _, q := range query.Queries {
-		resp, err := s.getBlocksByHeight(ctx, &q)
+	for _, query := range query.Queries {
+		resp, err := s.getQueryBlocksByHeights(ctx, query.Params)
 		if err != nil {
 			return nil, err
 		}
-		qResp[q.Name] = resp
-	}
 
+		qResp[query.Name] = resp
+	}
 	return qResp, nil
 }
 
-func (s *Service) getBlocksByHeight(ctx context.Context, q *graphcall.Query) (map[uint64]aStructs.BlockAndTx, error) {
-	heights, err := getHeightsToFetch(q.Params)
+func (s *Service) getBlockFromCache(chainID string, height uint64) (rStructs.BlockAndTx, bool) {
+	blocks, ok := s.blocksByChainID[chainID]
+	if !ok {
+		return rStructs.BlockAndTx{}, false
+	}
+
+	if r, ok := blocks[height]; ok {
+		return r, true
+	}
+
+	return rStructs.BlockAndTx{}, false
+}
+
+type blocksByChain map[string]map[uint64]rStructs.BlockAndTx
+
+func (s *Service) getQueryBlocksByHeights(ctx context.Context, params map[string]graphcall.Part) (resp map[uint64]rStructs.BlockAndTx, err error) {
+	chainID, heights, err := getHeightsToFetchByChain(params)
 	if err != nil {
 		return nil, err
 	}
 
-	blocks := make(map[uint64]aStructs.BlockAndTx)
+	cli, ok := s.clients[chainID]
+	if !ok {
+		return nil, errors.New("Unknown chain id")
+	}
+
+	resp = make(map[uint64]rStructs.BlockAndTx)
 	for _, h := range heights {
-		b, txs, err := s.getBlockByHeight(ctx, h)
+		if r, ok := s.getBlockFromCache(chainID, h); ok {
+			resp[h] = r
+			continue
+		}
+
+		bTx, err := cli.GetByHeight(ctx, h)
 		if err != nil {
 			return nil, err
 		}
-		blocks[h] = aStructs.BlockAndTx{
-			Block: b,
-			Txs:   txs,
+
+		resp[h] = rStructs.BlockAndTx{
+			Block: bTx.Block,
+			Txs:   bTx.Transactions,
 		}
 	}
 
-	return blocks, nil
+	return nil, err
 }
 
-func getHeightsToFetch(params map[string]graphcall.Part) ([]uint64, error) {
+func getHeightsToFetchByChain(params map[string]graphcall.Part) (chainID string, heights []uint64, err error) {
 	var i, startHeight, endHeight uint64
 	var isStart, isEnd bool
 
@@ -116,7 +151,7 @@ func getHeightsToFetch(params map[string]graphcall.Part) ([]uint64, error) {
 
 		val := v.Params[key].Value
 		if val == nil {
-			return nil, errors.New("Empty parameter value")
+			return "", nil, errors.New("Empty parameter value")
 		}
 
 		switch key {
@@ -126,42 +161,23 @@ func getHeightsToFetch(params map[string]graphcall.Part) ([]uint64, error) {
 		case "endHeight":
 			endHeight = val.(uint64)
 			isEnd = true
+		case "chain_id":
+			chainID = val.(string)
 		}
 	}
 
 	if !isStart && isEnd || !isStart && !isEnd || (isEnd && (endHeight < startHeight)) {
-		return nil, errors.New("Bad height parameters")
+		return "", nil, errors.New("Bad height parameters")
 	}
 
 	if !isEnd {
-		return []uint64{startHeight}, nil
+		return chainID, []uint64{startHeight}, nil
 	}
 
-	heights := make([]uint64, endHeight-startHeight+1)
+	heights = make([]uint64, endHeight-startHeight+1)
 	for i = 0; i < endHeight-startHeight+1; i++ {
-		heights[i] = i
+		heights[i] = startHeight + i
 	}
 
-	return heights, nil
-}
-
-func (s *Service) getBlockByHeight(ctx context.Context, height uint64) (structs.Block, []structs.Transaction, error) {
-	var getBlockResp aStructs.GetBlockResp
-
-	resp, err := http.Get(fmt.Sprintf("%s/getBlock/%d", s.url, height))
-	if err != nil {
-		return structs.Block{}, nil, err
-	}
-	defer resp.Body.Close()
-
-	byteResp, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return structs.Block{}, nil, err
-	}
-
-	if err = json.Unmarshal(byteResp, &getBlockResp); err != nil {
-		return structs.Block{}, nil, err
-	}
-
-	return getBlockResp.Block, getBlockResp.Txs, nil
+	return chainID, heights, nil
 }

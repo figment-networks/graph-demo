@@ -4,17 +4,18 @@ import (
 	"context"
 	"time"
 
+	"github.com/figment-networks/graph-demo/manager/structs"
+
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	"github.com/cosmos/cosmos-sdk/types/tx"
-	"github.com/figment-networks/graph-demo/manager/structs"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
 )
 
 type GRPC interface {
-	GetBlock(ctx context.Context, height uint64) (block structs.Block, er error)
-	SearchTx(ctx context.Context, block structs.Block, height, perPage uint64) (txs []structs.Transaction, err error)
+	GetBlock(ctx context.Context, height uint64) (block structs.BlockAndTx, er error)
+	GetLatest(ctx context.Context) (block structs.BlockAndTx, er error)
 }
 type ClientConfig struct {
 	ReqPerSecond        int
@@ -48,18 +49,4 @@ func New(logger *zap.Logger, cli *grpc.ClientConn, cfg *ClientConfig) *Client {
 		rateLimiterGRPC: rateLimiterGRPC,
 		cfg:             cfg,
 	}
-}
-
-func MakeCodec() *codec.Codec {
-	var cdc = codec.New()
-	bank.RegisterCodec(cdc)
-	staking.RegisterCodec(cdc)
-	distr.RegisterCodec(cdc)
-	slashing.RegisterCodec(cdc)
-	gov.RegisterCodec(cdc)
-	auth.RegisterCodec(cdc)
-	crisis.RegisterCodec(cdc)
-	sdk.RegisterCodec(cdc)
-	codec.RegisterCrypto(cdc)
-	return cdc
 }

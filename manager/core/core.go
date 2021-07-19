@@ -16,7 +16,7 @@ var schema, _ = graphql.NewSchema(
 )
 
 type ManagerClient interface {
-	GetByHeight(ctx context.Context, height uint64) (structs.All, error)
+	GetByHeight(ctx context.Context, height uint64) (structs.BlockAndTx, error)
 }
 
 type ProcessHandler struct {

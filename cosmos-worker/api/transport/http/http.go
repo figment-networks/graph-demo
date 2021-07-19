@@ -47,7 +47,7 @@ func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	block, txs, err := h.client.GetBlock(ctx, uint64(heightInt))
+	blockAndTx, err := h.client.GetBlock(ctx, uint64(heightInt))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Error while getting a block: %w", err)))
@@ -55,8 +55,8 @@ func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := json.Marshal(GetBlockResp{
-		Block: block,
-		Txs:   txs,
+		Block: blockAndTx.Block,
+		Txs:   blockAndTx.Transactions,
 	})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -72,15 +72,16 @@ func (h *Handler) HandleGetLast(w http.ResponseWriter, r *http.Request) {
 
 	ctx := context.Background()
 
-	block, err := h.client.GetLatest(ctx)
+	blockAndTx, err := h.client.GetLatest(ctx)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Error while getting a block: %w", err)))
 		return
 	}
 
-	resp, err := json.Marshal(GetLastResp{
-		LastHeight: block.Height,
+	resp, err := json.Marshal(GetBlockResp{
+		Block: blockAndTx.Block,
+		Txs:   blockAndTx.Transactions,
 	})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
