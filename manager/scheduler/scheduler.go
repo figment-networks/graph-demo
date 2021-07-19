@@ -6,14 +6,12 @@ import (
 
 	"github.com/figment-networks/graph-demo/manager/client"
 	"github.com/figment-networks/graph-demo/manager/store"
-	"github.com/robfig/cron"
 	"go.uber.org/zap"
 )
 
 type Scheduler struct {
 	height uint64
 	ctx    context.Context
-	cron   *cron.Cron
 	client client.Client
 	log    *zap.Logger
 	store  store.Store
