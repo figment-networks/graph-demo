@@ -56,3 +56,31 @@ func (ng *NetworkGraphWSTransport) CallGQL(ctx context.Context, name string, que
 
 	return resp.Result, err
 }
+
+func (ng *NetworkGraphWSTransport) Subscribe(ctx context.Context, events []string) error {
+	buff := new(bytes.Buffer)
+	defer buff.Reset()
+	enc := json.NewEncoder(buff)
+	if err := enc.Encode(events); err != nil {
+		return err
+	}
+
+	_, err := ng.sess.SendSync("subscribe", []json.RawMessage{buff.Bytes()})
+	buff.Reset()
+
+	return err
+}
+
+func (ng *NetworkGraphWSTransport) Unsubscribe(ctx context.Context, events []string) error {
+	buff := new(bytes.Buffer)
+	defer buff.Reset()
+	enc := json.NewEncoder(buff)
+	if err := enc.Encode(events); err != nil {
+		return err
+	}
+
+	_, err := ng.sess.SendSync("unsubscribe", []json.RawMessage{buff.Bytes()})
+	buff.Reset()
+
+	return err
+}
