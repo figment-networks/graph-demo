@@ -36,7 +36,7 @@ type Session struct {
 	send     chan jsonrpc.Request
 	response chan jsonrpc.Response
 
-	routing     map[uint64]Waiting
+	routing     map[uint64]*Waiting
 	routingLock sync.RWMutex
 	newID       *uint64
 }
@@ -63,7 +63,7 @@ func NewSession(ctx context.Context, c *websocket.Conn, l *zap.Logger, reg conne
 		send:      make(chan jsonrpc.Request, 10),
 		response:  make(chan jsonrpc.Response, 10),
 		newID:     &firstCall,
-		routing:   make(map[uint64]Waiting),
+		routing:   make(map[uint64]*Waiting),
 	}
 }
 
@@ -75,9 +75,14 @@ func (s *Session) SendSync(method string, params []json.RawMessage) (jsonrpc.Res
 
 	w := NewWaiting()
 	defer close(w.returnCh)
+	id := atomic.AddUint64(s.newID, 1)
+
+	s.routingLock.Lock()
+	s.routing[id] = w
+	s.routingLock.Unlock()
 
 	s.send <- jsonrpc.Request{
-		ID:      atomic.AddUint64(s.newID, 1),
+		ID:      id,
 		JSONRPC: "2.0",
 		Method:  method,
 		Params:  params,
@@ -183,11 +188,6 @@ WSLOOP:
 			buff.Reset()
 			if err := enc.Encode(message); err != nil {
 				s.l.Info("error in encode", zap.Error(err))
-				/*	req.RespCH <- Response{
-					ID:    originalID,
-					Type:  req.Method,
-					Error: fmt.Errorf("error encoding message: %w ", err),
-				}*/
 				continue WSLOOP
 			}
 
@@ -208,11 +208,6 @@ WSLOOP:
 			buff.Reset()
 			if err := enc.Encode(message); err != nil {
 				s.l.Info("error in encode", zap.Error(err))
-				/*	req.RespCH <- Response{
-					ID:    originalID,
-					Type:  req.Method,
-					Error: fmt.Errorf("error encoding message: %w ", err),
-				}*/
 				continue WSLOOP
 			}
 
