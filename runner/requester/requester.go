@@ -8,6 +8,9 @@ import (
 
 type Caller interface {
 	CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}, version string) ([]byte, error)
+
+	Subscribe(ctx context.Context, events []string) error
+	Unsubscribe(ctx context.Context, events []string) error
 }
 
 type Rqstr struct {
@@ -36,4 +39,26 @@ func (r *Rqstr) CallGQL(ctx context.Context, name string, query string, variable
 	}
 
 	return d.CallGQL(ctx, name, query, variables, version)
+}
+
+func (r *Rqstr) Subscribe(ctx context.Context, name string, events []string) error {
+	r.llock.RLock()
+	d, ok := r.list[name]
+	r.llock.RUnlock()
+	if !ok {
+		return errors.New("graph not found: " + name)
+	}
+
+	return d.Subscribe(ctx, events)
+}
+
+func (r *Rqstr) Unsubscribe(ctx context.Context, name string, events []string) error {
+	r.llock.RLock()
+	d, ok := r.list[name]
+	r.llock.RUnlock()
+	if !ok {
+		return errors.New("graph not found: " + name)
+	}
+
+	return d.Unsubscribe(ctx, events)
 }

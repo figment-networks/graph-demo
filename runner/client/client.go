@@ -21,10 +21,11 @@ type NetworkGraphClient struct {
 	l            *zap.Logger
 }
 
-func NewNetworkGraphClient(l *zap.Logger) *NetworkGraphClient {
+func NewNetworkGraphClient(l *zap.Logger, ec EventClient) *NetworkGraphClient {
 	ph := &NetworkGraphClient{
 		registry: make(map[string]connectivity.Handler),
 		l:        l,
+		ec:       ec,
 	}
 	ph.Add("event", ph.EventHandler)
 	return ph

@@ -44,7 +44,7 @@
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/runner",
             "env": {
-                "MANAGER_URL": "http://0.0.0.0:8088",
+                "MANAGER_URL": "ws://0.0.0.0:8088",
                 "HTTP_PORT": "8099"
             }
         }

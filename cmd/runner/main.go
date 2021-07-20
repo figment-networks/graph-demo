@@ -40,14 +40,15 @@ func init() {
 func main() {
 	logger.Init("console", "debug", []string{"stderr"})
 
+	// TODO(l): read from config
 	subgraph := struct {
 		name   string
 		path   string
 		schema string
 	}{
 		"simple-example",
-		"./runner/subgraphs/simple-example/generated/mapping.js",
-		"./runner/subgraphs/simple-example/schema.graphql",
+		"../../runner/subgraphs/simple-example/generated/mapping.js",
+		"../../runner/subgraphs/simple-example/schema.graphql",
 	}
 
 	// Initialize configuration
@@ -89,18 +90,19 @@ func main() {
 
 	// Init the javascript runtime
 	loader := jsRuntime.NewLoader(l, rqstr, sStore)
+
 	logger.Info(fmt.Sprintf("Loading subgraph js file %s", subgraph.path))
 	if err := loader.LoadJS(subgraph.name, subgraph.path); err != nil {
 		logger.Error(fmt.Errorf("Loader.LoadJS() error = %v", err))
 		return
 	}
 
-	ngc := runnerClient.NewNetworkGraphClient(l)
+	ngc := runnerClient.NewNetworkGraphClient(l, loader)
 
 	// Cosmos configuration
 	wst := clientWS.NewNetworkGraphWSTransport(l)
 	if err := wst.Connect(context.Background(), cfg.ManagerURL, ngc); err != nil {
-		l.Error("error conectiong to websocket", zap.Error(err))
+		l.Fatal("error conectiong to websocket", zap.Error(err))
 	}
 
 	rqstr.AddDestination("cosmos", wst)

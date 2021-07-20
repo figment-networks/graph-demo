@@ -70,15 +70,10 @@ func TestLoader_LoadJS(t *testing.T) {
 				t.Errorf("Loader.LoadJS() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			m := NewEvent{
-				Type: "block",
-				Data: map[string]interface{}{
-					"network": "testNetwork",
-					"height":  1234,
-				},
-			}
-
-			if err := l.NewEvent(m); err != nil {
+			if err := l.NewEvent("block", map[string]interface{}{
+				"network": "testNetwork",
+				"height":  1234,
+			}); err != nil {
 				t.Errorf("Loader.NewBlockEvent() error = %v", err)
 			}
 

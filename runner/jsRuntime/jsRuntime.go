@@ -19,6 +19,9 @@ import (
 
 type GQLCaller interface {
 	CallGQL(ctx context.Context, name, query string, variables map[string]interface{}, version string) ([]byte, error)
+
+	Subscribe(ctx context.Context, name string, events []string) error
+	Unsubscribe(ctx context.Context, name string, events []string) error
 }
 
 type callback func(info *v8go.FunctionCallbackInfo) *v8go.Value
@@ -77,6 +80,9 @@ func (l *Loader) LoadJS(name string, path string) error {
 		return err
 	}
 
+	// TODO(l): load it from subgraph.yaml
+	l.rqstr.Subscribe(context.Background(), "cosmos", []string{"newTransaction", "newBlock"})
+
 	return l.createRunable(name, b)
 }
 
@@ -109,6 +115,7 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	if err != nil {
 		return err
 	}
+
 	l.lock.Lock()
 	l.subgraphs[name] = subgr
 	l.lock.Unlock()

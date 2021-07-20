@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"log"
@@ -54,6 +55,8 @@ func NewProcessHandler(svc *service.Service) *ProcessHandler {
 		registry: make(map[string]connectivity.Handler),
 	}
 	ph.Add("query", ph.GraphQLRequest)
+	ph.Add("subscribe", ph.Subscribe)
+	ph.Add("unsubscribe", ph.Unsubscribe)
 	return ph
 }
 
@@ -72,8 +75,8 @@ func (ph *ProcessHandler) Get(name string) (h connectivity.Handler, ok bool) {
 }
 
 func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
-
-	enc := json.NewEncoder(resp)
+	b := new(bytes.Buffer)
+	enc := json.NewEncoder(b)
 	r := JSONGraphQLResponse{}
 
 	args := req.Arguments()
@@ -82,8 +85,7 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 			Message: "Missing query",
 		})
 		enc.Encode(r)
-		// TODO(lukanus): error
-
+		resp.Send(json.RawMessage(b.Bytes()), nil)
 		return
 	}
 
@@ -93,6 +95,7 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 			Message: "Error unmarshaling query " + err.Error(),
 		})
 		enc.Encode(r)
+		resp.Send(json.RawMessage(b.Bytes()), nil)
 		return
 	}
 
@@ -103,6 +106,7 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 				Message: "Error unmarshaling quevatiablesry " + err.Error(),
 			})
 			enc.Encode(r)
+			resp.Send(json.RawMessage(b.Bytes()), nil)
 			return
 		}
 	}
@@ -110,11 +114,13 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 	log.Println("ProcessGraphqlQuery", vars, query)
 	//	b, err := ph.service.ProcessGraphqlQuery(ctx, vars, query)
 
+	resp.Send(json.RawMessage(b.Bytes()), nil)
+
 }
 
 func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
-
-	enc := json.NewEncoder(resp)
+	b := new(bytes.Buffer)
+	enc := json.NewEncoder(b)
 	r := JSONGraphQLResponse{}
 
 	args := req.Arguments()
@@ -123,8 +129,7 @@ func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Reques
 			Message: "Missing subscription",
 		})
 		enc.Encode(r)
-		// TODO(lukanus): error
-
+		resp.Send(json.RawMessage(b.Bytes()), nil)
 		return
 	}
 
@@ -136,6 +141,7 @@ func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Reques
 		})
 		enc.Encode(r)
 		// TODO(lukanus): error
+		resp.Send(json.RawMessage(b.Bytes()), nil)
 
 		return
 	}
