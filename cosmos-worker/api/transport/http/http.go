@@ -38,19 +38,19 @@ func (h *Handler) AttachToMux(mux *http.ServeMux) {
 
 func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	heightStr := strings.Trim(r.URL.Path, "/getBlock/")
+	heightStr := strings.Trim(r.URL.Path, "/getAll/")
 
 	heightInt, err := strconv.Atoi(heightStr)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Error while parsing block height: %w", err)))
+		w.Write([]byte(fmt.Sprintf("Error while parsing block height: %s", err.Error())))
 		return
 	}
 
-	blockAndTx, err := h.client.GetBlock(ctx, uint64(heightInt))
+	blockAndTx, err := h.client.GetBlock(ctx, int64(heightInt))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Error while getting a block: %w", err)))
+		w.Write([]byte(fmt.Sprintf("Error while getting a block: %s", err.Error())))
 		return
 	}
 
@@ -60,7 +60,7 @@ func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Error while marshalling response: %w", err)))
+		w.Write([]byte(fmt.Sprintf("Error while marshalling response: %s", err.Error())))
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *Handler) HandleGetLast(w http.ResponseWriter, r *http.Request) {
 	blockAndTx, err := h.client.GetLatest(ctx)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Error while getting a block: %w", err)))
+		w.Write([]byte(fmt.Sprintf("Error while getting a block: %s", err.Error())))
 		return
 	}
 
@@ -85,7 +85,7 @@ func (h *Handler) HandleGetLast(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Error while marshalling response: %w", err)))
+		w.Write([]byte(fmt.Sprintf("Error while marshalling response: %s", err.Error())))
 		return
 	}
 
