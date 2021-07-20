@@ -7,7 +7,7 @@ import (
 )
 
 type Caller interface {
-	CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}) ([]byte, error)
+	CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}, version string) ([]byte, error)
 }
 
 type Rqstr struct {
@@ -15,7 +15,7 @@ type Rqstr struct {
 	llock sync.RWMutex
 }
 
-func NewRqstr(c Caller) *Rqstr {
+func NewRqstr() *Rqstr {
 	return &Rqstr{
 		list: make(map[string]Caller),
 	}
@@ -27,7 +27,7 @@ func (r *Rqstr) AddDestination(name string, dest Caller) {
 	r.llock.Unlock()
 }
 
-func (r *Rqstr) CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}) ([]byte, error) {
+func (r *Rqstr) CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}, version string) ([]byte, error) {
 	r.llock.RLock()
 	d, ok := r.list[name]
 	r.llock.RUnlock()
@@ -35,5 +35,5 @@ func (r *Rqstr) CallGQL(ctx context.Context, name string, query string, variable
 		return nil, errors.New("graph not found: " + name)
 	}
 
-	return d.CallGQL(ctx, name, query, variables)
+	return d.CallGQL(ctx, name, query, variables, version)
 }

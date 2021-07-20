@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/figment-networks/graph-demo/runner/store"
+	"go.uber.org/zap"
 
 	"rogchap.com/v8go"
 )
@@ -27,13 +28,15 @@ type Loader struct {
 	lock      sync.RWMutex
 	rqstr     GQLCaller
 	stor      store.Storage
+	log       *zap.Logger
 }
 
-func NewLoader(rqstr GQLCaller, stor store.Storage) *Loader {
+func NewLoader(l *zap.Logger, rqstr GQLCaller, stor store.Storage) *Loader {
 	return &Loader{
 		subgraphs: make(map[string]*Subgraph),
 		rqstr:     rqstr,
 		stor:      stor,
+		log:       l,
 	}
 }
 
@@ -54,19 +57,13 @@ func (l *Loader) CallSubgraphHandler(subgraph string, handler *SubgraphHandler) 
 	return err
 }
 
-type NewEvent struct {
-	Type string
-	Data map[string]interface{}
-}
-
-func (l *Loader) NewEvent(evt NewEvent) error {
-	log.Println(fmt.Printf("Event received %v \n", evt))
-
+func (l *Loader) NewEvent(typ string, data map[string]interface{}) error {
+	l.log.Debug("Event received ", zap.String("type", typ), zap.Any("data", data))
 	for name := range l.subgraphs {
 		if err := l.CallSubgraphHandler(name,
 			&SubgraphHandler{
-				name:   "handle" + strings.Title(evt.Type),
-				values: []interface{}{evt.Data},
+				name:   "handle" + strings.Title(typ),
+				values: []interface{}{data},
 			}); err != nil {
 			return err
 		}
@@ -183,8 +180,8 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
-	iso, _ := info.Context().Isolate()
-	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a)
+	//	iso, _ := info.Context().Isolate()
+	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a, args[2].String())
 	fmt.Println(string(resp))
 	if err != nil {
 		log.Println(fmt.Printf("callGQL error %v \n", err))

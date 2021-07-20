@@ -29,13 +29,14 @@ type NetworkGraphWSTransport struct {
 }
 
 func NewNetworkGraphWSTransport(l *zap.Logger) *NetworkGraphWSTransport {
-	return &NetworkGraphWSTransport{l: l}
+	ph := &NetworkGraphWSTransport{
+		l: l,
+	}
+	return ph
 }
 
 func (ng *NetworkGraphWSTransport) Connect(ctx context.Context, address string, RH connectivity.FunctionCallHandler) (err error) {
-
 	ng.c, _, err = websocket.DefaultDialer.DialContext(ctx, address, nil)
-
 	ng.sess = wsapi.NewSession(ctx, ng.c, ng.l, RH)
 	go ng.sess.Recv()
 	go ng.sess.Req()
@@ -43,7 +44,7 @@ func (ng *NetworkGraphWSTransport) Connect(ctx context.Context, address string, 
 	return err
 }
 
-func (ng *NetworkGraphWSTransport) CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}) ([]byte, error) {
+func (ng *NetworkGraphWSTransport) CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}, version string) ([]byte, error) {
 	buff := new(bytes.Buffer)
 	defer buff.Reset()
 	enc := json.NewEncoder(buff)
@@ -51,7 +52,7 @@ func (ng *NetworkGraphWSTransport) CallGQL(ctx context.Context, name string, que
 		return nil, err
 	}
 
-	resp, err := ng.sess.SendSync(name, []json.RawMessage{[]byte(query), buff.Bytes()})
+	resp, err := ng.sess.SendSync(name, []json.RawMessage{[]byte(query), buff.Bytes(), []byte(version)})
 	buff.Reset()
 
 	return resp.Result, err

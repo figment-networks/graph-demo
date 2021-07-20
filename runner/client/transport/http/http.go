@@ -31,7 +31,7 @@ func NewNetworkGraphHTTPTransport(address string, c *http.Client) *NetworkGraphH
 	}
 }
 
-func (ng *NetworkGraphHTTPTransport) CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}) ([]byte, error) {
+func (ng *NetworkGraphHTTPTransport) CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}, version string) ([]byte, error) {
 	buff := new(bytes.Buffer)
 	defer buff.Reset()
 	enc := json.NewEncoder(buff)

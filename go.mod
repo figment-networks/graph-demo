@@ -14,7 +14,6 @@ require (
 	github.com/lib/pq v1.10.2
 	github.com/onsi/ginkgo v1.15.0 // indirect
 	github.com/onsi/gomega v1.10.5 // indirect
-	github.com/robfig/cron v1.2.0
 	github.com/stretchr/testify v1.7.0
 	github.com/tendermint/go-amino v0.16.0
 	github.com/tendermint/tendermint v0.34.11

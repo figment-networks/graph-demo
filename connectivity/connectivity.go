@@ -3,12 +3,10 @@ package connectivity
 import (
 	"context"
 	"encoding/json"
-	"io"
 )
 
 type Response interface {
-	Send(io.ReadCloser, error) error
-	Write(p []byte) (n int, err error)
+	Send(result json.RawMessage, er error) error
 }
 
 type Request interface {

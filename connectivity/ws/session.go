@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -108,7 +107,6 @@ func (s *Session) Recv() {
 
 	readr := bytes.NewReader(nil)
 	dec := json.NewDecoder(readr)
-
 	for {
 		_, message, err := s.c.ReadMessage()
 		if err != nil {
@@ -149,6 +147,7 @@ func (s *Session) Recv() {
 		}
 
 		go h(s.ctx, &SessionRequest{args: req.Params, connID: s.ID}, &SessionResponse{
+			ID:             req.ID,
 			SessionContext: s.ctx,
 			RespCh:         s.response,
 		})
@@ -232,19 +231,26 @@ WSLOOP:
 }
 
 type SessionResponse struct {
-	ID string
+	ID uint64
 
 	SessionContext context.Context
 	RespCh         chan jsonrpc.Response
 }
 
-func (sR *SessionResponse) Send(io.ReadCloser, error) error {
+func (s *SessionResponse) Send(result json.RawMessage, er error) error {
 
+	resp := jsonrpc.Response{
+		ID:      s.ID,
+		JSONRPC: "2.0",
+		Result:  result,
+	}
+
+	if er != nil {
+		resp.Error = &jsonrpc.Error{Message: er.Error()}
+	}
+
+	s.RespCh <- resp
 	return nil
-}
-
-func (sR *SessionResponse) Write(p []byte) (n int, err error) {
-	return 0, nil
 }
 
 type SessionRequest struct {
