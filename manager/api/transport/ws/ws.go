@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log"
 	"sync"
 
 	"github.com/figment-networks/graph-demo/connectivity"
@@ -111,11 +110,8 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 		}
 	}
 
-	log.Println("ProcessGraphqlQuery", vars, query)
-	//	b, err := ph.service.ProcessGraphqlQuery(ctx, vars, query)
-
-	resp.Send(json.RawMessage(b.Bytes()), nil)
-
+	response, err := ph.service.ProcessGraphqlQuery(ctx, vars, query)
+	resp.Send(response, err)
 }
 
 func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
