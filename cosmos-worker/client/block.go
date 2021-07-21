@@ -3,8 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/figment-networks/graph-demo/cosmos-worker/client/mapper"
@@ -16,6 +14,8 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/log"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -49,64 +49,97 @@ func (c *Client) GetBlock(ctx context.Context, height int64) (blockAndTx structs
 
 	blockAndTx.Block = mapper.MapBlockResponseToStructs(b.Block, b.Block.Data, bHash)
 
-	txs := b.Block.Data.GetTxs()
-	blockAndTx.Transactions = make([]structs.Transaction, len(txs))
+	// txs := b.Block.Data.GetTxs()
+	// blockAndTx.Transactions = make([]structs.Transaction, len(txs))
 
-	for i, t := range txs {
-		decodedTx, err := c.txDecoder(t)
-		if err != nil {
-			return structs.BlockAndTx{}, err
-		}
+	// for i, rawTx := range txs {
+	// 	decodedTx, err := c.txDecoder(rawTx)
+	// 	if err != nil {
+	// 		return structs.BlockAndTx{}, err
+	// 	}
 
-		// newTx. = decodedTx.GetMsgs()
-		dt := decodedTx.(*wrapper).tx
+	// 	// newTx. = decodedTx.GetMsgs()
+	// 	dt := decodedTx.(*wrapper).tx
 
-		fmt.Println(dt)
+	// 	fmt.Println(dt)
 
-		body := dt.Body
+	// 	body := dt.Body
 
-		events := make([]structs.TransactionEvent, len(body.Messages))
-		for index, m := range body.Messages {
-			tev := structs.TransactionEvent{
-				ID: strconv.Itoa(index),
-			}
-			lg := findLog(resp.Logs, index)
+	// 	// (*dt).Hash()
 
-			// tPath is "/cosmos.bank.v1beta1.MsgSend" or "/ibc.core.client.v1.MsgCreateClient"
-			tPath := strings.Split(m.TypeUrl, ".")
+	// 	gasLimit := dt.AuthInfo.Fee.GasLimit
 
-			var err error
-			var msgType string
-			if len(tPath) == 5 && tPath[0] == "/ibc" {
-				msgType = tPath[4]
-				err = addIBCSubEvent(tPath[2], msgType, &tev, m, lg)
-			} else if len(tPath) == 4 && tPath[0] == "/cosmos" {
-				msgType = tPath[3]
-				err = addSubEvent(tPath[1], msgType, &tev, m, lg)
-			} else {
-				err = fmt.Errorf("TypeURL is in wrong format: %v", m.TypeUrl)
-			}
+	// 	dt.
 
-			if err != nil {
-				c.log.Error("[COSMOS-API] Problem decoding transaction ", zap.Error(err), zap.String("type", msgType), zap.String("route", m.TypeUrl), zap.Int64("height", resp.Height))
-				return structs.BlockAndTx{}, err
-			}
+	// 	// tHash := dt.Body.GetExtensionOptions()
 
-			events[index] = tev
-		}
+	// 	events := make([]structs.TransactionEvent, len(body.Messages))
+	// 	for index, m := range body.Messages {
+	// 		tev := structs.TransactionEvent{
+	// 			ID: strconv.Itoa(index),
+	// 		}
 
-		// body.Memo
-		blockAndTx.Transactions[i] = structs.Transaction{
-			// Hash:      dt.GetH,
-			BlockHash: bHash,
-			Height:    uint64(height),
-			ChainID:   c.chainID,
-			// Epoch: c.,
-			Time: b.Block.Header.Time,
-			Memo: body.Memo,
-		}
+	// 		res := coretypes.ResultTx
+	// 		types.NewResponseResultTx()
 
-	}
+	// 		ctx, traceCtx := c.getContextForTx(rawTx, b.Block.Header, height)
+
+	// 		// add block gas meter
+	// 		var gasMeter types.GasMeter
+	// 		if maxGas := gasLimit; maxGas > 0 {
+	// 			gasMeter = types.NewGasMeter(maxGas)
+	// 		} else {
+	// 			gasMeter = types.NewInfiniteGasMeter()
+	// 		}
+
+	// 		ctx.WithBlockHeader(b.Block.Header).
+	// 			WithBlockHeight(height).
+	// 			WithBlockGasMeter(gasMeter).
+	// 			WithHeaderHash()
+
+	// 		// lg := findLog(resp.Logs, index)
+	// 		result, err := c.getLogsFromMsg(ctx, m, index)
+	// 		if err != nil {
+	// 			return structs.BlockAndTx{}, err
+	// 		}
+
+	// 		lg := result.Log
+
+	// 		// tPath is "/cosmos.bank.v1beta1.MsgSend" or "/ibc.core.client.v1.MsgCreateClient"
+	// 		tPath := strings.Split(m.TypeUrl, ".")
+
+	// 		var err error
+	// 		var msgType string
+	// 		if len(tPath) == 5 && tPath[0] == "/ibc" {
+	// 			msgType = tPath[4]
+	// 			err = addIBCSubEvent(tPath[2], msgType, &tev, m, lg)
+	// 		} else if len(tPath) == 4 && tPath[0] == "/cosmos" {
+	// 			msgType = tPath[3]
+	// 			err = addSubEvent(tPath[1], msgType, &tev, m, lg)
+	// 		} else {
+	// 			err = fmt.Errorf("TypeURL is in wrong format: %v", m.TypeUrl)
+	// 		}
+
+	// 		if err != nil {
+	// 			c.log.Error("[COSMOS-API] Problem decoding transaction ", zap.Error(err), zap.String("type", msgType), zap.String("route", m.TypeUrl), zap.Int64("height", resp.Height))
+	// 			return structs.BlockAndTx{}, err
+	// 		}
+
+	// 		events[index] = tev
+	// 	}
+
+	// 	// body.Memo
+	// 	blockAndTx.Transactions[i] = structs.Transaction{
+	// 		// Hash:      dt.GetH,
+	// 		BlockHash: bHash,
+	// 		Height:    uint64(height),
+	// 		ChainID:   c.chainID,
+	// 		// Epoch: c.,
+	// 		Time: b.Block.Header.Time,
+	// 		Memo: body.Memo,
+	// 	}
+
+	// }
 
 	// blockID = structs.BlockID{
 	// 	Hash: b.BlockId.Hash,
@@ -116,67 +149,70 @@ func (c *Client) GetBlock(ctx context.Context, height int64) (blockAndTx structs
 	return blockAndTx, nil
 }
 
-func getLogsFromMsgs(ctx context.Context, msgs []*types.Msg) (*types.Result, error) {
-	// func (app *BaseApp) runMsgs(ctx sdk.Context, msgs []sdk.Msg, mode runTxMode) (*sdk.Result, error) {
-	msgLogs := make(types.ABCIMessageLogs, 0, len(msgs))
+func (c *Client) getContextForTx(txBytes []byte, header tmproto.Header) (ctx types.Context, traceCtx types.TraceContext) {
+	ms := new(types.CacheMultiStore)
+	fmt.Println("TracingEnabled ", (*ms).TracingEnabled())
+	logger := log.NewNopLogger()
+	ctx = types.NewContext(*ms, header, false, logger)
+
+	traceCtx = types.TraceContext(
+		map[string]interface{}{"blockHeight": header.Height},
+	)
+
+	return ctx, traceCtx
+}
+
+func (c *Client) getLogsFromMsg(ctx types.Context, msg types.Msg, i int) (*types.Result, error) {
 	events := types.EmptyEvents()
-	txMsgData := &types.TxMsgData{
-		Data: make([]*types.MsgData, 0, len(msgs)),
-	}
-
 	// NOTE: GasWanted is determined by the AnteHandler and GasUsed by the GasMeter.
-	for i, msg := range msgs {
-		// skip actual execution for (Re)CheckTx mode
-		// if mode == runTxModeCheck || mode == runTxModeReCheck {
-		// 	break
-		// }
 
-		var (
-			msgResult    *types.Result
-			eventMsgName string // name to use as value in event `message.action`
-			err          error
-		)
+	var (
+		msgResult    *types.Result
+		eventMsgName string // name to use as value in event `message.action`
+		err          error
+	)
 
-		if handler := app.msgServiceRouter.Handler(msg); handler != nil {
-			// ADR 031 request type routing
-			msgResult, err = handler(ctx, msg)
-			eventMsgName = types.MsgTypeURL(msg)
-		} else if legacyMsg, ok := msg.(legacytx.LegacyMsg); ok {
-			// legacy sdk.Msg routing
-			// Assuming that the app developer has migrated all their Msgs to
-			// proto messages and has registered all `Msg services`, then this
-			// path should never be called, because all those Msgs should be
-			// registered within the `msgServiceRouter` already.
-			msgRoute := legacyMsg.Route()
-			eventMsgName = legacyMsg.Type()
-			handler := app.router.Route(ctx, msgRoute)
-			if handler == nil {
-				return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized message route: %s; message index: %d", msgRoute, i)
-			}
+	// grpcServer := grpc.NewServer()
+	// tmservice.RegisterServiceServer(grpcServer, c.tmServiceServer)
 
-			msgResult, err = handler(ctx, msg)
-		} else {
-			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "can't route message %+v", msg)
+	// MsgServer
+	// // c.tmServiceServer.
+	// h := c.handler(mh, h)
+
+	// msgResult, err = h(ctx, *msg)
+
+	if svcMsg, ok := (*msg).(sdk.ServiceMsg); ok {
+		msgFqName = svcMsg.MethodName
+		handler := app.msgServiceRouter.Handler(msgFqName)
+		if handler == nil {
+			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized message service method: %s; message index: %d", msgFqName, i)
+		}
+		msgResult, err = handler(ctx, svcMsg.Request)
+	} else {
+		// legacy sdk.Msg routing
+		msgRoute := msg.Route()
+		msgFqName = msg.Type()
+		handler := app.router.Route(ctx, msgRoute)
+		if handler == nil {
+			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unrecognized message route: %s; message index: %d", msgRoute, i)
 		}
 
-		if err != nil {
-			return nil, sdkerrors.Wrapf(err, "failed to execute message; message index: %d", i)
-		}
-
-		msgEvents := types.Events{
-			types.NewEvent(types.EventTypeMessage, types.NewAttribute(types.AttributeKeyAction, eventMsgName)),
-		}
-		msgEvents = msgEvents.AppendEvents(msgResult.GetEvents())
-
-		// append message events, data and logs
-		//
-		// Note: Each message result's data must be length-prefixed in order to
-		// separate each result.
-		events = events.AppendEvents(msgEvents)
-
-		txMsgData.Data = append(txMsgData.Data, &types.MsgData{MsgType: types.MsgTypeURL(msg), Data: msgResult.Data})
-		msgLogs = append(msgLogs, types.NewABCIMessageLog(uint32(i), msgResult.Log, msgEvents))
+		msgResult, err = handler(ctx, msg)
 	}
+
+	if err != nil {
+		return nil, sdkerrors.Wrapf(err, "failed to execute message; message index: %d", i)
+	}
+
+	msgEvents := types.Events{
+		types.NewEvent(types.EventTypeMessage, types.NewAttribute(types.AttributeKeyAction, eventMsgName)),
+	}
+	msgEvents = msgEvents.AppendEvents(msgResult.GetEvents())
+	events = events.AppendEvents(msgEvents)
+	txMsgData := &types.TxMsgData{
+		Data: []*types.MsgData{&types.MsgData{MsgType: msg.Type(), Data: msgResult.Data}},
+	}
+	msgLog := types.NewABCIMessageLog(uint32(i), msgResult.Log, msgEvents)
 
 	data, err := proto.Marshal(txMsgData)
 	if err != nil {
@@ -185,7 +221,7 @@ func getLogsFromMsgs(ctx context.Context, msgs []*types.Msg) (*types.Result, err
 
 	return &types.Result{
 		Data:   data,
-		Log:    strings.TrimSpace(msgLogs.String()),
+		Log:    msgLog.String(),
 		Events: events.ToABCIEvents(),
 	}, nil
 }
@@ -194,7 +230,9 @@ func getLogsFromMsgs(ctx context.Context, msgs []*types.Msg) (*types.Result, err
 
 type handlerFunc func(ctx types.Context, req types.Msg) (*types.Result, error)
 
-func (c *Client) handler(methodHandler) handlerFunc {
+type methodHandler func(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error)
+
+func (c *Client) handler(methodHandler methodHandler, handler interface{}) handlerFunc {
 	return func(ctx types.Context, req types.Msg) (*types.Result, error) {
 		ctx = ctx.WithEventManager(types.NewEventManager())
 		interceptor := func(goCtx context.Context, _ interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
@@ -213,9 +251,11 @@ func (c *Client) handler(methodHandler) handlerFunc {
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidType, "Expecting proto.Message, got %T", resMsg)
 		}
 
-		return sdk.WrapServiceResult(ctx, resMsg, err)
+		return types.WrapServiceResult(ctx, resMsg, err)
 	}
 }
+
+func noopDecoder(_ interface{}) error { return nil }
 
 // func decodeTx(txBytes []byte) (types.Tx, error) {
 // 	if len(txBytes) == 0 {

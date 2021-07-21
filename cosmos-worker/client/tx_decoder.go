@@ -30,6 +30,10 @@ func (w *wrapper) ValidateBasic() error {
 	return w.tx.ValidateBasic()
 }
 
+// type hashS struct{
+// 	hash []byte `json:""`
+// }
+
 // DefaultTxDecoder returns a default protobuf TxDecoder using the provided Marshaler.
 func defaultTxDecoder(cdc codec.ProtoCodecMarshaler) types.TxDecoder {
 	return func(txBytes []byte) (types.Tx, error) {
