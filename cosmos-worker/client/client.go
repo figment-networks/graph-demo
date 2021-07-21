@@ -24,6 +24,7 @@ import (
 	distributionTypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
 	evidenceTypes "github.com/cosmos/cosmos-sdk/x/evidence/types"
 
+
 	// feegrantTypes "github.com/cosmos/cosmos-sdk/x/feegrant/types"
 
 	// genutilTypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
@@ -34,6 +35,12 @@ import (
 	slashingTypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	stakingTypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	upgradeTypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
+
+	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
+	"github.com/cosmos/cosmos-sdk/types/tx"
+	"go.uber.org/zap"
+	"golang.org/x/time/rate"
+	"google.golang.org/grpc"
 
 	// sTypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"go.uber.org/zap"
@@ -99,9 +106,6 @@ func New(logger *zap.Logger, cli *grpc.ClientConn, cfg *ClientConfig, chainID st
 		chainID:         chainID,
 		log:             logger,
 		txDecoder:       txDecoder,
-		tmServiceClient: tmservice.NewServiceClient(cli),
-		txServiceClient: tx.NewServiceClient(cli),
-		rateLimiterGRPC: rateLimiterGRPC,
-		cfg:             cfg,
-	}
-}
+	
+)
+

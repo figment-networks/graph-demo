@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -12,7 +13,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	"github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	"github.com/cosmos/cosmos-sdk/x/auth/legacy/legacytx"
 	"github.com/gogo/protobuf/proto"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -36,12 +39,12 @@ type BlockErrorPair struct {
 }
 
 // GetBlock fetches most recent block from chain
-func (c *Client) GetBlock(ctx context.Context, height int64) (blockAndTx structs.BlockAndTx, er error) {
-	c.log.Debug("[COSMOS-WORKER] Getting block", zap.Int64("height", height))
+func (c *Client) GetBlock(ctx context.Context, height uint64) (blockAndTx structs.BlockAndTx, er error) {
+	c.log.Debug("[COSMOS-WORKER] Getting block", zap.Uint64("height", height))
 
-	b, err := c.tmServiceClient.GetBlockByHeight(ctx, &tmservice.GetBlockByHeightRequest{Height: height}, grpc.WaitForReady(true))
+	b, err := c.tmServiceClient.GetBlockByHeight(ctx, &tmservice.GetBlockByHeightRequest{Height: int64(height)}, grpc.WaitForReady(true))
 	if err != nil {
-		c.log.Debug("[COSMOS-CLIENT] Error while getting block by height", zap.Int64("height", height), zap.Error(err))
+		c.log.Debug("[COSMOS-CLIENT] Error while getting block by height", zap.Uint64("height", height), zap.Error(err), zap.Int("txs", len(b.Block.Data.Txs)))
 		return structs.BlockAndTx{}, err
 	}
 
@@ -49,97 +52,21 @@ func (c *Client) GetBlock(ctx context.Context, height int64) (blockAndTx structs
 
 	blockAndTx.Block = mapper.MapBlockResponseToStructs(b.Block, b.Block.Data, bHash)
 
-	// txs := b.Block.Data.GetTxs()
-	// blockAndTx.Transactions = make([]structs.Transaction, len(txs))
+	blockAndTx.Transactions = make([]structs.Transaction, 0)
 
-	// for i, rawTx := range txs {
-	// 	decodedTx, err := c.txDecoder(rawTx)
-	// 	if err != nil {
-	// 		return structs.BlockAndTx{}, err
-	// 	}
+	for _, tx := range b.Block.Data.GetTxs() {
 
-	// 	// newTx. = decodedTx.GetMsgs()
-	// 	dt := decodedTx.(*wrapper).tx
+		// tx
 
-	// 	fmt.Println(dt)
+		decodedTx, err := decodeTx(tx)
+		if err != nil {
+			return structs.BlockAndTx{}, err
+		}
 
-	// 	body := dt.Body
+		fmt.Println(decodedTx)
+		// c.rawToTransaction(ctx, decodedTx, nil)
 
-	// 	// (*dt).Hash()
-
-	// 	gasLimit := dt.AuthInfo.Fee.GasLimit
-
-	// 	dt.
-
-	// 	// tHash := dt.Body.GetExtensionOptions()
-
-	// 	events := make([]structs.TransactionEvent, len(body.Messages))
-	// 	for index, m := range body.Messages {
-	// 		tev := structs.TransactionEvent{
-	// 			ID: strconv.Itoa(index),
-	// 		}
-
-	// 		res := coretypes.ResultTx
-	// 		types.NewResponseResultTx()
-
-	// 		ctx, traceCtx := c.getContextForTx(rawTx, b.Block.Header, height)
-
-	// 		// add block gas meter
-	// 		var gasMeter types.GasMeter
-	// 		if maxGas := gasLimit; maxGas > 0 {
-	// 			gasMeter = types.NewGasMeter(maxGas)
-	// 		} else {
-	// 			gasMeter = types.NewInfiniteGasMeter()
-	// 		}
-
-	// 		ctx.WithBlockHeader(b.Block.Header).
-	// 			WithBlockHeight(height).
-	// 			WithBlockGasMeter(gasMeter).
-	// 			WithHeaderHash()
-
-	// 		// lg := findLog(resp.Logs, index)
-	// 		result, err := c.getLogsFromMsg(ctx, m, index)
-	// 		if err != nil {
-	// 			return structs.BlockAndTx{}, err
-	// 		}
-
-	// 		lg := result.Log
-
-	// 		// tPath is "/cosmos.bank.v1beta1.MsgSend" or "/ibc.core.client.v1.MsgCreateClient"
-	// 		tPath := strings.Split(m.TypeUrl, ".")
-
-	// 		var err error
-	// 		var msgType string
-	// 		if len(tPath) == 5 && tPath[0] == "/ibc" {
-	// 			msgType = tPath[4]
-	// 			err = addIBCSubEvent(tPath[2], msgType, &tev, m, lg)
-	// 		} else if len(tPath) == 4 && tPath[0] == "/cosmos" {
-	// 			msgType = tPath[3]
-	// 			err = addSubEvent(tPath[1], msgType, &tev, m, lg)
-	// 		} else {
-	// 			err = fmt.Errorf("TypeURL is in wrong format: %v", m.TypeUrl)
-	// 		}
-
-	// 		if err != nil {
-	// 			c.log.Error("[COSMOS-API] Problem decoding transaction ", zap.Error(err), zap.String("type", msgType), zap.String("route", m.TypeUrl), zap.Int64("height", resp.Height))
-	// 			return structs.BlockAndTx{}, err
-	// 		}
-
-	// 		events[index] = tev
-	// 	}
-
-	// 	// body.Memo
-	// 	blockAndTx.Transactions[i] = structs.Transaction{
-	// 		// Hash:      dt.GetH,
-	// 		BlockHash: bHash,
-	// 		Height:    uint64(height),
-	// 		ChainID:   c.chainID,
-	// 		// Epoch: c.,
-	// 		Time: b.Block.Header.Time,
-	// 		Memo: body.Memo,
-	// 	}
-
-	// }
+	}
 
 	// blockID = structs.BlockID{
 	// 	Hash: b.BlockId.Hash,

@@ -1,0 +1,15 @@
+type Block @entity {
+  id: ID!
+  height: Int!
+  time: String!
+  myNote: String!
+  transactions: [Transaction]
+}
+
+type Transaction @entity {
+  id: ID!
+  blockID: Int!
+  height: Int!
+  time: String!
+  myNote: String!
+}

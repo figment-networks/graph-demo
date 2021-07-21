@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
-	"net/http"
 
 	"github.com/figment-networks/graph-demo/connectivity"
 	wsapi "github.com/figment-networks/graph-demo/connectivity/ws"
@@ -31,13 +29,14 @@ type NetworkGraphWSTransport struct {
 }
 
 func NewNetworkGraphWSTransport(l *zap.Logger) *NetworkGraphWSTransport {
-	return &NetworkGraphWSTransport{l: l}
+	ph := &NetworkGraphWSTransport{
+		l: l,
+	}
+	return ph
 }
 
 func (ng *NetworkGraphWSTransport) Connect(ctx context.Context, address string, RH connectivity.FunctionCallHandler) (err error) {
-
 	ng.c, _, err = websocket.DefaultDialer.DialContext(ctx, address, nil)
-
 	ng.sess = wsapi.NewSession(ctx, ng.c, ng.l, RH)
 	go ng.sess.Recv()
 	go ng.sess.Req()
@@ -45,7 +44,7 @@ func (ng *NetworkGraphWSTransport) Connect(ctx context.Context, address string, 
 	return err
 }
 
-func (ng *NetworkGraphWSTransport) CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}) ([]byte, error) {
+func (ng *NetworkGraphWSTransport) CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}, version string) ([]byte, error) {
 	buff := new(bytes.Buffer)
 	defer buff.Reset()
 	enc := json.NewEncoder(buff)
@@ -53,15 +52,36 @@ func (ng *NetworkGraphWSTransport) CallGQL(ctx context.Context, name string, que
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, ng.address, buff)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := ng.c.Do(req)
-	if err != nil {
-		return nil, err
+	resp, err := ng.sess.SendSync(name, []json.RawMessage{[]byte(query), buff.Bytes(), []byte(version)})
+	buff.Reset()
+
+	return resp.Result, err
+}
+
+func (ng *NetworkGraphWSTransport) Subscribe(ctx context.Context, events []string) error {
+	buff := new(bytes.Buffer)
+	defer buff.Reset()
+	enc := json.NewEncoder(buff)
+	if err := enc.Encode(events); err != nil {
+		return err
 	}
 
-	respD, err := ioutil.ReadAll(resp.Body)
-	return respD, err
+	_, err := ng.sess.SendSync("subscribe", []json.RawMessage{buff.Bytes()})
+	buff.Reset()
+
+	return err
+}
+
+func (ng *NetworkGraphWSTransport) Unsubscribe(ctx context.Context, events []string) error {
+	buff := new(bytes.Buffer)
+	defer buff.Reset()
+	enc := json.NewEncoder(buff)
+	if err := enc.Encode(events); err != nil {
+		return err
+	}
+
+	_, err := ng.sess.SendSync("unsubscribe", []json.RawMessage{buff.Bytes()})
+	buff.Reset()
+
+	return err
 }

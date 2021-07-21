@@ -2,10 +2,7 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-
-	"github.com/figment-networks/graph-demo/graphcall"
 )
 
 type Service struct {
@@ -21,10 +18,10 @@ func New(cli *http.Client, url string) *Service {
 }
 
 func (s *Service) ProcessGraphqlQuery(ctx context.Context, v map[string]interface{}, q string) ([]byte, error) {
-	queries, err := graphcall.ParseQuery(q, v)
-	if err != nil {
-		return nil, fmt.Errorf("Error while parsing graphql query: %w", err)
-	}
+	//queries, err := graphcall.ParseQuery(q, v)
+	//if err != nil {
+	//		return nil, fmt.Errorf("Error while parsing graphql query: %w", err)
+	//	}
 	/*
 		rawResp, err := mapper.MapBlocksToResponse(queries.Queries, blocks)
 		if err != nil {

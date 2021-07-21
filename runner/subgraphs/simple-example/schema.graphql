@@ -1,12 +1,12 @@
-type StoreBlock @entity {
+type Block @entity {
   id: ID!
   height: Int!
   time: String!
   myNote: String!
-  transactions: [StoreTransaction]
+  transactions: [Transaction]
 }
 
-type StoreTransaction @entity {
+type Transaction @entity {
   id: ID!
   blockID: Int!
   height: Int!

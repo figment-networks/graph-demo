@@ -6,17 +6,22 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/figment-networks/graph-demo/runner/store"
+	"go.uber.org/zap"
 
 	"rogchap.com/v8go"
 )
 
 type GQLCaller interface {
-	CallGQL(ctx context.Context, name, query string, variables map[string]interface{}) ([]byte, error)
+	CallGQL(ctx context.Context, name, query string, variables map[string]interface{}, version string) ([]byte, error)
+
+	Subscribe(ctx context.Context, name string, events []string) error
+	Unsubscribe(ctx context.Context, name string, events []string) error
 }
 
 type callback func(info *v8go.FunctionCallbackInfo) *v8go.Value
@@ -26,13 +31,15 @@ type Loader struct {
 	lock      sync.RWMutex
 	rqstr     GQLCaller
 	stor      store.Storage
+	log       *zap.Logger
 }
 
-func NewLoader(rqstr GQLCaller, stor store.Storage) *Loader {
+func NewLoader(l *zap.Logger, rqstr GQLCaller, stor store.Storage) *Loader {
 	return &Loader{
 		subgraphs: make(map[string]*Subgraph),
 		rqstr:     rqstr,
 		stor:      stor,
+		log:       l,
 	}
 }
 
@@ -53,11 +60,28 @@ func (l *Loader) CallSubgraphHandler(subgraph string, handler *SubgraphHandler) 
 	return err
 }
 
+func (l *Loader) NewEvent(typ string, data map[string]interface{}) error {
+	l.log.Debug("Event received ", zap.String("type", typ), zap.Any("data", data))
+	for name := range l.subgraphs {
+		if err := l.CallSubgraphHandler(name,
+			&SubgraphHandler{
+				name:   "handle" + strings.Title(typ),
+				values: []interface{}{data},
+			}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (l *Loader) LoadJS(name string, path string) error {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
 	}
+
+	// TODO(l): load it from subgraph.yaml
+	l.rqstr.Subscribe(context.Background(), "cosmos", []string{"newTransaction", "newBlock"})
 
 	return l.createRunable(name, b)
 }
@@ -70,8 +94,8 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	callGQL, _ := v8go.NewFunctionTemplate(iso, subgr.callGQL)
 	storeRecord, _ := v8go.NewFunctionTemplate(iso, subgr.storeRecord)
 
-	print, _ := v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
-		fmt.Printf("print:  %+v  \n", info.Args()[0])
+	logDebug, _ := v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
+		fmt.Printf("v8LogDebug:  %+v  \n", info.Args()[0])
 		return nil
 	})
 
@@ -79,9 +103,9 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	if err != nil {
 		return err
 	}
-	global.Set("printA", print)
-	global.Set("callGQL", callGQL)
-	global.Set("storeRecord", storeRecord)
+	global.Set("v8LogDebug", logDebug)
+	global.Set("v8Call", callGQL)
+	global.Set("v8StoreSave", storeRecord)
 
 	subgr.context, err = v8go.NewContext(iso, global)
 	if err != nil {
@@ -91,6 +115,7 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	if err != nil {
 		return err
 	}
+
 	l.lock.Lock()
 	l.subgraphs[name] = subgr
 	l.lock.Unlock()
@@ -106,14 +131,14 @@ func cleanJS(code []byte) string {
 			b.WriteString("\n")
 		}
 	}
-	m1 := regexp.MustCompile("([^=[:space:]\\{]*)callGQL")
-	res1 := m1.ReplaceAllString(b.String(), " callGQL")
+	m1 := regexp.MustCompile(`([^=[:space:]\\{]*)graphql.call`)
+	res1 := m1.ReplaceAllString(b.String(), " v8Call")
 
-	m3 := regexp.MustCompile("([^=[:space:]\\{]*)printA")
-	res2 := m3.ReplaceAllString(res1, " printA")
+	m3 := regexp.MustCompile(`([^=[:space:]\\{]*)log.debug`)
+	res2 := m3.ReplaceAllString(res1, " v8LogDebug")
 
-	m2 := regexp.MustCompile("([^=[:space:]\\{]*)storeRecord")
-	a := m2.ReplaceAllString(res2, " storeRecord")
+	m2 := regexp.MustCompile(`([^=[:space:]\\{]*)store.save`)
+	a := m2.ReplaceAllString(res2, " v8StoreSave")
 
 	return a
 
@@ -146,11 +171,9 @@ func (s *Subgraph) storeRecord(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	mj, _ := args[1].MarshalJSON()
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
-	iso, _ := info.Context().Isolate()
 
 	if err := s.stor.Store(context.Background(), s.name, args[0].String(), a); err != nil {
-		erro, _ := v8go.NewValue(iso, err.Error())
-		return erro
+		return jsonError(info.Context(), err)
 	}
 
 	return nil
@@ -164,16 +187,21 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
-	iso, _ := info.Context().Isolate()
-	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a)
+	//	iso, _ := info.Context().Isolate()
+	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a, args[2].String())
 	fmt.Println(string(resp))
 	if err != nil {
-		erro, _ := v8go.NewValue(iso, err.Error())
-		return erro
+		log.Println(fmt.Printf("callGQL error %v \n", err))
+		return jsonError(info.Context(), err)
 	}
 
 	p, _ := v8go.JSONParse(info.Context(), string(resp))
 	return p
+}
+
+func jsonError(ctx *v8go.Context, err error) *v8go.Value {
+	erro, _ := v8go.JSONParse(ctx, "{\"error\":{\"message\":\""+strings.ReplaceAll(err.Error(), "\"", "\\\"")+"\"}}")
+	return erro
 }
 
 type SubgraphHandler struct {

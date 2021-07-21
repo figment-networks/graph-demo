@@ -4,8 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+<<<<<<< HEAD
 	"io"
 	"sync"
+=======
+	"sync"
+	"sync/atomic"
+>>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 	"time"
 
 	"github.com/figment-networks/graph-demo/connectivity"
@@ -35,15 +40,31 @@ type Session struct {
 	send     chan jsonrpc.Request
 	response chan jsonrpc.Response
 
+<<<<<<< HEAD
 	routing     map[uint64]Waiting
 	routingLock sync.RWMutex
 }
 
 type Waiting struct {
+=======
+	routing     map[uint64]*Waiting
+	routingLock sync.RWMutex
+	newID       *uint64
+}
+
+type Waiting struct {
+	returnCh chan jsonrpc.Response
+}
+
+func NewWaiting() *Waiting {
+	return &Waiting{returnCh: make(chan jsonrpc.Response, 1)}
+>>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 }
 
 func NewSession(ctx context.Context, c *websocket.Conn, l *zap.Logger, reg connectivity.FunctionCallHandler) *Session {
 	nCtx, cancel := context.WithCancel(ctx)
+
+	firstCall := uint64(0)
 	return &Session{
 		ID:        uuid.NewString(),
 		reg:       reg,
@@ -53,8 +74,13 @@ func NewSession(ctx context.Context, c *websocket.Conn, l *zap.Logger, reg conne
 		l:         l,
 		send:      make(chan jsonrpc.Request, 10),
 		response:  make(chan jsonrpc.Response, 10),
+<<<<<<< HEAD
 
 		routing: make(map[uint64]Waiting),
+=======
+		newID:     &firstCall,
+		routing:   make(map[uint64]*Waiting),
+>>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 	}
 }
 
@@ -62,10 +88,31 @@ func (s *Session) Send(req jsonrpc.Request) {
 	s.send <- req
 }
 
+<<<<<<< HEAD
 func (s *Session) SendSync(req jsonrpc.Request) {
 
 	//s.routingLock[]
 	s.send <- req
+=======
+func (s *Session) SendSync(method string, params []json.RawMessage) (jsonrpc.Response, error) {
+
+	w := NewWaiting()
+	defer close(w.returnCh)
+	id := atomic.AddUint64(s.newID, 1)
+
+	s.routingLock.Lock()
+	s.routing[id] = w
+	s.routingLock.Unlock()
+
+	s.send <- jsonrpc.Request{
+		ID:      id,
+		JSONRPC: "2.0",
+		Method:  method,
+		Params:  params,
+	}
+
+	return <-w.returnCh, nil
+>>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 }
 
 func (s *Session) Recv() {
@@ -85,7 +132,6 @@ func (s *Session) Recv() {
 
 	readr := bytes.NewReader(nil)
 	dec := json.NewDecoder(readr)
-
 	for {
 		_, message, err := s.c.ReadMessage()
 		if err != nil {
@@ -106,8 +152,18 @@ func (s *Session) Recv() {
 			s.response <- jsonrpc.Response{JSONRPC: "2.0", Error: &jsonrpc.Error{Code: -32700, Message: "Parse error"}}
 		}
 
-		if req.Result != nil {
-			// TODO(lukanus): pass back response
+		if req.Result != nil || req.Error != nil {
+			s.routingLock.RLock()
+			waitO, ok := s.routing[req.ID]
+			s.routingLock.RUnlock()
+			if !ok {
+				s.l.Error("unexpected message", zap.Any("message", req))
+			}
+			waitO.returnCh <- jsonrpc.Response{ID: req.ID, JSONRPC: "2.0", Result: req.Result, Error: req.Error}
+			delete(s.routing, req.ID)
+			s.routingLock.RUnlock()
+
+			continue
 		}
 
 		h, ok := s.reg.Get(req.Method)
@@ -116,6 +172,10 @@ func (s *Session) Recv() {
 		}
 
 		go h(s.ctx, &SessionRequest{args: req.Params, connID: s.ID}, &SessionResponse{
+<<<<<<< HEAD
+=======
+			ID:             req.ID,
+>>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 			SessionContext: s.ctx,
 			RespCh:         s.response,
 		})
@@ -155,11 +215,26 @@ WSLOOP:
 			buff.Reset()
 			if err := enc.Encode(message); err != nil {
 				s.l.Info("error in encode", zap.Error(err))
-				/*	req.RespCH <- Response{
-					ID:    originalID,
-					Type:  req.Method,
-					Error: fmt.Errorf("error encoding message: %w ", err),
-				}*/
+				continue WSLOOP
+			}
+
+			if err := s.c.WriteMessage(websocket.TextMessage, buff.Bytes()); err != nil {
+				s.l.Error("error sending data websocket ", zap.Error(err))
+				break WSLOOP
+			}
+
+		case message, ok := <-s.response:
+			if !ok {
+				s.l.Info("send is closed")
+				if s.c != nil {
+					s.c.WriteMessage(websocket.CloseMessage, []byte{})
+				}
+				return
+			}
+
+			buff.Reset()
+			if err := enc.Encode(message); err != nil {
+				s.l.Info("error in encode", zap.Error(err))
 				continue WSLOOP
 			}
 
@@ -209,19 +284,33 @@ WSLOOP:
 }
 
 type SessionResponse struct {
-	ID string
+	ID uint64
 
 	SessionContext context.Context
 	RespCh         chan jsonrpc.Response
 }
 
+<<<<<<< HEAD
 func (sR *SessionResponse) Send(io.ReadCloser, error) error {
 
 	return nil
 }
+=======
+func (s *SessionResponse) Send(result json.RawMessage, er error) error {
 
-func (sR *SessionResponse) Write(p []byte) (n int, err error) {
-	return 0, nil
+	resp := jsonrpc.Response{
+		ID:      s.ID,
+		JSONRPC: "2.0",
+		Result:  result,
+	}
+
+	if er != nil {
+		resp.Error = &jsonrpc.Error{Message: er.Error()}
+	}
+>>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
+
+	s.RespCh <- resp
+	return nil
 }
 
 type SessionRequest struct {

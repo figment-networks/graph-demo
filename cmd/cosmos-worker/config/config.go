@@ -15,11 +15,6 @@ var (
 	Timestamp string
 )
 
-const (
-	modeDevelopment = "development"
-	modeProduction  = "production"
-)
-
 // Config holds the configuration data
 type Config struct {
 	AppEnv  string `json:"app_env" envconfig:"APP_ENV" default:"development"`

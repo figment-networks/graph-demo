@@ -1,22 +1,40 @@
-export function callGQL(subgraph: string,  query: string, arr: object): any;
-export function storeRecord(type: string,  record: object): any;
-export function printA(a: any);
+// These functions hook into the jsRuntime. The names and params must be changed in both places.
+export declare namespace store {
+    export function save(type: string,  record: object): any;
+}
 
+export declare namespace log {
+    export function debug(msg: string);
+}
 
+export declare namespace graphql {
+    export function call(identifier: GraphQLSourceIdentifier, query: string, variables: object, version?: string): GraphQLResponse;
+}
 
-export interface GrapQLResponse {
-    error: any;
+export enum Network {
+    COSMOS = 'cosmos',
+}
+// type SubgraphId = string;
+// type Self = 'Self';
+export type GraphQLSourceIdentifier = Network; // | SubgraphId | Self;
+
+export interface GraphQLResponse {
+    error: Error;
     data: any;
 }
 
-export interface GetBlockResponse {
+export interface BlockResponse {
     id: string;
     height: number;
     time: Date;
 }
 
-export interface SubgraphNewBlock {
+export interface BlockEvent {
     height: number;
+    network: Network;
 }
 
-
+export interface TransactionEvent {
+    height: number;
+    network: Network;
+}
