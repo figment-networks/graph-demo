@@ -5,24 +5,25 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/figment-networks/graph-demo/manager/structs"
 )
 
 const (
-	insertBlock = `INSERT INTO public.blocks( "chain_id", "height", "hash", "time", "header", "data", "evidence", "last_commit", "tx_num") VALUES
+	insertBlock = `INSERT INTO public.blocks("chain_id", "height", "hash", "time", "header", "data", "evidence", "last_commit", "numtxs") VALUES
 	($1, $2, $3, $4, $5, $6, $7, $8, $9)
-	ON CONFLICT ( chain_id, hash)
+	ON CONFLICT (chain_id, hash)
 	DO UPDATE SET
 	height = EXCLUDED.height,
-	hash = EXCLUDED.hash
-	time = EXCLUDED.time
-	header = EXCLUDED.header
-	data = EXCLUDED.data
-	evidence = EXCLUDED.evidence
-	last_commit = EXCLUDED.last_commit
-	tx_num = EXCLUDED.tx_num
+	hash = EXCLUDED.hash,
+	time = EXCLUDED.time,
+	header = EXCLUDED.header,
+	data = EXCLUDED.data,
+	evidence = EXCLUDED.evidence,
+	last_commit = EXCLUDED.last_commit,
+	numtxs = EXCLUDED.numtxs
 	`
 )
 
@@ -33,36 +34,47 @@ func (d *Driver) StoreBlock(ctx context.Context, b structs.Block) error {
 		return err
 	}
 
-	buff := &bytes.Buffer{}
-	enc := json.NewEncoder(buff)
-
-	if err := enc.Encode(b.Header); err != nil {
+	header, err := getJsonValue(b.Header)
+	if err != nil {
 		return err
 	}
-	header := buff.String()
 
-	if err := enc.Encode(b.Data); err != nil {
+	data, err := getJsonValue(b.Data)
+	if err != nil {
 		return err
 	}
-	data := buff.String()
 
-	if err := enc.Encode(b.Evidence); err != nil {
+	evidence, err := getJsonValue(b.Evidence)
+	if err != nil {
 		return err
 	}
-	evidence := buff.String()
 
-	if err := enc.Encode(b.LastCommit); err != nil {
+	lastCommit, err := getJsonValue(&b.LastCommit)
+	if err != nil {
 		return err
 	}
-	lastCommit := buff.String()
 
-	_, err = tx.Exec(insertBlock, b.ChainID, b.Height, b.Hash, b.Time, header, data, evidence, lastCommit)
+	_, err = tx.Exec(insertBlock, b.ChainID, b.Height, b.Hash, b.Time, header, data, evidence, lastCommit, b.NumberOfTransactions)
 	if err != nil {
 		log.Println("[DB] Rollback flushB error: ", err)
 		tx.Rollback()
 		return err
 	}
 	return tx.Commit()
+}
+
+func getJsonValue(v interface{}) (string, error) {
+	buff := &bytes.Buffer{}
+	enc := json.NewEncoder(buff)
+
+	if v == nil {
+		return "", nil
+	}
+
+	if err := enc.Encode(v); err != nil {
+		return "", err
+	}
+	return (fmt.Stringer)(buff).String(), nil
 }
 
 const GetBlockByHeight = `SELECT chain_id, height, hash, time, header, data, evidence, last_commit, tx_num

@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 CREATE TABLE IF NOT EXISTS blocks
 (
     id         uuid DEFAULT uuid_generate_v4(),
@@ -6,22 +8,22 @@ CREATE TABLE IF NOT EXISTS blocks
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE,
 
-    network         VARCHAR(100)  NOT NULL,
-    chain_id        VARCHAR(100)  NOT NULL,
-    version         VARCHAR(100)  NOT NULL,
-
-    height          DECIMAL(65, 0) NOT NULL,
-    epoch           TEXT    NOT NULL,
-    hash            TEXT    NOT NULL,
-
-    numtxs          DECIMAL(65, 0) NOT NULL DEFAULT 0,
+    hash        TEXT NOT NULL,
+    height      DECIMAL(65, 0) NOT NULL,
+    chain_id    VARCHAR(100) NOT NULL,
+    
+    header      JSONB NOT NULL,
+    data        JSONB NOT NULL,
+    evidence    JSONB NOT NULL,
+    last_commit JSONB,
+    numtxs      DECIMAL(65, 0) NOT NULL DEFAULT 0,
 
     PRIMARY KEY (id)
 );
 
 
-CREATE UNIQUE INDEX idx_blx_hash on blocks (network, chain_id, hash);
-CREATE INDEX idx_blx_height on blocks (network, chain_id, height);
-CREATE INDEX idx_blx_time on blocks (network, chain_id, time);
+CREATE UNIQUE INDEX idx_blx_hash on blocks (chain_id, hash);
+CREATE INDEX idx_blx_height on blocks (chain_id, height);
+CREATE INDEX idx_blx_time on blocks (chain_id, time);
 CREATE INDEX idx_partial_blx_height on blocks (height);
 CREATE INDEX idx_partial_blx_numtxs_height on blocks (height, numtxs);

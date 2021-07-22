@@ -75,11 +75,13 @@ func main() {
 	}
 	defer grpcConn.Close()
 
-	apiClient := client.New(logger.GetLogger(), grpcConn, &client.ClientConfig{
+	cliCfg := &client.ClientConfig{
 		ReqPerSecond:        int(cfg.RequestsPerSecond),
 		TimeoutBlockCall:    cfg.TimeoutBlockCall,
 		TimeoutSearchTxCall: cfg.TimeoutTransactionCall,
-	})
+	}
+
+	apiClient := client.New(logger.GetLogger(), grpcConn, cliCfg, "mainnet")
 
 	mux := http.NewServeMux()
 

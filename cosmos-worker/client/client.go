@@ -7,7 +7,9 @@ import (
 	"github.com/figment-networks/graph-demo/manager/structs"
 
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
+	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx"
+
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
@@ -26,27 +28,27 @@ type ClientConfig struct {
 // Client
 type Client struct {
 	chainID string
-	network string
-
-	log *zap.Logger
+	log     *zap.Logger
 
 	// GRPC
+	cfg             *ClientConfig
 	txServiceClient tx.ServiceClient
 	tmServiceClient tmservice.ServiceClient
 	rateLimiterGRPC *rate.Limiter
-
-	cfg *ClientConfig
 }
 
+type MsgServiceHandler = func(ctx types.Context, req types.Msg) (*types.Result, error)
+
 // New returns a new client for a given endpoint
-func New(logger *zap.Logger, cli *grpc.ClientConn, cfg *ClientConfig) *Client {
+func New(logger *zap.Logger, cli *grpc.ClientConn, cfg *ClientConfig, chainID string) *Client {
 	rateLimiterGRPC := rate.NewLimiter(rate.Limit(cfg.ReqPerSecond), cfg.ReqPerSecond)
 
 	return &Client{
+		chainID:         chainID,
 		log:             logger,
-		tmServiceClient: tmservice.NewServiceClient(cli),
-		txServiceClient: tx.NewServiceClient(cli),
-		rateLimiterGRPC: rateLimiterGRPC,
 		cfg:             cfg,
+		txServiceClient: tx.NewServiceClient(cli),
+		tmServiceClient: tmservice.NewServiceClient(cli),
+		rateLimiterGRPC: rateLimiterGRPC,
 	}
 }

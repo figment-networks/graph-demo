@@ -7,7 +7,8 @@ import (
 )
 
 type NetworkClient interface {
-	GetByHeight(ctx context.Context, height uint64) (structs.BlockAndTx, error)
+	GetBlock(ctx context.Context, height uint64) (structs.BlockAndTx, error)
+	GetLatest(ctx context.Context) (structs.BlockAndTx, error)
 }
 
 type RunnerClient interface {
@@ -22,8 +23,12 @@ func NewClient(nc NetworkClient) *Client {
 	return &Client{nc: nc}
 }
 
-func (c *Client) GetByHeight(ctx context.Context, height uint64) (structs.BlockAndTx, error) {
-	return c.nc.GetByHeight(ctx, height)
+func (c *Client) GetBlockByHeight(ctx context.Context, height uint64) (structs.BlockAndTx, error) {
+	return c.nc.GetBlock(ctx, height)
+}
+
+func (c *Client) GetLatestBlock(ctx context.Context) (structs.BlockAndTx, error) {
+	return c.nc.GetLatest(ctx)
 }
 
 func (c *Client) PopulateEvent(ctx context.Context, event uint64) error {

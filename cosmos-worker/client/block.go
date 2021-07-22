@@ -2,21 +2,18 @@ package client
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"sync"
 
 	"github.com/figment-networks/graph-demo/cosmos-worker/client/mapper"
 	"github.com/figment-networks/graph-demo/manager/structs"
 
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
-	"github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/auth/legacy/legacytx"
-	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
+
+const perPage = 100
 
 // BlocksMap map of blocks to control block map
 // with extra summary of number of transactions
@@ -34,75 +31,56 @@ type BlockErrorPair struct {
 }
 
 // GetBlock fetches most recent block from chain
-func (c *Client) GetBlock(ctx context.Context, height uint64) (blockAndTx structs.BlockAndTx, er error) {
-	c.log.Debug("[COSMOS-WORKER] Getting block", zap.Uint64("height", height))
+func (c *Client) GetBlock(ctx context.Context, height int64) (blockAndTx structs.BlockAndTx, er error) {
+	ctx, cancel := context.WithTimeout(ctx, c.cfg.TimeoutBlockCall)
+	defer cancel()
 
-	b, err := c.tmServiceClient.GetBlockByHeight(ctx, &tmservice.GetBlockByHeightRequest{Height: int64(height)}, grpc.WaitForReady(true))
+	c.log.Debug("[COSMOS-WORKER] Getting block", zap.Int64("height", height))
+
+	b, err := c.tmServiceClient.GetBlockByHeight(ctx, &tmservice.GetBlockByHeightRequest{Height: height}, grpc.WaitForReady(true))
 	if err != nil {
-		c.log.Debug("[COSMOS-CLIENT] Error while getting block by height", zap.Uint64("height", height), zap.Error(err), zap.Int("txs", len(b.Block.Data.Txs)))
+		c.log.Debug("[COSMOS-CLIENT] Error while getting block by height", zap.Int64("height", height), zap.Error(err), zap.Int("txs", len(b.Block.Data.Txs)))
 		return structs.BlockAndTx{}, err
 	}
 
 	bHash := bytes.HexBytes(b.BlockId.Hash).String()
 
 	blockAndTx.Block = mapper.MapBlockResponseToStructs(b.Block, b.Block.Data, bHash)
-
-	blockAndTx.Transactions = make([]structs.Transaction, 0)
-
-	for _, tx := range b.Block.Data.GetTxs() {
-
-		// tx
-
-		decodedTx, err := decodeTx(tx)
-		if err != nil {
-			return structs.BlockAndTx{}, err
-		}
-
-		fmt.Println(decodedTx)
-		// c.rawToTransaction(ctx, decodedTx, nil)
-
+	if blockAndTx.Transactions, err = c.SearchTx(ctx, blockAndTx.Block, perPage); err != nil {
+		return structs.BlockAndTx{}, err
 	}
 
 	// blockID = structs.BlockID{
 	// 	Hash: b.BlockId.Hash,
 	// }
 
-	c.log.Debug("[COSMOS-WORKER] Got block", zap.Uint64("height", height))
+	c.log.Debug("[COSMOS-WORKER] Got block", zap.Int64("height", height))
+
 	return blockAndTx, nil
 }
 
-func decodeTx(txBytes []byte) (types.Tx, error) {
-	if len(txBytes) == 0 {
-		return nil, errors.New("tx bytes are empty")
-	}
-	var tx = legacytx.StdTx{}
-	// UnmarshalBinaryBare
-
-	// legacytx.Unmarshal(amino.U, &tx)
-
-	err := amino.UnmarshalBinaryBare(txBytes, &tx)
-	if err != nil {
-		return nil, err
-	}
-	return tx, nil
-}
-
 // GetBlock fetches most recent block from chain
-func (c *Client) GetLatest(ctx context.Context) (block structs.BlockAndTx, er error) {
-
-	nctx, cancel := context.WithTimeout(ctx, c.cfg.TimeoutBlockCall)
+func (c *Client) GetLatest(ctx context.Context) (blockAndTx structs.BlockAndTx, er error) {
+	ctx, cancel := context.WithTimeout(ctx, c.cfg.TimeoutBlockCall)
 	defer cancel()
-	b, err := c.tmServiceClient.GetLatestBlock(nctx, &tmservice.GetLatestBlockRequest{}, grpc.WaitForReady(true))
+
+	c.log.Debug("[COSMOS-WORKER] Getting latest block")
+
+	b, err := c.tmServiceClient.GetLatestBlock(ctx, &tmservice.GetLatestBlockRequest{}, grpc.WaitForReady(true))
 	if err != nil {
 		c.log.Debug("[COSMOS-CLIENT] Error getting latest block", zap.Error(err), zap.Int("txs", len(b.Block.Data.Txs)))
-		return block, err
+		return structs.BlockAndTx{}, err
 	}
 
 	bHash := bytes.HexBytes(b.BlockId.Hash).String()
 
+	blockAndTx.Block = mapper.MapBlockResponseToStructs(b.Block, b.Block.Data, bHash)
+	if blockAndTx.Transactions, err = c.SearchTx(ctx, blockAndTx.Block, perPage); err != nil {
+		return structs.BlockAndTx{}, err
+	}
+
 	c.log.Debug("[COSMOS-CLIENT] Got latest block", zap.Uint64("height", uint64(b.Block.Header.Height)), zap.Error(err))
-	return structs.BlockAndTx{
-		Block: mapper.MapBlockResponseToStructs(b.Block, b.Block.Data, bHash),
-	}, nil
+
+	return blockAndTx, nil
 
 }
