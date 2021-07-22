@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"sync"
@@ -35,15 +34,8 @@ func (s *Service) Close() error {
 }
 
 func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string) (structs.BlockAndTx, error) {
-	cli, ok := s.clients[chainID]
-	if !ok {
-		return structs.BlockAndTx{}, errors.New("Unknown chain id")
-	}
-
 	block, err := s.store.GetBlockByHeight(ctx, height, chainID)
-	if err != nil && err == sql.ErrNoRows {
-		return cli.GetByHeight(ctx, height)
-	} else {
+	if err != nil {
 		return structs.BlockAndTx{}, err
 	}
 
@@ -117,11 +109,6 @@ func (s *Service) getQueryBlocksByHeights(ctx context.Context, params map[string
 		return nil, err
 	}
 
-	cli, ok := s.clients[chainID]
-	if !ok {
-		return nil, errors.New("Unknown chain id")
-	}
-
 	resp = make(map[uint64]rStructs.BlockAndTx)
 	for _, h := range heights {
 		if r, ok := s.getBlockFromCache(chainID, h); ok {
@@ -129,7 +116,7 @@ func (s *Service) getQueryBlocksByHeights(ctx context.Context, params map[string
 			continue
 		}
 
-		bTx, err := cli.GetByHeight(ctx, h)
+		bTx, err := s.GetByHeight(ctx, h, chainID)
 		if err != nil {
 			return nil, err
 		}

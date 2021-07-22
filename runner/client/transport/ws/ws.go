@@ -28,9 +28,11 @@ type NetworkGraphWSTransport struct {
 	l    *zap.Logger
 }
 
-func NewNetworkGraphWSTransport(l *zap.Logger) *NetworkGraphWSTransport {
+func NewNetworkGraphWSTransport(l *zap.Logger, c *websocket.Conn, sess *wsapi.Session) *NetworkGraphWSTransport {
 	ph := &NetworkGraphWSTransport{
-		l: l,
+		c:    c,
+		sess: sess,
+		l:    l,
 	}
 	return ph
 }

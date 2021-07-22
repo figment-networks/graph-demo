@@ -117,7 +117,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	cli := http.DefaultClient
-	svc := service.New(cli, cfg.ManagerURL)
+	svc := service.New(cli, l, cfg.ManagerURL)
 
 	handler := transportHTTP.New(svc)
 	handler.AttachMux(mux)
