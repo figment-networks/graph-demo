@@ -215,31 +215,6 @@ WSLOOP:
 				break WSLOOP
 			}
 
-		case message, ok := <-s.response:
-			if !ok {
-				s.l.Info("send is closed")
-				if s.c != nil {
-					s.c.WriteMessage(websocket.CloseMessage, []byte{})
-				}
-				return
-			}
-
-			buff.Reset()
-			if err := enc.Encode(message); err != nil {
-				s.l.Info("error in encode", zap.Error(err))
-				/*	req.RespCH <- Response{
-					ID:    originalID,
-					Type:  req.Method,
-					Error: fmt.Errorf("error encoding message: %w ", err),
-				}*/
-				continue WSLOOP
-			}
-
-			if err := s.c.WriteMessage(websocket.TextMessage, buff.Bytes()); err != nil {
-				s.l.Error("error sending data websocket ", zap.Error(err))
-				break WSLOOP
-			}
-
 			/*
 				if err := w.Close(); err != nil {
 					return

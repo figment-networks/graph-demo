@@ -1,11 +1,6 @@
 package main
 
 import (
-<<<<<<< HEAD
-	"flag"
-	"log"
-	"net/http"
-=======
 	"context"
 	"flag"
 	"fmt"
@@ -14,15 +9,12 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
->>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 	"time"
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/cmd/runner/config"
 	"github.com/figment-networks/graph-demo/runner/api/service"
 	transportHTTP "github.com/figment-networks/graph-demo/runner/api/transport/http"
-<<<<<<< HEAD
-=======
 	runnerClient "github.com/figment-networks/graph-demo/runner/client"
 	clientWS "github.com/figment-networks/graph-demo/runner/client/transport/ws"
 	"github.com/figment-networks/graph-demo/runner/jsRuntime"
@@ -31,7 +23,6 @@ import (
 	"github.com/figment-networks/graph-demo/runner/store"
 	"github.com/figment-networks/graph-demo/runner/store/memap"
 
->>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 	"go.uber.org/zap"
 )
 
@@ -42,20 +33,11 @@ type flags struct {
 var configFlags = flags{}
 
 func init() {
-<<<<<<< HEAD
-	flag.StringVar(&configFlags.configPath, "config", "", "path to config.json file")
-=======
 	flag.StringVar(&configFlags.configPath, "config", "", "Path to config")
->>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 	flag.Parse()
 }
 
 func main() {
-<<<<<<< HEAD
-	cfg, err := getConfig(configFlags.configPath)
-	if err != nil {
-		log.Fatalf("error initializing config [ERR: %v]", err.Error())
-=======
 	logger.Init("console", "debug", []string{"stderr"})
 
 	// TODO(l): read from config
@@ -73,7 +55,6 @@ func main() {
 	cfg, err := initConfig(configFlags.configPath)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error initializing config [ERR: %+v]", err))
->>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 	}
 
 	if cfg.AppEnv == "development" || cfg.AppEnv == "local" {
@@ -81,11 +62,6 @@ func main() {
 	} else {
 		logger.Init("json", "info", []string{"stderr"})
 	}
-<<<<<<< HEAD
-
-	logger.Info(config.IdentityString())
-	defer logger.Sync()
-=======
 	defer logger.Sync()
 
 	logger.Info(config.IdentityString())
@@ -137,7 +113,6 @@ func main() {
 			Address: "http://0.0.0.0:5001/network/cosmos", // TODO manager address
 		})
 	*/
->>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 
 	mux := http.NewServeMux()
 
@@ -154,20 +129,6 @@ func main() {
 		WriteTimeout: 40 * time.Second,
 	}
 
-<<<<<<< HEAD
-	logger.Info("[HTTP] Listening on", zap.String("address", cfg.Address), zap.String("port", cfg.HTTPPort))
-	if err := s.ListenAndServe(); err != nil {
-		logger.GetLogger().Error("[GRPC] Error while listening ", zap.String("address", cfg.Address), zap.String("port", cfg.HTTPPort), zap.Error(err))
-	}
-
-}
-
-func getConfig(path string) (cfg *config.Config, err error) {
-	cfg = &config.Config{}
-	if path != "" {
-		if err := config.FromFile(path, cfg); err != nil {
-			return nil, err
-=======
 	/*
 		// TODO This is here just for testing until we get manager <> runner comms working
 		evts := []jsRuntime.NewEvent{
@@ -212,17 +173,10 @@ func initConfig(path string) (config.Config, error) {
 	if path != "" {
 		if err := config.FromFile(path, cfg); err != nil {
 			return *cfg, err
->>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 		}
 	}
 
 	if err := config.FromEnv(cfg); err != nil {
-<<<<<<< HEAD
-		return nil, err
-	}
-
-	return cfg, nil
-=======
 		return *cfg, err
 	}
 
@@ -238,5 +192,4 @@ func runHTTP(s *http.Server, address string, logger *zap.Logger, exit chan<- str
 		logger.Error("[HTTP] failed to listen", zap.Error(err))
 	}
 	exit <- "http"
->>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 }
