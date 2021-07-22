@@ -74,7 +74,7 @@ func main() {
 	schedulers := make([]*scheduler.Scheduler, len(wCfg.WorkerAddrs))
 	for i, workerAddr := range wCfg.WorkerAddrs {
 
-		httpTransport := transportHTTP.NewCosmosHTTPTransport(workerAddr.URL, httpClient)
+		httpTransport := transportHTTP.NewCosmosHTTPTransport(workerAddr.URL, httpClient, log)
 		// wsTransport := transportWS.NewCosmosWSTransport(workerAddr.URL, wsClient)
 
 		client := client.NewClient(httpTransport)
