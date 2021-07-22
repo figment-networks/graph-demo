@@ -1,0 +1,6 @@
+{
+    "worker_addrs": [{
+        "chain_id": "mainnet",
+        "url": "http://0.0.0.0:8088"
+    }]
+}

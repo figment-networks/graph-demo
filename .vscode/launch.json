@@ -13,7 +13,7 @@
             "env": {
                 "CHAIN_ID": "mainnet",
                 "NETWORK": "cosmos",
-                "COSMOS_GRPC_ADDR": "0.0.0.0:9090",
+                "COSMOS_GRPC_ADDR": "0.0.0.0:9090"
             }
         },
         {
@@ -24,7 +24,8 @@
             "program": "${workspaceFolder}/cmd/manager",
             "env": {
                 "ADDRESS": "0.0.0.0:8085",
-                "DATABASE_URL": "postgres://manager:manager@0.0.0.0:5432/manager?sslmode=disable"
+                "DATABASE_URL": "postgres://manager:manager@0.0.0.0:5432/manager?sslmode=disable",
+                "WORKER_CONFIG_PATH": "${workspaceFolder}/example_manager_worker_config.json"
             }
         },
         {
@@ -45,7 +46,6 @@
             "program": "${workspaceFolder}/cmd/runner",
             "env": {
                 "MANAGER_URL": "ws://0.0.0.0:8088",
-                "HTTP_PORT": "8099"
             }
         }
     ]

@@ -27,7 +27,8 @@ var (
 var curencyRegex = regexp.MustCompile("([0-9\\.\\,\\-\\s]+)([^0-9\\s]+)$")
 
 // SearchTx is making search api call
-func (c *Client) SearchTx(ctx context.Context, block structs.Block, height, perPage uint64) (txs []structs.Transaction, err error) {
+func (c *Client) SearchTx(ctx context.Context, block structs.Block, perPage uint64) (txs []structs.Transaction, err error) {
+	height := block.Height
 	c.log.Debug("[COSMOS-WORKER] Getting transactions", zap.Uint64("height", height))
 
 	pag := &query.PageRequest{

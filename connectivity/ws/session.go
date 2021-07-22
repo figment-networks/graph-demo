@@ -4,13 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-<<<<<<< HEAD
-	"io"
-	"sync"
-=======
 	"sync"
 	"sync/atomic"
->>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 	"time"
 
 	"github.com/figment-networks/graph-demo/connectivity"
@@ -40,13 +35,6 @@ type Session struct {
 	send     chan jsonrpc.Request
 	response chan jsonrpc.Response
 
-<<<<<<< HEAD
-	routing     map[uint64]Waiting
-	routingLock sync.RWMutex
-}
-
-type Waiting struct {
-=======
 	routing     map[uint64]*Waiting
 	routingLock sync.RWMutex
 	newID       *uint64
@@ -58,7 +46,6 @@ type Waiting struct {
 
 func NewWaiting() *Waiting {
 	return &Waiting{returnCh: make(chan jsonrpc.Response, 1)}
->>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 }
 
 func NewSession(ctx context.Context, c *websocket.Conn, l *zap.Logger, reg connectivity.FunctionCallHandler) *Session {
@@ -74,13 +61,8 @@ func NewSession(ctx context.Context, c *websocket.Conn, l *zap.Logger, reg conne
 		l:         l,
 		send:      make(chan jsonrpc.Request, 10),
 		response:  make(chan jsonrpc.Response, 10),
-<<<<<<< HEAD
-
-		routing: make(map[uint64]Waiting),
-=======
 		newID:     &firstCall,
 		routing:   make(map[uint64]*Waiting),
->>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 	}
 }
 
@@ -88,12 +70,6 @@ func (s *Session) Send(req jsonrpc.Request) {
 	s.send <- req
 }
 
-<<<<<<< HEAD
-func (s *Session) SendSync(req jsonrpc.Request) {
-
-	//s.routingLock[]
-	s.send <- req
-=======
 func (s *Session) SendSync(method string, params []json.RawMessage) (jsonrpc.Response, error) {
 
 	w := NewWaiting()
@@ -112,7 +88,6 @@ func (s *Session) SendSync(method string, params []json.RawMessage) (jsonrpc.Res
 	}
 
 	return <-w.returnCh, nil
->>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 }
 
 func (s *Session) Recv() {
@@ -172,10 +147,7 @@ func (s *Session) Recv() {
 		}
 
 		go h(s.ctx, &SessionRequest{args: req.Params, connID: s.ID}, &SessionResponse{
-<<<<<<< HEAD
-=======
 			ID:             req.ID,
->>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 			SessionContext: s.ctx,
 			RespCh:         s.response,
 		})
@@ -290,12 +262,6 @@ type SessionResponse struct {
 	RespCh         chan jsonrpc.Response
 }
 
-<<<<<<< HEAD
-func (sR *SessionResponse) Send(io.ReadCloser, error) error {
-
-	return nil
-}
-=======
 func (s *SessionResponse) Send(result json.RawMessage, er error) error {
 
 	resp := jsonrpc.Response{
@@ -307,7 +273,6 @@ func (s *SessionResponse) Send(result json.RawMessage, er error) error {
 	if er != nil {
 		resp.Error = &jsonrpc.Error{Message: er.Error()}
 	}
->>>>>>> bca17a11c51b4e4f4f8d47ff80093a7fdd74ec7b
 
 	s.RespCh <- resp
 	return nil

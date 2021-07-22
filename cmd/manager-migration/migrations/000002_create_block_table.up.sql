@@ -6,12 +6,9 @@ CREATE TABLE IF NOT EXISTS blocks
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE,
 
-    network         VARCHAR(100)  NOT NULL,
     chain_id        VARCHAR(100)  NOT NULL,
-    version         VARCHAR(100)  NOT NULL,
 
     height          DECIMAL(65, 0) NOT NULL,
-    epoch           TEXT    NOT NULL,
     hash            TEXT    NOT NULL,
 
     numtxs          DECIMAL(65, 0) NOT NULL DEFAULT 0,

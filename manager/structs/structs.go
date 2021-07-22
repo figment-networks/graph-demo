@@ -129,7 +129,6 @@ type Transaction struct {
 	// Height - height of the block of transaction
 	Height uint64 `json:"height,omitempty"`
 
-	Epoch string `json:"epoch,omitempty"`
 	// ChainID - chain id of transacion
 	ChainID string `json:"chain_id,omitempty"`
 	// Time - time of transaction

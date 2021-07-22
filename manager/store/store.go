@@ -23,10 +23,10 @@ type StoreIface interface {
 }
 
 type Store struct {
-	driver postgres.Driver
+	driver *postgres.Driver
 }
 
-func New(d postgres.Driver) StoreIface {
+func New(d *postgres.Driver) *Store {
 	return &Store{
 		driver: d,
 	}

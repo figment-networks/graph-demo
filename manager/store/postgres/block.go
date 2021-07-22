@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	insertBlock = `INSERT INTO public.blocks( "chain_id", "height", "hash", "time", "header", "data", "evidence", "last_commit", "tx_num") VALUES
+	insertBlock = `INSERT INTO public.blocks("chain_id", "height", "hash", "time", "header", "data", "evidence", "last_commit", "tx_num") VALUES
 	($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	ON CONFLICT ( chain_id, hash)
 	DO UPDATE SET

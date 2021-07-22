@@ -24,27 +24,41 @@ func NewCosmosWSTransport() *CosmosWSTransport {
 }
 
 func (ng *CosmosWSTransport) Connect(ctx context.Context, address string, RH connectivity.FunctionCallHandler) (err error) {
-	ng.c, _, err = websocket.DefaultDialer.DialContext(ctx, address, nil)
+	if ng.c, _, err = websocket.DefaultDialer.DialContext(ctx, address, nil); err != nil {
+		return err
+	}
+
 	ng.sess = wsapi.NewSession(ctx, ng.c, ng.l, RH)
 	go ng.sess.Recv()
 	go ng.sess.Req()
 
-	return err
+	return nil
 }
 
-func (ng *CosmosWSTransport) GetByHeight(ctx context.Context, height uint64) (bTx structs.BlockAndTx, err error) {
+func (ng *CosmosWSTransport) GetBlockByHeight(ctx context.Context, height uint64) (bTx structs.BlockAndTx, err error) {
 	resp, err := ng.sess.SendSync("get_by_height", []json.RawMessage{[]byte(strconv.FormatUint(height, 10))})
 	if err != nil {
-		return bTx, err
+		return structs.BlockAndTx{}, err
 	}
 
 	if err = json.Unmarshal(resp.Result, &bTx); err != nil {
-		return bTx, err
+		return structs.BlockAndTx{}, err
 	}
 
-	return structs.BlockAndTx{
-		Block:        bTx.Block,
-		Transactions: bTx.Transactions,
-	}, nil
+	return bTx, nil
+
+}
+
+func (ng *CosmosWSTransport) GetLatestByHeight(ctx context.Context) (bTx structs.BlockAndTx, err error) {
+	resp, err := ng.sess.SendSync("get_latest", nil)
+	if err != nil {
+		return structs.BlockAndTx{}, err
+	}
+
+	if err = json.Unmarshal(resp.Result, &bTx); err != nil {
+		return structs.BlockAndTx{}, err
+	}
+
+	return bTx, nil
 
 }

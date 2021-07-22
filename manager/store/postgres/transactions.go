@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	txInsert = `INSERT INTO public.transactions( "chain_id", "epoch", "height", "hash", "block_hash", "time", "fee", "gas_wanted", "gas_used", "memo", "events", "raw", "raw_log", "has_error") VALUES
+	txInsert = `INSERT INTO public.transactions( "chain_id", "height", "hash", "block_hash", "time", "fee", "gas_wanted", "gas_used", "memo", "events", "raw", "raw_log", "has_error") VALUES
 	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	ON CONFLICT ( chain_id, hash)
 	DO UPDATE SET
@@ -20,7 +20,6 @@ const (
 	hash = EXCLUDED.hash
 	time = EXCLUDED.time
 	block_hash = EXCLUDED.block_hash
-	epoch = EXCLUDED.epoch
 	fee = EXCLUDED.fee
 	gas_wanted = EXCLUDED.gas_wanted
 	gas_used = EXCLUDED.gas_used
@@ -74,7 +73,7 @@ func (d *Driver) storeTx(ctx context.Context, db *sql.DB, t structs.Transaction,
 	}
 
 	// TODO(lukanus): store  REAL transation
-	_, err = tx.Exec(txInsert, t.ChainID, t.Epoch, t.Height, t.Hash, t.BlockHash, t.Time,
+	_, err = tx.Exec(txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time,
 		fee, t.GasWanted, t.GasUsed, t.Memo, events.String(), t.Raw, t.RawLog, t.HasErrors)
 	// fee, t.GasWanted, t.GasUsed, strings.Map(removeCharacters, t.Memo), events.String(), t.Raw, t.RawLog,
 	// strings.Map(removeCharacters, t.Memo)+" "+strings.Join(af.Parties, " "))
@@ -95,7 +94,7 @@ func removeCharacters(r rune) rune {
 	return r
 }
 
-const GetTransactionsByHeight = `SELECT chain_id, epoch, height, hash, block_hash, time, fee, gas_wanted, gas_used, memo, events, raw, has_error
+const GetTransactionsByHeight = `SELECT chain_id, height, hash, block_hash, time, fee, gas_wanted, gas_used, memo, events, raw, has_error
 							FROM public.transactions
 							WHERE chain_id = $1 AND height = $2`
 
@@ -118,7 +117,7 @@ func (d *Driver) GetTransactions(ctx context.Context, height uint64, chainID str
 
 		byteFee := []byte{}
 
-		err = rows.Scan(&tx.ChainID, &tx.Epoch, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &byteFee, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.Raw, &tx.HasErrors)
+		err = rows.Scan(&tx.ChainID, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &byteFee, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.Raw, &tx.HasErrors)
 		if err != sql.ErrNoRows {
 			return nil, err
 		}

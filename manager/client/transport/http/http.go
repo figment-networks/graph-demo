@@ -22,8 +22,30 @@ func NewCosmosHTTPTransport(address string, c *http.Client) *CosmosHTTPTransport
 	}
 }
 
-func (ng *CosmosHTTPTransport) GetByHeight(ctx context.Context, height uint64) (bTx structs.BlockAndTx, er error) {
+func (ng *CosmosHTTPTransport) GetBlock(ctx context.Context, height uint64) (bTx structs.BlockAndTx, er error) {
 	resp, err := http.Get(fmt.Sprintf("%s/getBlock/%d", ng.address, height))
+	if err != nil {
+		return structs.BlockAndTx{}, err
+	}
+	defer resp.Body.Close()
+
+	byteResp, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return structs.BlockAndTx{}, err
+	}
+
+	if err = json.Unmarshal(byteResp, &bTx); err != nil {
+		return structs.BlockAndTx{}, err
+	}
+
+	return structs.BlockAndTx{
+		Block:        bTx.Block,
+		Transactions: bTx.Transactions,
+	}, nil
+}
+
+func (ng *CosmosHTTPTransport) GetLatest(ctx context.Context) (bTx structs.BlockAndTx, er error) {
+	resp, err := http.Get(fmt.Sprintf("%s/getLatest", ng.address))
 	if err != nil {
 		return structs.BlockAndTx{}, err
 	}
