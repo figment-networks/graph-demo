@@ -16,15 +16,56 @@ type Sub interface {
 	CurrentHeight() uint64
 }
 
+type Evt struct {
+	EvType string
+	Height uint
+	Data   interface{}
+}
+
+type Handle struct {
+	in        chan Evt
+	endpoints map[string]Sub
+}
+
+func NewHandle() *Handle {
+	return &Handle{
+		endpoints: make(map[string]Sub),
+	}
+}
+
+func (s *Handle) Send(ctx context.Context, ev Evt) {
+	select {
+	case <-ctx.Done():
+	case s.in <- ev:
+	}
+	return
+}
+
+func (s *Handle) Run(ctx string) error {
+
+}
+
 type Subscriptions struct {
-	types map[string]map[string]Sub
+	types map[string]*Handle
 	l     sync.RWMutex
 }
 
 func NewSubscriptions() *Subscriptions {
 	return &Subscriptions{
-		types: make(map[string]map[string]Sub),
+		types: make(map[string]*Handle),
 	}
+}
+
+// Populate - We populate events using heights, only to indicate a point time.
+// It might be something else in different networks
+func (s *Subscriptions) Populate(ctx context.Context, evType string, height uint, data interface{}) error {
+	t, ok := s.types[evType]
+	if !ok { // noone is subscribed
+		return
+	}
+
+	t.Send(ctx, Evt{EvType: evType, Height: height, Data: data})
+
 }
 
 func (s *Subscriptions) Add(ev string, sub Sub) error {
@@ -32,7 +73,7 @@ func (s *Subscriptions) Add(ev string, sub Sub) error {
 	defer s.l.Unlock()
 	t, ok := s.types[ev]
 	if !ok {
-		t = make(map[string]Sub)
+		t = NewHandle()
 	}
 	t[sub.ID()] = sub
 	s.types[ev] = t

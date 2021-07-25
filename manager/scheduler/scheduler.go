@@ -5,37 +5,43 @@ import (
 	"time"
 
 	"github.com/figment-networks/graph-demo/manager/client"
-	"github.com/figment-networks/graph-demo/manager/store"
-	"github.com/figment-networks/graph-demo/manager/structs"
 	"go.uber.org/zap"
 )
 
 type Scheduler struct {
-	height uint64
-	ctx    context.Context
-	client *client.Client
+	client client.Client
 	log    *zap.Logger
-	store  *store.Store
 }
 
-func New(ctx context.Context, c *client.Client, s *store.Store, log *zap.Logger) *Scheduler {
+func New(log *zap.Logger, c client.Client) *Scheduler {
 	return &Scheduler{
-		ctx:    ctx,
 		client: c,
 		log:    log,
-		store:  s,
 	}
 }
 
 func (s *Scheduler) Start(ctx context.Context, height uint64) {
-	s.height = height
+	h := height
 
 	tckr := time.NewTicker(10 * time.Second)
 	defer tckr.Stop()
 	for {
 		select {
 		case <-tckr.C:
-			s.fetchAndSaveBlockInDatbase()
+			_, err := s.client.GetByHeight(ctx, h)
+			if err != nil {
+				s.log.Error("error getting height", zap.Uint64("height", h), zap.Error(err))
+				continue
+			}
+			h++
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+/*
+	s.fetchAndSaveBlockInDatbase()
 			s.height++
 		case <-ctx.Done():
 			break
@@ -63,7 +69,4 @@ func (s *Scheduler) storeBlockAndTxs(bTx structs.BlockAndTx) {
 	if bTx.Block.NumberOfTransactions > 0 {
 		if err := s.store.StoreTransactions(s.ctx, bTx.Transactions); err != nil {
 			s.log.Error("[CRON] Error while saving transactions in database", zap.Uint64("height", s.height), zap.Uint64("txs", bTx.Block.NumberOfTransactions), zap.Error(err))
-			return
-		}
-	}
-}
+*/

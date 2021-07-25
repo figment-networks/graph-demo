@@ -31,10 +31,8 @@ export interface BlockResponse {
 
 export interface BlockEvent {
     height: number;
-    network: Network;
 }
 
 export interface TransactionEvent {
     height: number;
-    network: Network;
 }
