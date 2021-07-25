@@ -28,23 +28,29 @@ func NewClient(nc NetworkClient) *Client {
 	return &Client{nc: nc}
 }
 
+func (c *Client) GetLatestBlock(ctx context.Context) (structs.BlockAndTx, error) {
+	return c.nc.GetLatest(ctx)
+}
+
 func (c *Client) ProcessHeight(ctx context.Context, height uint64) (bTx structs.BlockAndTx, err error) {
 	btx, err := c.GetByHeight(ctx, height)
 
 	// We can populate some errors from here
-	if err := c.PopulateEvent(ctx, structs.EVENT_NEW_BLOCK, structs.EventNewBlock{btx.Block.Height}); err != nil {
+	if err := c.PopulateEvent(ctx, structs.EVENT_NEW_BLOCK, structs.EventNewBlock{Height: btx.Block.Height}); err != nil {
 		return bTx, err
 	}
 
 	for _, tx := range btx.Transactions {
-		c.PopulateEvent(ctx, structs.EVENT_NEW_TRANSACTION, structs.EventNewTransaction{tx.Height})
+		c.PopulateEvent(ctx, structs.EVENT_NEW_TRANSACTION, structs.EventNewTransaction{Height: tx.Height})
 	}
+
+	return btx, err
 
 }
 
 func (c *Client) GetByHeight(ctx context.Context, height uint64) (bTx structs.BlockAndTx, err error) {
 
-	bTx, err = c.nc.GetByHeight(ctx, height)
+	bTx, err = c.nc.GetBlock(ctx, height)
 	if err != nil {
 		c.log.Error("[CRON] Error while getting block", zap.Uint64("height", height), zap.Error(err))
 		return bTx, err
@@ -68,13 +74,3 @@ func (c *Client) GetByHeight(ctx context.Context, height uint64) (bTx structs.Bl
 func (c *Client) PopulateEvent(ctx context.Context, event string, data interface{}) error {
 	return c.rc.PopulateEvent(ctx, event, data)
 }
-
-
-/*
-func (c *Client) GetBlockByHeight(ctx context.Context, height uint64) (structs.BlockAndTx, error) {
-	return c.nc.GetBlock(ctx, height)
-}
-
-func (c *Client) GetLatestBlock(ctx context.Context) (structs.BlockAndTx, error) {
-	return c.nc.GetLatest(ctx)
-	*/

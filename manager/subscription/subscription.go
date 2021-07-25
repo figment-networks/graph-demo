@@ -61,7 +61,7 @@ func NewSubscriptions() *Subscriptions {
 func (s *Subscriptions) Populate(ctx context.Context, evType string, height uint, data interface{}) error {
 	t, ok := s.types[evType]
 	if !ok { // noone is subscribed
-		return
+		return nil
 	}
 
 	t.Send(ctx, Evt{EvType: evType, Height: height, Data: data})

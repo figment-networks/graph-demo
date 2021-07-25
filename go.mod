@@ -15,7 +15,6 @@ require (
 	github.com/onsi/ginkgo v1.15.0 // indirect
 	github.com/onsi/gomega v1.10.5 // indirect
 	github.com/stretchr/testify v1.7.0
-	github.com/tendermint/go-amino v0.16.0
 	github.com/tendermint/tendermint v0.34.11
 	go.uber.org/zap v1.18.1
 	golang.org/x/time v0.0.0-20210611083556-38a9dc6acbc6

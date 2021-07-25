@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log"
 	"sync"
 
 	"github.com/figment-networks/graph-demo/connectivity"
 	"github.com/figment-networks/graph-demo/connectivity/jsonrpc"
 	"github.com/figment-networks/graph-demo/manager/api/service"
-	"github.com/figment-networks/graph-demo/manager/subscription"
 )
 
 type Sub interface {
@@ -143,8 +143,9 @@ func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Reques
 	}
 
 	for _, ev := range events {
-		subscription.NewSubI()
-		err = ph.subscriptions.Add(ev)
+		log.Println("ev", ev)
+		//	subscription.NewSubI()
+		//	err = ph.subscriptions.Add(ev)
 	}
 
 }
