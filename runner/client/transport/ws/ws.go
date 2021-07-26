@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log"
 
 	"github.com/figment-networks/graph-demo/connectivity"
 	wsapi "github.com/figment-networks/graph-demo/connectivity/ws"
@@ -54,7 +53,16 @@ func (ng *NetworkGraphWSTransport) CallGQL(ctx context.Context, name string, que
 		return nil, err
 	}
 
-	resp, err := ng.sess.SendSync(name, []json.RawMessage{[]byte(query), buff.Bytes(), []byte(version)})
+	q, err := json.Marshal(query)
+	if err != nil {
+		return nil, err
+	}
+	v, err := json.Marshal(version)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := ng.sess.SendSync("query", []json.RawMessage{q, buff.Bytes(), v})
 	buff.Reset()
 
 	return resp.Result, err
@@ -68,10 +76,8 @@ func (ng *NetworkGraphWSTransport) Subscribe(ctx context.Context, events []struc
 		return err
 	}
 
-	log.Println("subscribe A")
 	_, err := ng.sess.SendSync("subscribe", []json.RawMessage{buff.Bytes()})
 	buff.Reset()
-	log.Println("subscribe B")
 
 	return err
 }

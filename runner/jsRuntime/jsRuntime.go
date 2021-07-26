@@ -197,7 +197,7 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
 	//	iso, _ := info.Context().Isolate()
-	resp, err := s.caller.CallGQL(context.Background(), `"`+args[0].String()+`"`, `"`+args[1].String()+`"`, a, `"`+args[2].String()+`"`)
+	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a, args[2].String())
 	fmt.Println(string(resp))
 	if err != nil {
 		log.Println(fmt.Printf("callGQL error %v \n", err))

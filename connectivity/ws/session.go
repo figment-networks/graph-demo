@@ -182,7 +182,9 @@ func (s *Session) Recv() {
 
 		h, ok := s.reg.Get(req.Method)
 		if !ok {
+			s.l.Warn("method not found", zap.String("method", req.Method))
 			s.response <- jsonrpc.Response{ID: req.ID, JSONRPC: "2.0", Error: &jsonrpc.Error{Code: -32601, Message: "Method not found"}}
+			continue
 		}
 
 		go h(s.ctx, &SessionRequest{args: req.Params, connID: s.ID},
