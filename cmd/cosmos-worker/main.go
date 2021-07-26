@@ -72,8 +72,8 @@ func main() {
 	wstr := apiTransportWS.NewProcessHandler(logger.GetLogger(), apiClient)
 	apiClient.LinkPersistor(wstr)
 
-	if err := wstr.Connect(ctx, cfg.Manager); err != nil {
-		log.Error("error connecting to manager ", zap.Error(err), zap.String("address", cfg.Manager))
+	if err := wstr.Connect(ctx, cfg.ManagerURL); err != nil {
+		log.Error("error connecting to manager ", zap.Error(err), zap.String("address", cfg.ManagerURL))
 		return
 	}
 

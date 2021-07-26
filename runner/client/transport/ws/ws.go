@@ -38,11 +38,15 @@ func NewNetworkGraphWSTransport(l *zap.Logger) *NetworkGraphWSTransport {
 
 func (ng *NetworkGraphWSTransport) Connect(ctx context.Context, address string, RH connectivity.FunctionCallHandler) (err error) {
 	ng.c, _, err = websocket.DefaultDialer.DialContext(ctx, address, nil)
+	if err != nil {
+		return err
+	}
+
 	ng.sess = wsapi.NewSession(ctx, ng.c, ng.l, RH)
 	go ng.sess.Recv()
 	go ng.sess.Req()
 
-	return err
+	return nil
 }
 
 func (ng *NetworkGraphWSTransport) CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}, version string) ([]byte, error) {

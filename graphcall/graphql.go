@@ -211,7 +211,7 @@ func getValue(inputParams map[string]Param, v interface{}, field, variableType s
 	}
 }
 
-func parseOperationDefinition(q *GraphQuery, od *ast.OperationDefinition, inputObjects map[string]Param, variables map[string]interface{}) error {
+func parseOperationDefinition(q *GraphQuery, od *ast.OperationDefinition, inputObjects map[string]Param, variables map[string]interface{}) (err error) {
 	if od.Operation != "query" {
 		return errors.New("Expected query operation")
 	}
@@ -222,7 +222,7 @@ func parseOperationDefinition(q *GraphQuery, od *ast.OperationDefinition, inputO
 	q.Q.Name = od.Name.Value
 
 	// root query parameters
-	if err := queryQParams(q, inputObjects, variableDefinitions, variables); err != nil {
+	if err = queryQParams(q, inputObjects, variableDefinitions, variables); err != nil {
 		return err
 	}
 
@@ -237,7 +237,7 @@ func parseOperationDefinition(q *GraphQuery, od *ast.OperationDefinition, inputO
 
 		arguments := queryField.Arguments
 
-		if err := queryParams(q, arguments, i); err != nil {
+		if q.Queries[i].Params, err = queryParams(q.Q.Params, arguments); err != nil {
 			return err
 		}
 
@@ -274,43 +274,40 @@ func queryQParams(q *GraphQuery, inputObjects map[string]Param, variableDefiniti
 	return nil
 }
 
-func queryParams(q *GraphQuery, arguments []*ast.Argument, i int) (err error) {
+func queryParams(inputParams map[string]Param, arguments []*ast.Argument) (params map[string]Part, err error) {
+	params = make(map[string]Part)
 	for _, arg := range arguments {
-		params := make(map[string]Part)
-		var varValue interface{}
+		var value interface{}
 		argName := arg.Name.Value
-
-		value := arg.Value.GetValue()
+		argValue := arg.Value.GetValue()
 
 		nameStr := argName
 
 		switch arg.Value.GetKind() {
 		case "IntValue":
-			intValue, err := strconv.Atoi(value.(string))
+			intValue, err := strconv.Atoi(argValue.(string))
 			if err != nil {
-				return err
+				return nil, err
 			}
-			varValue = float64(intValue)
+			value = float64(intValue)
 		case "Variable", "Name":
-			nameStr = value.(*ast.Name).Value
+			nameStr = argValue.(*ast.Name).Value
 		default:
-			varValue = value
+			value = argValue
 		}
 
-		variable := q.Q.Params[nameStr]
-		if varValue != nil {
-			variable.Value = varValue
+		variable := inputParams[nameStr]
+		if value != nil {
+			variable.Value = value
 		}
 
 		params[argName] = Part{
 			Name:   argName,
 			Params: map[string]Param{nameStr: variable},
 		}
-
-		q.Queries[i].Params = params
 	}
 
-	return nil
+	return params, nil
 }
 
 func getQueryValue(value ast.Value) (interface{}, error) {

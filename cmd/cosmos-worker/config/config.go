@@ -25,7 +25,7 @@ type Config struct {
 	CosmosGRPCAddr string `json:"cosmos_grpc_addr" envconfig:"COSMOS_GRPC_ADDR"`
 	ChainID        string `json:"chain_id" envconfig:"CHAIN_ID"`
 
-	Manager string `json:"managers" envconfig:"MANAGER" default:"0.0.0.0:8085"`
+	ManagerURL string `json:"managers" envconfig:"MANAGER_URL" default:"ws://0.0.0.0:8085"`
 
 	MaximumHeightsToGet float64 `json:"maximum_heights_to_get" envconfig:"MAXIMUM_HEIGHTS_TO_GET" default:"10000"`
 	RequestsPerSecond   int64   `json:"requests_per_second" envconfig:"REQUESTS_PER_SECOND" default:"33"`
