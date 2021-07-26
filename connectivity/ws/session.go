@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,6 +22,37 @@ const (
 	pongWait = 60 * time.Second
 	pingTime = 50 * time.Second
 )
+
+type SyncSender interface {
+	SendSync(method string, params []json.RawMessage) (resp jsonrpc.Response, e error)
+}
+
+type Registry struct {
+	sessions map[string]SyncSender
+	sl       sync.RWMutex
+}
+
+func NewRegistry() *Registry {
+	return &Registry{sessions: make(map[string]SyncSender)}
+}
+
+func (r *Registry) Add(connID string, ss SyncSender) {
+	r.sl.Lock()
+	defer r.sl.Unlock()
+	r.sessions[connID] = ss
+}
+
+func (r *Registry) Get(connID string) (ss SyncSender, ok bool) {
+	r.sl.RLock()
+	defer r.sl.RUnlock()
+	ss, ok = r.sessions[connID]
+	if !ok || ss == nil {
+		return nil, false
+	}
+
+	return ss, true
+
+}
 
 // Session represents websocket connection during it's livetime
 type Session struct {
@@ -48,13 +80,13 @@ func NewWaiting() *Waiting {
 	return &Waiting{returnCh: make(chan jsonrpc.Response, 1)}
 }
 
-func NewSession(ctx context.Context, c *websocket.Conn, l *zap.Logger, reg connectivity.FunctionCallHandler) *Session {
+func NewSession(ctx context.Context, c *websocket.Conn, l *zap.Logger, callH connectivity.FunctionCallHandler) *Session {
 	nCtx, cancel := context.WithCancel(ctx)
 
 	firstCall := uint64(0)
 	return &Session{
 		ID:        uuid.NewString(),
-		reg:       reg,
+		reg:       callH,
 		c:         c,
 		ctx:       nCtx,
 		ctxCancel: cancel,
@@ -70,8 +102,7 @@ func (s *Session) Send(req jsonrpc.Request) {
 	s.send <- req
 }
 
-func (s *Session) SendSync(method string, params []json.RawMessage) (jsonrpc.Response, error) {
-
+func (s *Session) SendSync(method string, params []json.RawMessage) (resp jsonrpc.Response, e error) {
 	w := NewWaiting()
 	defer close(w.returnCh)
 	id := atomic.AddUint64(s.newID, 1)
@@ -80,14 +111,18 @@ func (s *Session) SendSync(method string, params []json.RawMessage) (jsonrpc.Res
 	s.routing[id] = w
 	s.routingLock.Unlock()
 
-	s.send <- jsonrpc.Request{
-		ID:      id,
-		JSONRPC: "2.0",
-		Method:  method,
-		Params:  params,
+	select {
+	case <-s.ctx.Done():
+		return resp, nil
+	case s.send <- jsonrpc.Request{ID: id, JSONRPC: "2.0", Method: method, Params: params}:
 	}
 
-	return <-w.returnCh, nil
+	select {
+	case <-s.ctx.Done():
+	case resp = <-w.returnCh:
+	}
+
+	return resp, nil
 }
 
 func (s *Session) Recv() {
@@ -131,26 +166,33 @@ func (s *Session) Recv() {
 			s.routingLock.RLock()
 			waitO, ok := s.routing[req.ID]
 			s.routingLock.RUnlock()
+
+			s.l.Debug("msg", zap.Any("message", req))
 			if !ok {
 				s.l.Error("unexpected message", zap.Any("message", req))
+				continue
 			}
 			waitO.returnCh <- jsonrpc.Response{ID: req.ID, JSONRPC: "2.0", Result: req.Result, Error: req.Error}
+
+			s.routingLock.RLock()
 			delete(s.routing, req.ID)
 			s.routingLock.RUnlock()
-
 			continue
 		}
 
 		h, ok := s.reg.Get(req.Method)
 		if !ok {
+			s.l.Warn("method not found", zap.String("method", req.Method))
 			s.response <- jsonrpc.Response{ID: req.ID, JSONRPC: "2.0", Error: &jsonrpc.Error{Code: -32601, Message: "Method not found"}}
+			continue
 		}
 
-		go h(s.ctx, &SessionRequest{args: req.Params, connID: s.ID}, &SessionResponse{
-			ID:             req.ID,
-			SessionContext: s.ctx,
-			RespCh:         s.response,
-		})
+		go h(s.ctx, &SessionRequest{args: req.Params, connID: s.ID},
+			&SessionResponse{
+				ID:             req.ID,
+				SessionContext: s.ctx,
+				RespCh:         s.response,
+			})
 	}
 }
 
@@ -185,8 +227,9 @@ WSLOOP:
 			}
 
 			buff.Reset()
+			log.Printf("message %+v", message)
 			if err := enc.Encode(message); err != nil {
-				s.l.Info("error in encode", zap.Error(err))
+				s.l.Info("error in encode send", zap.Error(err), zap.Any("message", message))
 				continue WSLOOP
 			}
 
@@ -205,8 +248,9 @@ WSLOOP:
 			}
 
 			buff.Reset()
+			log.Printf("response %+v", message)
 			if err := enc.Encode(message); err != nil {
-				s.l.Info("error in encode", zap.Error(err))
+				s.l.Info("error in encode response", zap.Error(err), zap.Any("message", message))
 				continue WSLOOP
 			}
 
@@ -238,7 +282,6 @@ type SessionResponse struct {
 }
 
 func (s *SessionResponse) Send(result json.RawMessage, er error) error {
-
 	resp := jsonrpc.Response{
 		ID:      s.ID,
 		JSONRPC: "2.0",

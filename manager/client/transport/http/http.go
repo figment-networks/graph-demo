@@ -25,10 +25,10 @@ func NewCosmosHTTPTransport(address string, c *http.Client, log *zap.Logger) *Co
 	}
 }
 
-func (ng *CosmosHTTPTransport) GetBlock(ctx context.Context, height uint64) (bTx structs.BlockAndTx, er error) {
+func (ng *CosmosHTTPTransport) GetAll(ctx context.Context, height uint64) (bTx structs.BlockAndTx, er error) {
 	ng.log.Debug("[HTTP] Getting a block", zap.Uint64("height", height))
 
-	resp, err := http.Get(fmt.Sprintf("%s/getBlock/%d", ng.address, height))
+	resp, err := http.Get(fmt.Sprintf("%s/getAll/%d", ng.address, height))
 	if err != nil {
 		ng.log.Error("[HTTP] Error while getting a block from worker", zap.Uint64("height", height), zap.Error(err))
 		return structs.BlockAndTx{}, err

@@ -12,3 +12,13 @@ type EventNewBlock struct {
 type EventNewTransaction struct {
 	Height uint64 `json:"height"`
 }
+
+type Subs struct {
+	Name           string
+	StartingHeight uint64
+}
+
+type Register struct {
+	Name    string `json:"name"`
+	ChainID string `json:"chainID"`
+}

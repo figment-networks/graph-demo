@@ -17,16 +17,15 @@ var (
 
 // Config holds the configuration data
 type Config struct {
-	AppEnv  string `json:"app_env" envconfig:"APP_ENV" default:"development"`
+	AppEnv string `json:"app_env" envconfig:"APP_ENV" default:"development"`
+
 	Address string `json:"address" envconfig:"ADDRESS" default:"0.0.0.0"`
 	Port    string `json:"port" envconfig:"PORT" default:"8088"`
 
 	CosmosGRPCAddr string `json:"cosmos_grpc_addr" envconfig:"COSMOS_GRPC_ADDR"`
 	ChainID        string `json:"chain_id" envconfig:"CHAIN_ID"`
 
-	Managers        string        `json:"managers" envconfig:"MANAGERS" default:"127.0.0.1:8085"`
-	ManagerInterval time.Duration `json:"manager_interval" envconfig:"MANAGER_INTERVAL" default:"10s"`
-	Hostname        string        `json:"hostname" envconfig:"HOSTNAME"`
+	Manager string `json:"managers" envconfig:"MANAGER" default:"0.0.0.0:8085"`
 
 	MaximumHeightsToGet float64 `json:"maximum_heights_to_get" envconfig:"MAXIMUM_HEIGHTS_TO_GET" default:"10000"`
 	RequestsPerSecond   int64   `json:"requests_per_second" envconfig:"REQUESTS_PER_SECOND" default:"33"`
@@ -35,8 +34,6 @@ type Config struct {
 
 	TimeoutBlockCall       time.Duration `json:"timeout_block_call" envconfig:"TIMEOUT_BLOCK_CALL" default:"30s"`
 	TimeoutTransactionCall time.Duration `json:"timeout_transaction_call" envconfig:"TIMEOUT_TRANSACTION_CALL" default:"30s"`
-
-	StoreHTTPEndpoints string `json:"store_http_endpoints" envconfig:"STORE_HTTP_ENDPOINTS"`
 }
 
 // FromFile reads the config from a file

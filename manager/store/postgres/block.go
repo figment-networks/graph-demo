@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/figment-networks/graph-demo/manager/structs"
 )
@@ -29,10 +28,6 @@ const (
 
 // StoreBlock appends data to buffer
 func (d *Driver) StoreBlock(ctx context.Context, b structs.Block) error {
-	tx, err := d.db.Begin()
-	if err != nil {
-		return err
-	}
 
 	header, err := getJsonValue(b.Header)
 	if err != nil {
@@ -54,13 +49,8 @@ func (d *Driver) StoreBlock(ctx context.Context, b structs.Block) error {
 		return err
 	}
 
-	_, err = tx.Exec(insertBlock, b.ChainID, b.Height, b.Hash, b.Time, header, data, evidence, lastCommit, b.NumberOfTransactions)
-	if err != nil {
-		log.Println("[DB] Rollback flushB error: ", err)
-		tx.Rollback()
-		return err
-	}
-	return tx.Commit()
+	_, err = d.db.Exec(insertBlock, b.ChainID, b.Height, b.Hash, b.Time, header, data, evidence, lastCommit, b.NumberOfTransactions)
+	return err
 }
 
 func getJsonValue(v interface{}) (string, error) {
@@ -77,21 +67,35 @@ func getJsonValue(v interface{}) (string, error) {
 	return (fmt.Stringer)(buff).String(), nil
 }
 
-const GetBlockByHeight = `SELECT chain_id, height, hash, time, header, data, evidence, last_commit, tx_num
-							FROM public.blocks
-							WHERE chain_id = $1 AND height = $2`
-
-// GetBlockForTime returns first block that comes on or after given time. If no such block exists, returns closest block that comes before given time.
-func (d *Driver) GetBlockBytHeight(ctx context.Context, height uint64, chainID string) (b structs.Block, err error) {
-	row := d.db.QueryRowContext(ctx, GetBlockByHeight, chainID, height)
+func (d *Driver) GetBlockByHeight(ctx context.Context, height uint64, chainID string) (b structs.Block, err error) {
+	row := d.db.QueryRowContext(ctx, `SELECT chain_id, height, hash, time, header, data, evidence, last_commit, tx_num FROM public.blocks WHERE chain_id = $1 AND height = $2`, chainID, height)
 	if row == nil {
-		return structs.Block{}, sql.ErrNoRows
+		return b, sql.ErrNoRows
 	}
 
 	err = row.Scan(&b.ChainID, &b.Height, &b.Hash, &b.Time, &b.Header, &b.Data, &b.Evidence, &b.LastCommit, &b.NumberOfTransactions)
 	if err != sql.ErrNoRows {
-		return structs.Block{}, err
+		return b, err
 	}
 
 	return b, nil
+}
+
+func (d *Driver) GetLatestHeight(ctx context.Context, chainID string) (height uint64, err error) {
+	row := d.db.QueryRowContext(ctx, `SELECT height FROM public.progress WHERE chain_id = $1 `, chainID)
+	if row == nil {
+		return 0, nil
+	}
+
+	err = row.Scan(&height)
+	if err != sql.ErrNoRows {
+		return height, err
+	}
+
+	return height, nil
+}
+
+func (d *Driver) SetLatestHeight(ctx context.Context, chainID string, height uint64) (err error) {
+	_, err = d.db.ExecContext(ctx, `INSERT INTO public.progress("chain_id", "height") VALUES ($1, $2) ON CONFLICT (chain_id) DO UPDATE SET height = EXCLUDED.height`, chainID, height)
+	return err
 }

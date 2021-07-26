@@ -27,7 +27,7 @@ var (
 var curencyRegex = regexp.MustCompile("([0-9\\.\\,\\-\\s]+)([^0-9\\s]+)$")
 
 // SearchTx is making search api call
-func (c *Client) SearchTx(ctx context.Context, block structs.Block, perPage uint64) (txs []structs.Transaction, err error) {
+func (c *Client) SearchTx(ctx context.Context, block structs.Block) (txs []structs.Transaction, err error) {
 	height := block.Height
 	c.log.Debug("[COSMOS-WORKER] Getting transactions", zap.Uint64("height", height))
 
@@ -40,10 +40,6 @@ func (c *Client) SearchTx(ctx context.Context, block structs.Block, perPage uint
 	for {
 		pag.Offset = (perPage * page) - perPage
 		now := time.Now()
-
-		if err = c.rateLimiterGRPC.Wait(ctx); err != nil {
-			return nil, err
-		}
 
 		nctx, cancel := context.WithTimeout(ctx, c.cfg.TimeoutSearchTxCall)
 		grpcRes, err := c.txServiceClient.GetTxsEvent(nctx, &tx.GetTxsEventRequest{
@@ -99,7 +95,7 @@ func (c *Client) rawToTransaction(ctx context.Context, in *tx.Tx, resp *types.Tx
 
 	tx.Raw, err = in.Marshal()
 	if err != nil {
-		return structs.Transaction{}, errors.New("Error marshaling tx to raw")
+		return structs.Transaction{}, errors.New("error marshaling tx to raw")
 	}
 
 	if in.Body != nil {

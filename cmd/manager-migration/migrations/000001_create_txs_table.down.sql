@@ -8,5 +8,5 @@ DROP INDEX IF EXISTS transaction_types_idx;
 DROP INDEX IF EXISTS transaction_senders_idx;
 DROP INDEX IF EXISTS transaction_recipients_idx;
 
-DROP TABLE IF EXISTS transaction_events;
+DROP TABLE IF EXISTS transactions;
 

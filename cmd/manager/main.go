@@ -15,13 +15,20 @@ import (
 	"syscall"
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
+	"github.com/figment-networks/graph-demo/connectivity"
+	connWS "github.com/figment-networks/graph-demo/connectivity/ws"
+	"github.com/gorilla/websocket"
+
 	"github.com/figment-networks/graph-demo/cmd/manager/config"
-	"github.com/figment-networks/graph-demo/manager"
 	"github.com/figment-networks/graph-demo/manager/client"
-	transportHTTP "github.com/figment-networks/graph-demo/manager/client/transport/http"
 	"github.com/figment-networks/graph-demo/manager/scheduler"
 	"github.com/figment-networks/graph-demo/manager/store"
 	"github.com/figment-networks/graph-demo/manager/store/postgres"
+	"github.com/figment-networks/graph-demo/manager/subscription"
+
+	"github.com/figment-networks/graph-demo/manager/api"
+	runnerWSAPI "github.com/figment-networks/graph-demo/manager/api/runner/transport/ws"
+	workerWSAPI "github.com/figment-networks/graph-demo/manager/api/worker/transport/ws"
 
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
@@ -50,6 +57,8 @@ func main() {
 		log.Fatal(fmt.Errorf("error initializing config [ERR: %+v]", err))
 	}
 
+	log.Println(" wCfg.WorkerAddrs", wCfg.WorkerAddrs)
+
 	if cfg.AppEnv == "development" || cfg.AppEnv == "local" {
 		logger.Init("console", "debug", []string{"stderr"})
 	} else {
@@ -67,26 +76,26 @@ func main() {
 		log.Error("Error while creating database driver", zap.Error(err))
 		os.Exit(1)
 	}
-	store := store.New(dbDriver)
 
-	httpClient := http.DefaultClient
+	st := store.NewStore(dbDriver)
+	mux := http.NewServeMux()
+	sc := subscription.NewSubscriptions()
 
-	schedulers := make([]*scheduler.Scheduler, len(wCfg.WorkerAddrs))
-	for i, workerAddr := range wCfg.WorkerAddrs {
+	reg := connWS.NewRegistry()
 
-		httpTransport := transportHTTP.NewCosmosHTTPTransport(workerAddr.URL, httpClient, log)
-		// wsTransport := transportWS.NewCosmosWSTransport(workerAddr.URL, wsClient)
+	client := client.NewClient(log, st, sc)
+	sched := scheduler.NewScheduler(log, client)
 
-		client := client.NewClient(httpTransport)
-		schedulers[i] = scheduler.New(ctx, client, store, log)
-	}
+	serv := api.NewService(st)
+	wProc := workerWSAPI.NewProcessHandler(log, serv, sched, reg)
+	linkWorker(ctx, log, reg, wProc, mux)
 
-	manager := manager.New(schedulers)
-	manager.RunScheduler(ctx, cfg.StartHeight)
+	proc := runnerWSAPI.NewProcessHandler(log, serv, reg, sc)
+	linkRunner(ctx, log, reg, proc, mux)
 
 	s := &http.Server{
 		Addr:    cfg.Address,
-		Handler: http.NewServeMux(),
+		Handler: mux,
 		TLSConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
@@ -159,4 +168,41 @@ func runHTTP(s *http.Server, address string, logger *zap.Logger, exit chan<- str
 		logger.Error("[HTTP] failed to listen", zap.Error(err))
 	}
 	exit <- "http"
+}
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+var ErrConnectionClosed = errors.New("connection closed")
+
+func linkWorker(ctx context.Context, l *zap.Logger, reg *connWS.Registry, callH connectivity.FunctionCallHandler, mux *http.ServeMux) {
+	mux.HandleFunc("/work", func(w http.ResponseWriter, r *http.Request) {
+		uConn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			l.Warn("Error upgrading connection", zap.Error(err))
+			return
+		}
+
+		sess := connWS.NewSession(ctx, uConn, l, callH)
+		reg.Add(sess.ID, sess)
+		go sess.Recv()
+		go sess.Req()
+	})
+}
+
+func linkRunner(ctx context.Context, l *zap.Logger, reg *connWS.Registry, callH connectivity.FunctionCallHandler, mux *http.ServeMux) {
+	mux.HandleFunc("/runner", func(w http.ResponseWriter, r *http.Request) {
+		uConn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			l.Warn("Error upgrading connection", zap.Error(err))
+			return
+		}
+
+		sess := connWS.NewSession(ctx, uConn, l, callH)
+		reg.Add(sess.ID, sess)
+		go sess.Recv()
+		go sess.Req()
+	})
 }

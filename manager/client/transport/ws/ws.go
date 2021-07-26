@@ -3,62 +3,43 @@ package ws
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strconv"
 
-	"github.com/figment-networks/graph-demo/connectivity"
 	wsapi "github.com/figment-networks/graph-demo/connectivity/ws"
 	"github.com/figment-networks/graph-demo/manager/structs"
-	"go.uber.org/zap"
-
-	"github.com/gorilla/websocket"
 )
 
 type CosmosWSTransport struct {
-	c    *websocket.Conn
-	sess *wsapi.Session
-	l    *zap.Logger
+	sess wsapi.SyncSender
 }
 
-func NewCosmosWSTransport() *CosmosWSTransport {
-	return &CosmosWSTransport{}
+func NewCosmosWSTransport(sess wsapi.SyncSender) *CosmosWSTransport {
+	return &CosmosWSTransport{sess: sess}
 }
 
-func (ng *CosmosWSTransport) Connect(ctx context.Context, address string, RH connectivity.FunctionCallHandler) (err error) {
-	if ng.c, _, err = websocket.DefaultDialer.DialContext(ctx, address, nil); err != nil {
+func (ng *CosmosWSTransport) GetAll(ctx context.Context, height uint64) (err error) {
+	resp, err := ng.sess.SendSync("get_all", []json.RawMessage{[]byte(strconv.FormatUint(height, 10))})
+	if err != nil {
 		return err
 	}
-
-	ng.sess = wsapi.NewSession(ctx, ng.c, ng.l, RH)
-	go ng.sess.Recv()
-	go ng.sess.Req()
+	if resp.Error != nil && resp.Error.Message != "" {
+		return errors.New(resp.Error.Message)
+	}
 
 	return nil
 }
 
-func (ng *CosmosWSTransport) GetBlockByHeight(ctx context.Context, height uint64) (bTx structs.BlockAndTx, err error) {
-	resp, err := ng.sess.SendSync("get_by_height", []json.RawMessage{[]byte(strconv.FormatUint(height, 10))})
-	if err != nil {
-		return structs.BlockAndTx{}, err
-	}
-
-	if err = json.Unmarshal(resp.Result, &bTx); err != nil {
-		return structs.BlockAndTx{}, err
-	}
-
-	return bTx, nil
-
-}
-
-func (ng *CosmosWSTransport) GetLatestByHeight(ctx context.Context) (bTx structs.BlockAndTx, err error) {
+func (ng *CosmosWSTransport) GetLatest(ctx context.Context) (b structs.Block, err error) {
 	resp, err := ng.sess.SendSync("get_latest", nil)
 	if err != nil {
-		return structs.BlockAndTx{}, err
+		return b, err
 	}
 
-	if err = json.Unmarshal(resp.Result, &bTx); err != nil {
-		return structs.BlockAndTx{}, err
+	if err = json.Unmarshal(resp.Result, &b); err != nil {
+		return b, err
 	}
 
-	return bTx, nil
+	return b, nil
 
 }

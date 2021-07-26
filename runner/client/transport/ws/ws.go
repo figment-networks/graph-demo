@@ -7,6 +7,7 @@ import (
 
 	"github.com/figment-networks/graph-demo/connectivity"
 	wsapi "github.com/figment-networks/graph-demo/connectivity/ws"
+	"github.com/figment-networks/graph-demo/runner/structs"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )
@@ -28,11 +29,9 @@ type NetworkGraphWSTransport struct {
 	l    *zap.Logger
 }
 
-func NewNetworkGraphWSTransport(l *zap.Logger, c *websocket.Conn, sess *wsapi.Session) *NetworkGraphWSTransport {
+func NewNetworkGraphWSTransport(l *zap.Logger) *NetworkGraphWSTransport {
 	ph := &NetworkGraphWSTransport{
-		c:    c,
-		sess: sess,
-		l:    l,
+		l: l,
 	}
 	return ph
 }
@@ -54,13 +53,22 @@ func (ng *NetworkGraphWSTransport) CallGQL(ctx context.Context, name string, que
 		return nil, err
 	}
 
-	resp, err := ng.sess.SendSync(name, []json.RawMessage{[]byte(query), buff.Bytes(), []byte(version)})
+	q, err := json.Marshal(query)
+	if err != nil {
+		return nil, err
+	}
+	v, err := json.Marshal(version)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := ng.sess.SendSync("query", []json.RawMessage{q, buff.Bytes(), v})
 	buff.Reset()
 
 	return resp.Result, err
 }
 
-func (ng *NetworkGraphWSTransport) Subscribe(ctx context.Context, events []string) error {
+func (ng *NetworkGraphWSTransport) Subscribe(ctx context.Context, events []structs.Subs) error {
 	buff := new(bytes.Buffer)
 	defer buff.Reset()
 	enc := json.NewEncoder(buff)

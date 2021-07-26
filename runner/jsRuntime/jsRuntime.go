@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/figment-networks/graph-demo/runner/store"
+	"github.com/figment-networks/graph-demo/runner/structs"
 	"go.uber.org/zap"
 
 	"rogchap.com/v8go"
@@ -20,7 +21,7 @@ import (
 type GQLCaller interface {
 	CallGQL(ctx context.Context, name, query string, variables map[string]interface{}, version string) ([]byte, error)
 
-	Subscribe(ctx context.Context, name string, events []string) error
+	Subscribe(ctx context.Context, name string, events []structs.Subs) error
 	Unsubscribe(ctx context.Context, name string, events []string) error
 }
 
@@ -44,9 +45,11 @@ func NewLoader(l *zap.Logger, rqstr GQLCaller, stor store.Storage) *Loader {
 }
 
 func (l *Loader) CallSubgraphHandler(subgraph string, handler *SubgraphHandler) error {
-	l.lock.RLock()
+
+	l.log.Debug("Calling SubgraphHandler ", zap.String("subgraph", subgraph))
+	//	l.lock.RLock()
 	s, ok := l.subgraphs[subgraph]
-	l.lock.RUnlock()
+	//	l.lock.RUnlock()
 
 	if !ok {
 		return errors.New("subgraph not found")
@@ -62,15 +65,16 @@ func (l *Loader) CallSubgraphHandler(subgraph string, handler *SubgraphHandler) 
 
 func (l *Loader) NewEvent(typ string, data map[string]interface{}) error {
 	l.log.Debug("Event received ", zap.String("type", typ), zap.Any("data", data))
+
+	l.log.Debug("subgraphs ", zap.Any("data", l.subgraphs))
+	l.lock.RLock()
 	for name := range l.subgraphs {
-		if err := l.CallSubgraphHandler(name,
-			&SubgraphHandler{
-				name:   "handle" + strings.Title(typ),
-				values: []interface{}{data},
-			}); err != nil {
+		// TODO(l): Add dictionary to map events
+		if err := l.CallSubgraphHandler(name, &SubgraphHandler{name: strings.Replace(typ, "new", "handle", -1), values: []interface{}{data}}); err != nil {
 			return err
 		}
 	}
+	l.lock.RUnlock()
 	return nil
 }
 
@@ -81,7 +85,10 @@ func (l *Loader) LoadJS(name string, path string) error {
 	}
 
 	// TODO(l): load it from subgraph.yaml
-	l.rqstr.Subscribe(context.Background(), "cosmos", []string{"newTransaction", "newBlock"})
+	l.rqstr.Subscribe(context.Background(), "cosmos",
+		[]structs.Subs{
+			{"newTransaction", 0},
+			{"newBlock", 0}})
 
 	return l.createRunable(name, b)
 }
@@ -119,6 +126,8 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	l.lock.Lock()
 	l.subgraphs[name] = subgr
 	l.lock.Unlock()
+
+	l.log.Debug("Loaded subgraph", zap.String("name", name), zap.Any("data", l.subgraphs))
 
 	return nil
 }
@@ -172,7 +181,7 @@ func (s *Subgraph) storeRecord(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
 
-	if err := s.stor.Store(context.Background(), s.name, args[0].String(), a); err != nil {
+	if err := s.stor.Store(context.Background(), s.name, `"`+args[0].String()+`"`, a); err != nil {
 		return jsonError(info.Context(), err)
 	}
 
