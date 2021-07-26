@@ -45,9 +45,11 @@ func NewLoader(l *zap.Logger, rqstr GQLCaller, stor store.Storage) *Loader {
 }
 
 func (l *Loader) CallSubgraphHandler(subgraph string, handler *SubgraphHandler) error {
-	l.lock.RLock()
+
+	l.log.Debug("Calling SubgraphHandler ", zap.String("subgraph", subgraph))
+	//	l.lock.RLock()
 	s, ok := l.subgraphs[subgraph]
-	l.lock.RUnlock()
+	//	l.lock.RUnlock()
 
 	if !ok {
 		return errors.New("subgraph not found")
@@ -63,15 +65,16 @@ func (l *Loader) CallSubgraphHandler(subgraph string, handler *SubgraphHandler) 
 
 func (l *Loader) NewEvent(typ string, data map[string]interface{}) error {
 	l.log.Debug("Event received ", zap.String("type", typ), zap.Any("data", data))
+
+	l.log.Debug("subgraphs ", zap.Any("data", l.subgraphs))
+	l.lock.RLock()
 	for name := range l.subgraphs {
-		if err := l.CallSubgraphHandler(name,
-			&SubgraphHandler{
-				name:   "handle" + strings.Title(typ),
-				values: []interface{}{data},
-			}); err != nil {
+		// TODO(l): Add dictionary to map events
+		if err := l.CallSubgraphHandler(name, &SubgraphHandler{name: strings.Replace(typ, "new", "handle", -1), values: []interface{}{data}}); err != nil {
 			return err
 		}
 	}
+	l.lock.RUnlock()
 	return nil
 }
 
@@ -82,7 +85,10 @@ func (l *Loader) LoadJS(name string, path string) error {
 	}
 
 	// TODO(l): load it from subgraph.yaml
-	l.rqstr.Subscribe(context.Background(), "cosmos", []structs.Subs{{"newTransaction", 0}, {"newBlock", 0}})
+	l.rqstr.Subscribe(context.Background(), "cosmos",
+		[]structs.Subs{
+			{"newTransaction", 0},
+			{"newBlock", 0}})
 
 	return l.createRunable(name, b)
 }
@@ -120,6 +126,8 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	l.lock.Lock()
 	l.subgraphs[name] = subgr
 	l.lock.Unlock()
+
+	l.log.Debug("Loaded subgraph", zap.String("name", name), zap.Any("data", l.subgraphs))
 
 	return nil
 }
@@ -173,7 +181,7 @@ func (s *Subgraph) storeRecord(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
 
-	if err := s.stor.Store(context.Background(), s.name, args[0].String(), a); err != nil {
+	if err := s.stor.Store(context.Background(), s.name, `"`+args[0].String()+`"`, a); err != nil {
 		return jsonError(info.Context(), err)
 	}
 
@@ -189,7 +197,7 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
 	//	iso, _ := info.Context().Isolate()
-	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a, args[2].String())
+	resp, err := s.caller.CallGQL(context.Background(), `"`+args[0].String()+`"`, `"`+args[1].String()+`"`, a, `"`+args[2].String()+`"`)
 	fmt.Println(string(resp))
 	if err != nil {
 		log.Println(fmt.Printf("callGQL error %v \n", err))

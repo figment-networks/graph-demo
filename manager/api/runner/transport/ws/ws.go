@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"sync"
 
 	"github.com/figment-networks/graph-demo/connectivity"
+	wsConn "github.com/figment-networks/graph-demo/connectivity/ws"
 	"github.com/figment-networks/graph-demo/manager/structs"
 	"github.com/figment-networks/graph-demo/manager/subscription"
 	"github.com/gorilla/websocket"
@@ -43,17 +45,20 @@ type ProcessHandler struct {
 	service ManagerService
 	log     *zap.Logger
 
+	reg *wsConn.Registry
+
 	registry     map[string]connectivity.Handler
 	registrySync sync.RWMutex
 
 	subscriptions Subscriber
 }
 
-func NewProcessHandler(log *zap.Logger, svc ManagerService, subscriptions Subscriber) *ProcessHandler {
+func NewProcessHandler(log *zap.Logger, svc ManagerService, reg *wsConn.Registry, subscriptions Subscriber) *ProcessHandler {
 	ph := &ProcessHandler{
 		log:           log,
 		service:       svc,
 		subscriptions: subscriptions,
+		reg:           reg,
 		registry:      make(map[string]connectivity.Handler),
 	}
 	ph.Add("query", ph.GraphQLRequest)
@@ -145,9 +150,11 @@ func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Reques
 	}
 
 	for _, ev := range events {
-		ph.subscriptions.Add(ctx, ev.Name, NewSubscriptionInstance(req.ConnID(), resp, ev.StartingHeight))
+		ph.subscriptions.Add(ctx, ev.Name, NewSubscriptionInstance(req.ConnID(), ph.reg, ev.StartingHeight))
 		ph.log.Debug("added subscription for event", zap.String("id", req.ConnID()), zap.String("event", ev.Name), zap.Uint64("from", ev.StartingHeight))
 	}
+
+	resp.Send(json.RawMessage([]byte(`"ACK"`)), nil)
 }
 
 func (ph *ProcessHandler) Unsubscribe(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
@@ -190,34 +197,44 @@ func (ph *ProcessHandler) Unsubscribe(ctx context.Context, req connectivity.Requ
 		// TODO(lukanus): error
 		ph.log.Debug("removed subscription for event", zap.String("id", req.ConnID()), zap.String("event", ev))
 	}
+
+	resp.Send(json.RawMessage([]byte(`"ACK"`)), nil)
 }
 
-func NewSubscriptionInstance(id string, resp connectivity.Response, from uint64) subscription.Sub {
+func NewSubscriptionInstance(connID string, reg *wsConn.Registry, from uint64) subscription.Sub {
 	return &SubscriptionInstance{
-		id:   id,
-		from: from,
-		resp: resp,
+		connID: connID,
+		reg:    reg,
+		from:   from,
 	}
 }
 
 type SubscriptionInstance struct {
-	id string
+	connID string
 
-	resp    connectivity.Response
+	reg     *wsConn.Registry
 	from    uint64
 	current uint64
 }
 
-func (si *SubscriptionInstance) Send(ctx context.Context, height uint64, resp json.RawMessage) error {
+func (si *SubscriptionInstance) Send(ctx context.Context, height uint64, name string, resp json.RawMessage) error {
 
 	// TODO(l): send only if not initial
+	log.Println("log event", height, string(resp))
 
-	return si.resp.Send(resp, nil)
+	ss, ok := si.reg.Get(si.connID)
+	if !ok || ss == nil {
+		return errors.New("connection does not exists")
+	}
+
+	_, err := ss.SendSync("event", []json.RawMessage{[]byte(`"` + name + `"`), resp})
+
+	return err
 
 }
 
 func (si *SubscriptionInstance) ID() string {
-	return si.id
+	return si.connID
 }
 
 func (si *SubscriptionInstance) FromHeight() uint64 {

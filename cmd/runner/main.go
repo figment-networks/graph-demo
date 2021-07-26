@@ -107,14 +107,6 @@ func main() {
 		return
 	}
 
-	/*
-			requester.Destination{
-			Name:    "cosmos",
-			Kind:    "http",
-			Address: "http://0.0.0.0:5001/network/cosmos", // TODO manager address
-		})
-	*/
-
 	mux := http.NewServeMux()
 
 	cli := http.DefaultClient

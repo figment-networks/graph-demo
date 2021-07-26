@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log"
 
 	"github.com/figment-networks/graph-demo/connectivity"
 	wsapi "github.com/figment-networks/graph-demo/connectivity/ws"
@@ -67,8 +68,10 @@ func (ng *NetworkGraphWSTransport) Subscribe(ctx context.Context, events []struc
 		return err
 	}
 
+	log.Println("subscribe A")
 	_, err := ng.sess.SendSync("subscribe", []json.RawMessage{buff.Bytes()})
 	buff.Reset()
+	log.Println("subscribe B")
 
 	return err
 }

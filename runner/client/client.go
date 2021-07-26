@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"sync"
 
 	"github.com/figment-networks/graph-demo/connectivity"
@@ -39,13 +40,11 @@ func (ng *NetworkGraphClient) EventHandler(ctx context.Context, req connectivity
 		ng.l.Error("unmarshal error", zap.Error(err))
 	}
 
-	if err := ng.ec.NewEvent(string(args[0]), data); err != nil {
+	if err := ng.ec.NewEvent(strings.Replace(string(args[0]), `"`, "", -1), data); err != nil {
 		ng.l.Error("unmarshal error", zap.Error(err))
 	}
 
 	resp.Send(json.RawMessage([]byte(`"ACK"`)), nil)
-	//resp.Send(), nil)
-
 }
 
 func (ph *NetworkGraphClient) Add(name string, handler connectivity.Handler) {

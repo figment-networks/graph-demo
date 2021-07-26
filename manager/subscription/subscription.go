@@ -10,7 +10,7 @@ import (
 )
 
 type Sub interface {
-	Send(ctx context.Context, height uint64, resp json.RawMessage) error
+	Send(ctx context.Context, height uint64, name string, resp json.RawMessage) error
 
 	ID() string
 
@@ -82,7 +82,7 @@ func (h *Handle) Run(ctx context.Context) {
 					h.l.RUnlock()
 					return
 				default:
-					sub.Send(ctx, evt.Height, mD)
+					sub.Send(ctx, evt.Height, evt.EvType, mD)
 				}
 			}
 			h.l.RUnlock()

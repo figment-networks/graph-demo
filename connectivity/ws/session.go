@@ -29,6 +29,7 @@ type SyncSender interface {
 
 type Registry struct {
 	sessions map[string]SyncSender
+	sl       sync.RWMutex
 }
 
 func NewRegistry() *Registry {
@@ -36,10 +37,14 @@ func NewRegistry() *Registry {
 }
 
 func (r *Registry) Add(connID string, ss SyncSender) {
+	r.sl.Lock()
+	defer r.sl.Unlock()
 	r.sessions[connID] = ss
 }
 
 func (r *Registry) Get(connID string) (ss SyncSender, ok bool) {
+	r.sl.RLock()
+	defer r.sl.RUnlock()
 	ss, ok = r.sessions[connID]
 	if !ok || ss == nil {
 		return nil, false
@@ -241,6 +246,7 @@ WSLOOP:
 			}
 
 			buff.Reset()
+			log.Printf("response %+v", message)
 			if err := enc.Encode(message); err != nil {
 				s.l.Info("error in encode response", zap.Error(err), zap.Any("message", message))
 				continue WSLOOP

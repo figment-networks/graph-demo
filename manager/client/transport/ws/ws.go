@@ -28,7 +28,6 @@ func (ng *CosmosWSTransport) GetAll(ctx context.Context, height uint64) (err err
 	}
 
 	return nil
-
 }
 
 func (ng *CosmosWSTransport) GetLatest(ctx context.Context) (b structs.Block, err error) {

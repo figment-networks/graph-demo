@@ -31,9 +31,6 @@ func (h *Handler) HandleStoreBlock(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) HandleStoreTransaction(w http.ResponseWriter, r *http.Request) {
-}
-
-func (h *Handler) HandleStore(w http.ResponseWriter, r *http.Request) {
 	/*
 
 		enc := json.NewEncoder(w)

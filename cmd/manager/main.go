@@ -90,8 +90,8 @@ func main() {
 	wProc := workerWSAPI.NewProcessHandler(log, serv, sched, reg)
 	linkWorker(ctx, log, reg, wProc, mux)
 
-	proc := runnerWSAPI.NewProcessHandler(log, serv, sc)
-	linkRunner(ctx, log, proc, mux)
+	proc := runnerWSAPI.NewProcessHandler(log, serv, reg, sc)
+	linkRunner(ctx, log, reg, proc, mux)
 
 	s := &http.Server{
 		Addr:    cfg.Address,
@@ -192,7 +192,7 @@ func linkWorker(ctx context.Context, l *zap.Logger, reg *connWS.Registry, callH 
 	})
 }
 
-func linkRunner(ctx context.Context, l *zap.Logger, callH connectivity.FunctionCallHandler, mux *http.ServeMux) {
+func linkRunner(ctx context.Context, l *zap.Logger, reg *connWS.Registry, callH connectivity.FunctionCallHandler, mux *http.ServeMux) {
 	mux.HandleFunc("/runner", func(w http.ResponseWriter, r *http.Request) {
 		uConn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -201,6 +201,7 @@ func linkRunner(ctx context.Context, l *zap.Logger, callH connectivity.FunctionC
 		}
 
 		sess := connWS.NewSession(ctx, uConn, l, callH)
+		reg.Add(sess.ID, sess)
 		go sess.Recv()
 		go sess.Req()
 	})
