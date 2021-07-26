@@ -192,11 +192,19 @@ func (s *Subgraph) storeRecord(info *v8go.FunctionCallbackInfo) *v8go.Value {
 func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	args := info.Args()
 
-	mj, _ := args[2].MarshalJSON()
+
+	mj, err := json.Marshal(args[2])
+	if err != nil {
+		log.Println(fmt.Printf("parameters error %v \n", err))
+	}
+
 
 	a := map[string]interface{}{}
-	_ = json.Unmarshal(mj, &a)
-	//	iso, _ := info.Context().Isolate()
+	err = json.Unmarshal(mj, &a)
+	if err != nil {
+		log.Println(fmt.Printf("nnmarshal error %v \n", err))
+	}
+
 	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a, args[2].String())
 	fmt.Println(string(resp))
 	if err != nil {

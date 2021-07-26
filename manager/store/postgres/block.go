@@ -68,7 +68,7 @@ func getJsonValue(v interface{}) (string, error) {
 }
 
 func (d *Driver) GetBlockByHeight(ctx context.Context, height uint64, chainID string) (b structs.Block, err error) {
-	row := d.db.QueryRowContext(ctx, `SELECT chain_id, height, hash, time, header, data, evidence, last_commit, tx_num FROM public.blocks WHERE chain_id = $1 AND height = $2`, chainID, height)
+	row := d.db.QueryRowContext(ctx, `SELECT chain_id, height, hash, time, header, data, evidence, last_commit, numtxs FROM public.blocks WHERE chain_id = $1 AND height = $2`, chainID, height)
 	if row == nil {
 		return b, sql.ErrNoRows
 	}
