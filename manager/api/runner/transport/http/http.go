@@ -73,7 +73,7 @@ func (h *Handler) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	resp.Data = response
 	if err = enc.Encode(resp); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		resp.Errors = []ErrorMessage{{Message: fmt.Sprintf("Error while encoding response: %w", err)}}
+		resp.Errors = []ErrorMessage{{Message: fmt.Errorf("Error while encoding response: %w", err).Error()}}
 		enc.Encode(resp)
 		return
 	}

@@ -155,7 +155,7 @@ func getHeightsToFetchByChain(params map[string]graphcall.Part) (chainID string,
 	}
 
 	if !isStart && isEnd || !isStart && !isEnd || (isEnd && (endHeight < startHeight)) {
-		return "", nil, errors.New("bad height parameters")
+		return "", nil, errors.New("query parameters ar wrong")
 	}
 
 	if !isEnd {

@@ -29,7 +29,7 @@ var BlockEntity = /** @class */ (function () {
 /**
  * Mapping
  */
-var GET_BLOCK = "query GetBlock($height: Int = 0) {\n  block( height: $height) {\n    height\n    time\n    id\n  }\n}";
+var GET_BLOCK = "query GetBlock($height: Int = 0, $chain_id: String = \"mainnet\") {\n  block( height: $height, chain_id: $chain_id) {\n    height\n    time\n    id\n  }\n}";
 /**
  * This function is defined in the subgraph.yaml.
  *
@@ -48,7 +48,7 @@ var GET_BLOCK = "query GetBlock($height: Int = 0) {\n  block( height: $height) {
  */
 function handleBlock(newBlockEvent) {
     graph_1.log.debug('newBlockEvent: ' + JSON.stringify(newBlockEvent));
-    var _a = graph_1.graphql.call("cosmos", GET_BLOCK, { height: newBlockEvent.height }, "0.0.1"), error = _a.error, data = _a.data;
+    var _a = graph_1.graphql.call("cosmos", GET_BLOCK, { height: newBlockEvent.height, chain_id: "mainnet" }, "0.0.1"), error = _a.error, data = _a.data;
     if (error) {
         graph_1.log.debug('GQL call error: ' + JSON.stringify(error));
         return;

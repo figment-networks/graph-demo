@@ -30,8 +30,8 @@ import { graphql, BlockEvent, store, log, TransactionEvent, Network } from "../.
 /**
  * Mapping
  */
-const GET_BLOCK = `query GetBlock($height: Int = 0) {
-  block( height: $height) {
+const GET_BLOCK = `query GetBlock($height: Int = 0, $chain_id: String = "mainnet") {
+  block( height: $height, chain_id: $chain_id) {
     height
     time
     id
@@ -57,7 +57,7 @@ const GET_BLOCK = `query GetBlock($height: Int = 0) {
 function handleBlock(newBlockEvent: BlockEvent) {
   log.debug('newBlockEvent: ' + JSON.stringify(newBlockEvent));
 
-  const {error, data} = graphql.call("cosmos" as Network, GET_BLOCK, { height: newBlockEvent.height }, "0.0.1");
+  const {error, data} = graphql.call("cosmos" as Network, GET_BLOCK, { height: newBlockEvent.height, chain_id: "mainnet" }, "0.0.1");
 
   if (error) {
     log.debug('GQL call error: ' + JSON.stringify(error));
