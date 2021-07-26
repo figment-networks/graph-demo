@@ -2,9 +2,7 @@ package client
 
 import (
 	"context"
-	"sync"
 
-	"github.com/figment-networks/graph-demo/cosmos-worker/client/mapper"
 	"github.com/figment-networks/graph-demo/manager/structs"
 
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
@@ -15,52 +13,82 @@ import (
 
 const perPage = 100
 
-// BlocksMap map of blocks to control block map
-// with extra summary of number of transactions
-type BlocksMap struct {
-	sync.Mutex
-	Blocks map[uint64]structs.Block
-	NumTxs uint64
-}
-
-// BlockErrorPair to wrap error response
-type BlockErrorPair struct {
-	Height uint64
-	Block  structs.Block
-	Err    error
-}
-
-// GetBlock fetches most recent block from chain
-func (c *Client) GetBlock(ctx context.Context, height int64) (blockAndTx structs.BlockAndTx, er error) {
+// GetAll fetches all data for given height
+func (c *Client) GetAll(ctx context.Context, height uint64) (er error) {
 	ctx, cancel := context.WithTimeout(ctx, c.cfg.TimeoutBlockCall)
 	defer cancel()
 
-	c.log.Debug("[COSMOS-WORKER] Getting block", zap.Int64("height", height))
+	c.log.Debug("[COSMOS-WORKER] Getting block", zap.Uint64("height", height))
 
-	b, err := c.tmServiceClient.GetBlockByHeight(ctx, &tmservice.GetBlockByHeightRequest{Height: height}, grpc.WaitForReady(true))
+	b, err := c.tmServiceClient.GetBlockByHeight(ctx, &tmservice.GetBlockByHeightRequest{Height: int64(height)}, grpc.WaitForReady(true))
 	if err != nil {
-		c.log.Debug("[COSMOS-CLIENT] Error while getting block by height", zap.Int64("height", height), zap.Error(err), zap.Int("txs", len(b.Block.Data.Txs)))
-		return structs.BlockAndTx{}, err
+		c.log.Debug("[COSMOS-CLIENT] Error getting block by height", zap.Uint64("height", height), zap.Error(err))
+		return err
 	}
 
-	bHash := bytes.HexBytes(b.BlockId.Hash).String()
+	c.log.Debug("[COSMOS-WORKER] Got block", zap.Uint64("height", height))
 
-	blockAndTx.Block = mapper.MapBlockResponseToStructs(b.Block, b.Block.Data, bHash)
-	if blockAndTx.Transactions, err = c.SearchTx(ctx, blockAndTx.Block, perPage); err != nil {
-		return structs.BlockAndTx{}, err
+	block := structs.Block{
+		Hash:    bytes.HexBytes(b.BlockId.Hash).String(),
+		Height:  uint64(b.Block.Header.Height),
+		Time:    b.Block.Header.Time,
+		ChainID: b.Block.Header.ChainID,
+
+		Header: structs.BlockHeader{
+			ChainID: b.Block.Header.ChainID,
+			Time:    b.Block.Header.Time,
+			Height:  b.Block.Header.Height,
+			LastBlockId: structs.BlockID{
+				Hash: b.Block.Header.LastBlockId.Hash,
+			},
+			LastCommitHash:     b.Block.Header.LastCommitHash,
+			DataHash:           b.Block.Header.DataHash,
+			ValidatorsHash:     b.Block.Header.ValidatorsHash,
+			NextValidatorsHash: b.Block.Header.NextValidatorsHash,
+			ConsensusHash:      b.Block.Header.ConsensusHash,
+			AppHash:            b.Block.Header.AppHash,
+			LastResultsHash:    b.Block.Header.LastResultsHash,
+			EvidenceHash:       b.Block.Header.EvidenceHash,
+			ProposerAddress:    b.Block.Header.ProposerAddress,
+		},
+		Data: structs.BlockData{
+			Txs: b.Block.Data.Txs,
+		},
+		LastCommit: &structs.Commit{
+			Height: b.Block.LastCommit.Height,
+			Round:  b.Block.LastCommit.Round,
+			BlockID: structs.BlockID{
+				Hash:          b.Block.LastCommit.BlockID.Hash,
+				PartSetHeader: structs.PartSetHeader(b.Block.LastCommit.BlockID.PartSetHeader),
+			},
+		},
 	}
 
-	// blockID = structs.BlockID{
-	// 	Hash: b.BlockId.Hash,
-	// }
+	if c.persistor != nil {
+		if err := c.persistor.StoreBlock(ctx, block); err != nil {
+			c.log.Debug("[COSMOS-CLIENT] Error storing block at height", zap.Uint64("height", height), zap.Error(err))
+			return err
+		}
+	}
 
-	c.log.Debug("[COSMOS-WORKER] Got block", zap.Int64("height", height))
+	txs, err := c.SearchTx(ctx, block)
+	if err != nil {
+		c.log.Debug("[COSMOS-CLIENT] Error getting transactions by height", zap.Uint64("height", height), zap.Error(err))
+		return err
+	}
 
-	return blockAndTx, nil
+	if c.persistor != nil {
+		if err := c.persistor.StoreTransactions(ctx, txs); err != nil {
+			c.log.Debug("[COSMOS-CLIENT] Error storing transaction at height", zap.Uint64("height", height), zap.Error(err))
+			return err
+		}
+	}
+
+	return nil
 }
 
 // GetBlock fetches most recent block from chain
-func (c *Client) GetLatest(ctx context.Context) (blockAndTx structs.BlockAndTx, er error) {
+func (c *Client) GetLatest(ctx context.Context) (bl structs.Block, er error) {
 	ctx, cancel := context.WithTimeout(ctx, c.cfg.TimeoutBlockCall)
 	defer cancel()
 
@@ -69,18 +97,11 @@ func (c *Client) GetLatest(ctx context.Context) (blockAndTx structs.BlockAndTx, 
 	b, err := c.tmServiceClient.GetLatestBlock(ctx, &tmservice.GetLatestBlockRequest{}, grpc.WaitForReady(true))
 	if err != nil {
 		c.log.Debug("[COSMOS-CLIENT] Error getting latest block", zap.Error(err), zap.Int("txs", len(b.Block.Data.Txs)))
-		return structs.BlockAndTx{}, err
+		return bl, err
 	}
 
-	bHash := bytes.HexBytes(b.BlockId.Hash).String()
+	c.log.Debug("[COSMOS-CLIENT] Got latest block", zap.Uint64("height", uint64(b.Block.Header.Height)))
 
-	blockAndTx.Block = mapper.MapBlockResponseToStructs(b.Block, b.Block.Data, bHash)
-	if blockAndTx.Transactions, err = c.SearchTx(ctx, blockAndTx.Block, perPage); err != nil {
-		return structs.BlockAndTx{}, err
-	}
-
-	c.log.Debug("[COSMOS-CLIENT] Got latest block", zap.Uint64("height", uint64(b.Block.Header.Height)), zap.Error(err))
-
-	return blockAndTx, nil
+	return structs.Block{Height: uint64(b.Block.Header.Height)}, nil
 
 }

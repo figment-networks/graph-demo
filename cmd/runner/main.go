@@ -91,12 +91,6 @@ func main() {
 	// Init the javascript runtime
 	loader := jsRuntime.NewLoader(l, rqstr, sStore)
 
-	logger.Info(fmt.Sprintf("Loading subgraph js file %s", subgraph.path))
-	if err := loader.LoadJS(subgraph.name, subgraph.path); err != nil {
-		logger.Error(fmt.Errorf("Loader.LoadJS() error = %v", err))
-		return
-	}
-
 	ngc := runnerClient.NewNetworkGraphClient(l, loader)
 
 	// Cosmos configuration
@@ -106,13 +100,12 @@ func main() {
 	}
 
 	rqstr.AddDestination("cosmos", wst)
-	/*
-			requester.Destination{
-			Name:    "cosmos",
-			Kind:    "http",
-			Address: "http://0.0.0.0:5001/network/cosmos", // TODO manager address
-		})
-	*/
+
+	logger.Info(fmt.Sprintf("Loading subgraph js file %s", subgraph.path))
+	if err := loader.LoadJS(subgraph.name, subgraph.path); err != nil {
+		logger.Error(fmt.Errorf("Loader.LoadJS() error = %v", err))
+		return
+	}
 
 	mux := http.NewServeMux()
 

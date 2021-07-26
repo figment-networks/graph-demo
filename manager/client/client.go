@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 
 	"github.com/figment-networks/graph-demo/manager/store"
 	"github.com/figment-networks/graph-demo/manager/structs"
@@ -9,68 +10,68 @@ import (
 )
 
 type NetworkClient interface {
-	GetBlock(ctx context.Context, height uint64) (structs.BlockAndTx, error)
-	GetLatest(ctx context.Context) (structs.BlockAndTx, error)
+	GetAll(ctx context.Context, height uint64) error
+	GetLatest(ctx context.Context) (structs.Block, error)
 }
 
-type RunnerClient interface {
-	PopulateEvent(ctx context.Context, event string, data interface{}) error
+type SubscriptionClient interface {
+	PopulateEvent(ctx context.Context, event string, height uint64, data interface{}) error
 }
 
 type Client struct {
-	nc    NetworkClient
-	rc    RunnerClient
-	log   *zap.Logger
-	store store.Store
+	sc SubscriptionClient
+	l  *zap.Logger
+	st store.Storager
 }
 
-func NewClient(nc NetworkClient) *Client {
-	return &Client{nc: nc}
+func NewClient(l *zap.Logger, st store.Storager, sc SubscriptionClient) *Client {
+	return &Client{
+		l:  l,
+		st: st,
+		sc: sc,
+	}
 }
 
-func (c *Client) GetLatestBlock(ctx context.Context) (structs.BlockAndTx, error) {
-	return c.nc.GetLatest(ctx)
-}
-
-func (c *Client) ProcessHeight(ctx context.Context, height uint64) (bTx structs.BlockAndTx, err error) {
-	btx, err := c.GetByHeight(ctx, height)
+func (c *Client) ProcessHeight(ctx context.Context, nc NetworkClient, height uint64) (err error) {
+	if err = c.getByHeight(ctx, nc, height); err != nil {
+		return err
+	}
 
 	// We can populate some errors from here
-	if err := c.PopulateEvent(ctx, structs.EVENT_NEW_BLOCK, structs.EventNewBlock{Height: btx.Block.Height}); err != nil {
-		return bTx, err
+	if err := c.PopulateEvent(ctx, structs.EVENT_NEW_BLOCK, height, structs.EventNewBlock{Height: height}); err != nil {
+		return err
 	}
 
-	for _, tx := range btx.Transactions {
-		c.PopulateEvent(ctx, structs.EVENT_NEW_TRANSACTION, structs.EventNewTransaction{Height: tx.Height})
+	if err := c.PopulateEvent(ctx, structs.EVENT_NEW_TRANSACTION, height, structs.EventNewTransaction{Height: height}); err != nil {
+		return err
 	}
 
-	return btx, err
-
+	return nil
 }
 
-func (c *Client) GetByHeight(ctx context.Context, height uint64) (bTx structs.BlockAndTx, err error) {
+func (c *Client) PopulateEvent(ctx context.Context, event string, height uint64, data interface{}) error {
+	if c.sc == nil {
+		return errors.New("there is now subscription client linked")
+	}
+	return c.sc.PopulateEvent(ctx, event, height, data)
+}
 
-	bTx, err = c.nc.GetBlock(ctx, height)
+func (c *Client) getByHeight(ctx context.Context, nc NetworkClient, height uint64) (err error) {
+	return nc.GetAll(ctx, height)
+}
+
+func (c *Client) GetLatest(ctx context.Context, nc NetworkClient) (uint64, error) {
+	lst, err := nc.GetLatest(ctx)
 	if err != nil {
-		c.log.Error("[CRON] Error while getting block", zap.Uint64("height", height), zap.Error(err))
-		return bTx, err
+		return 0, err
 	}
-
-	if err = c.store.StoreBlock(ctx, bTx.Block); err != nil {
-		c.log.Error("[CRON] Error while saving block in database", zap.Uint64("height", height), zap.Error(err))
-		return bTx, err
-	}
-
-	if bTx.Block.NumberOfTransactions > 0 {
-		if err = c.store.StoreTransactions(ctx, bTx.Transactions); err != nil {
-			c.log.Error("[CRON] Error while saving transactions in database", zap.Uint64("height", height), zap.Uint64("txs", bTx.Block.NumberOfTransactions), zap.Error(err))
-			return bTx, err
-		}
-	}
-
-	return bTx, err
+	return lst.Height, err
 }
 
-func (c *Client) PopulateEvent(ctx context.Context, event string, data interface{}) error {
-	return c.rc.PopulateEvent(ctx, event, data)
+func (c *Client) GetLatestFromStorage(ctx context.Context, chainID string) (height uint64, err error) {
+	return c.st.GetLatestHeight(ctx, chainID)
+}
+
+func (c *Client) SetLatestFromStorage(ctx context.Context, chainID string, height uint64) (err error) {
+	return c.st.SetLatestHeight(ctx, chainID, height)
 }

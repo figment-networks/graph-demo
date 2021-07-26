@@ -9,13 +9,12 @@ import (
 
 	"github.com/figment-networks/graph-demo/manager/structs"
 	"github.com/lib/pq"
-	"go.uber.org/zap"
 )
 
 const (
 	txInsert = `INSERT INTO public.transactions("chain_id", "height", "hash", "block_hash", "time", "fee", "gas_wanted", "gas_used", "memo", "data", "raw", "raw_log", "has_error", "type", "parties", "senders", "recipients") VALUES
 	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-	ON CONFLICT ( chain_id, hash)
+	ON CONFLICT (chain_id, hash, height)
 	DO UPDATE SET
 	height = EXCLUDED.height,
 	hash = EXCLUDED.hash,
@@ -176,21 +175,12 @@ func uniqueEntries(in, out []string) []string {
 }
 
 func (d *Driver) storeTx(ctx context.Context, db *sql.DB, t structs.Transaction, fee []byte, events fmt.Stringer, af additionalFields) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
 
 	// TODO(lukanus): store  REAL transation
-	_, err = tx.Exec(txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, fee, t.GasWanted, t.GasUsed, t.Memo, events.String(),
+	_, err := d.db.ExecContext(ctx, txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, fee, t.GasWanted, t.GasUsed, t.Memo, events.String(),
 		t.Raw, t.RawLog, t.HasErrors, pq.Array(af.types), pq.Array(af.parties), pq.Array(af.senders), pq.Array(af.recipients))
-	if err != nil {
-		d.log.Error("[DB] Rollback flushB error: ", zap.Error(err))
-		tx.Rollback()
-		return err
-	}
 
-	return tx.Commit()
+	return err
 }
 
 // Removes ASCII hex 0-7 causing utf-8 error in db
@@ -201,13 +191,10 @@ func removeCharacters(r rune) rune {
 	return r
 }
 
-const GetTransactionsByHeight = `SELECT chain_id, height, hash, block_hash, time, fee, gas_wanted, gas_used, memo, events, raw, has_error
-							FROM public.transactions
-							WHERE chain_id = $1 AND height = $2`
-
 // GetTransactions gets transactions based on given criteria the order is forced to be time DESC
-func (d *Driver) GetTransactions(ctx context.Context, height uint64, chainID string) (txs []structs.Transaction, err error) {
-	rows, err := d.db.QueryContext(ctx, GetTransactionsByHeight, chainID, height)
+func (d *Driver) GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) (txs []structs.Transaction, err error) {
+	rows, err := d.db.QueryContext(ctx, `SELECT chain_id, height, hash, block_hash, time, fee, gas_wanted, gas_used, memo, events, raw, has_error
+	FROM public.transactions WHERE chain_id = $1 AND height = $2`, chainID, height)
 	if err != nil {
 		return nil, err
 	}

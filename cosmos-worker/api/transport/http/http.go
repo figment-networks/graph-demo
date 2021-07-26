@@ -8,38 +8,31 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/figment-networks/graph-demo/cosmos-worker/client"
 	"github.com/figment-networks/graph-demo/manager/structs"
 )
 
-type GetBlockResp struct {
-	Block structs.Block         `json:"block"`
-	Txs   []structs.Transaction `json:"txs"`
-}
-
-type GetLastResp struct {
-	LastHeight uint64 `json:"last_height"`
+type CosmosClient interface {
+	GetAll(ctx context.Context, height uint64) error
+	GetLatest(ctx context.Context) (structs.Block, error)
 }
 
 type Handler struct {
-	client *client.Client
+	client CosmosClient
 }
 
-func NewHandler(c *client.Client) *Handler {
+func NewHandler(c CosmosClient) *Handler {
 	return &Handler{
 		client: c,
 	}
 }
 
 func (h *Handler) AttachToMux(mux *http.ServeMux) {
-	mux.HandleFunc("/getBlock/", h.HandleGetBlock)
+	mux.HandleFunc("/getAll/", h.HandleGetAll)
 	mux.HandleFunc("/getLast/", h.HandleGetLast)
 }
 
-func (h *Handler) HandleGetBlock(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
-	heightStr := strings.Trim(r.URL.Path, "/getBlock/")
-
+func (h *Handler) HandleGetAll(w http.ResponseWriter, r *http.Request) {
+	heightStr := strings.Replace(r.URL.Path, "/getAll/", "", -1)
 	heightInt, err := strconv.Atoi(heightStr)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -47,42 +40,25 @@ func (h *Handler) HandleGetBlock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	blockAndTx, err := h.client.GetBlock(ctx, int64(heightInt))
-	if err != nil {
+	if err := h.client.GetAll(r.Context(), uint64(heightInt)); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Error while getting a block: %s", err.Error())))
-		return
-	}
-
-	resp, err := json.Marshal(GetBlockResp{
-		Block: blockAndTx.Block,
-		Txs:   blockAndTx.Transactions,
-	})
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf("Error while marshalling response: %s", err.Error())))
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(resp)
+	w.Write([]byte("ACK"))
 }
 
 func (h *Handler) HandleGetLast(w http.ResponseWriter, r *http.Request) {
-
-	ctx := context.Background()
-
-	blockAndTx, err := h.client.GetLatest(ctx)
+	block, err := h.client.GetLatest(r.Context())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Error while getting a block: %s", err.Error())))
 		return
 	}
 
-	resp, err := json.Marshal(GetBlockResp{
-		Block: blockAndTx.Block,
-		Txs:   blockAndTx.Transactions,
-	})
+	resp, err := json.Marshal(block)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Error while marshalling response: %s", err.Error())))

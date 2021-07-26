@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/figment-networks/graph-demo/manager/store/postgres"
 	"github.com/figment-networks/graph-demo/manager/structs"
 )
 
@@ -13,20 +12,23 @@ var (
 	ErrEmptyTransactionPassed = errors.New("empty transaction passed")
 )
 
-type StoreIface interface {
+type Storager interface {
 	Close() error
 
 	StoreBlock(ctx context.Context, bl structs.Block) error
 	StoreTransactions(ctx context.Context, txs []structs.Transaction) error
 	GetBlockByHeight(ctx context.Context, height uint64, chainID string) (structs.Block, error)
 	GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) ([]structs.Transaction, error)
+
+	SetLatestHeight(ctx context.Context, chainID string, height uint64) (err error)
+	GetLatestHeight(ctx context.Context, chainID string) (height uint64, err error)
 }
 
 type Store struct {
-	driver *postgres.Driver
+	driver Storager
 }
 
-func New(d *postgres.Driver) *Store {
+func NewStore(d Storager) *Store {
 	return &Store{
 		driver: d,
 	}
@@ -45,9 +47,17 @@ func (s *Store) StoreTransactions(ctx context.Context, txs []structs.Transaction
 }
 
 func (s *Store) GetBlockByHeight(ctx context.Context, height uint64, chainID string) (structs.Block, error) {
-	return s.driver.GetBlockBytHeight(ctx, height, chainID)
+	return s.driver.GetBlockByHeight(ctx, height, chainID)
 }
 
 func (s *Store) GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) ([]structs.Transaction, error) {
-	return s.driver.GetTransactions(ctx, height, chainID)
+	return s.driver.GetTransactionsByHeight(ctx, height, chainID)
+}
+
+func (s *Store) GetLatestHeight(ctx context.Context, chainID string) (height uint64, err error) {
+	return s.driver.GetLatestHeight(ctx, chainID)
+}
+
+func (s *Store) SetLatestHeight(ctx context.Context, chainID string, height uint64) (err error) {
+	return s.driver.SetLatestHeight(ctx, chainID, height)
 }

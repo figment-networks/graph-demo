@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/figment-networks/graph-demo/manager/api/service"
 )
+
+type ManagerService interface {
+	ProcessGraphqlQuery(ctx context.Context, v map[string]interface{}, q string) ([]byte, error)
+}
 
 type JSONGraphQLRequest struct {
 	Query     string                 `json:"query"`
@@ -22,14 +24,14 @@ type JSONGraphQLResponse struct {
 }
 
 type ErrorMessage struct {
-	Message string `json:"message",omitempty`
+	Message string `json:"message,omitempty"`
 }
 
 type Handler struct {
-	service *service.Service
+	service ManagerService
 }
 
-func NewHandler(svc *service.Service) *Handler {
+func NewHandler(svc ManagerService) *Handler {
 	return &Handler{
 		service: svc,
 	}

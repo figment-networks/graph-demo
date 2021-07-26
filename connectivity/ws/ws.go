@@ -20,7 +20,12 @@ var ErrConnectionClosed = errors.New("connection closed")
 
 type Conn struct {
 	RH connectivity.FunctionCallHandler
-	l  *zap.Logger
+
+	l *zap.Logger
+}
+
+func NewConn(l *zap.Logger, RH connectivity.FunctionCallHandler) *Conn {
+	return &Conn{l: l, RH: RH}
 }
 
 func (c *Conn) AttachToMux(ctx context.Context, mux *http.ServeMux) {

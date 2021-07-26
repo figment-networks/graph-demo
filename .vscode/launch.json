@@ -12,9 +12,10 @@
             "program": "${workspaceFolder}/cmd/cosmos-worker",
             "env": {
                 "CHAIN_ID": "mainnet",
-                "NETWORK": "cosmos",
-                "COSMOS_GRPC_ADDR": "0.0.0.0:9090"
-            }
+                "COSMOS_GRPC_ADDR": "0.0.0.0:9090",
+                "MANAGER_URL": "ws://0.0.0.0:8085",
+            },
+            "buildFlags": "-race"
         },
         {
             "name": "Manager",
@@ -26,7 +27,8 @@
                 "ADDRESS": "0.0.0.0:8085",
                 "DATABASE_URL": "postgres://manager:manager@0.0.0.0:5432/manager?sslmode=disable",
                 "WORKER_CONFIG_PATH": "${workspaceFolder}/example_manager_worker_config.json"
-            }
+            },
+            "buildFlags": "-race"
         },
         {
             "name": "Manager migration",
@@ -36,7 +38,8 @@
             "program": "${workspaceFolder}/cmd/manager-migration",
             "env": {
                 "DATABASE_URL": "postgres://manager:manager@0.0.0.0:5432/manager?sslmode=disable"
-            }
+            },
+            "buildFlags": "-race"
         },
         {
             "name": "Runner",
@@ -46,7 +49,8 @@
             "program": "${workspaceFolder}/cmd/runner",
             "env": {
                 "MANAGER_URL": "ws://0.0.0.0:8085",
-            }
+            },
+            "buildFlags": "-race"
         }
     ]
 }
