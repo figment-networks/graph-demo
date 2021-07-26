@@ -128,7 +128,7 @@ func (s *Service) getQueryBlocksByHeights(ctx context.Context, params map[string
 		}
 	}
 
-	return nil, err
+	return resp, err
 }
 
 func getHeightsToFetchByChain(params map[string]graphcall.Part) (chainID string, heights []uint64, err error) {
