@@ -43,7 +43,7 @@ func (ng *NetworkGraphClient) EventHandler(ctx context.Context, req connectivity
 		ng.l.Error("unmarshal error", zap.Error(err))
 	}
 
-	//resp.Send(bytes.NewReader([]byte("ACK")), nil)
+	resp.Send(json.RawMessage([]byte(`"ACK"`)), nil)
 	//resp.Send(), nil)
 
 }

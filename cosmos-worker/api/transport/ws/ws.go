@@ -65,6 +65,11 @@ func (ng *ProcessHandler) Connect(ctx context.Context, address string) (err erro
 	return nil
 }
 
+func (ng *ProcessHandler) Register(ctx context.Context, chainID string) (err error) {
+	_, err = ng.sess.SendSync("register", []json.RawMessage{[]byte(`"` + chainID + `"`)})
+	return err
+}
+
 func (ph *ProcessHandler) Add(name string, handler connectivity.Handler) {
 	ph.registrySync.Lock()
 	defer ph.registrySync.Unlock()
@@ -113,7 +118,7 @@ func (ph *ProcessHandler) GetAll(ctx context.Context, req connectivity.Request, 
 		return
 	}
 
-	resp.Send(json.RawMessage([]byte("ACK")), nil)
+	resp.Send(json.RawMessage([]byte(`"ACK"`)), nil)
 }
 
 func (ph *ProcessHandler) GetLatest(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
@@ -163,7 +168,7 @@ func (ph *ProcessHandler) StoreTransactions(ctx context.Context, txs []structs.T
 	if err != nil {
 		return err
 	}
-	if resp.Error.Message != "" {
+	if resp.Error != nil && resp.Error.Message != "" {
 		return errors.New(resp.Error.Message)
 	}
 
@@ -180,7 +185,7 @@ func (ph *ProcessHandler) StoreBlock(ctx context.Context, block structs.Block) e
 	if err != nil {
 		return err
 	}
-	if resp.Error.Message != "" {
+	if resp.Error != nil && resp.Error.Message != "" {
 		return errors.New(resp.Error.Message)
 	}
 

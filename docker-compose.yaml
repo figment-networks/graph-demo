@@ -12,7 +12,7 @@ volumes:
 #   runner: {}
 #   manager: {}
 #   managermigration: {}
-  
+
 
 services:
   postgresdatabase:
@@ -27,3 +27,15 @@ services:
       POSTGRES_DB: manager
     volumes:
       - postgresdatabase:/var/lib/postgresql/data/
+
+  managermigrate:
+    command: /app/migration
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    networks:
+      - internal
+    environment:
+      DATABASE_URL: postgres://manager:manager@graph-demo_postgresdatabase_1/manager?sslmode=disable
+    depends_on:
+      - postgresdatabase

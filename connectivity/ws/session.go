@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -164,9 +165,10 @@ func (s *Session) Recv() {
 				s.l.Error("unexpected message", zap.Any("message", req))
 			}
 			waitO.returnCh <- jsonrpc.Response{ID: req.ID, JSONRPC: "2.0", Result: req.Result, Error: req.Error}
+
+			s.routingLock.RLock()
 			delete(s.routing, req.ID)
 			s.routingLock.RUnlock()
-
 			continue
 		}
 
@@ -215,8 +217,9 @@ WSLOOP:
 			}
 
 			buff.Reset()
+			log.Printf("message %+v", message)
 			if err := enc.Encode(message); err != nil {
-				s.l.Info("error in encode", zap.Error(err))
+				s.l.Info("error in encode send", zap.Error(err), zap.Any("message", message))
 				continue WSLOOP
 			}
 
@@ -236,7 +239,7 @@ WSLOOP:
 
 			buff.Reset()
 			if err := enc.Encode(message); err != nil {
-				s.l.Info("error in encode", zap.Error(err))
+				s.l.Info("error in encode response", zap.Error(err), zap.Any("message", message))
 				continue WSLOOP
 			}
 

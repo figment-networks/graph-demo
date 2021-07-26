@@ -23,7 +23,7 @@ func (ng *CosmosWSTransport) GetAll(ctx context.Context, height uint64) (err err
 	if err != nil {
 		return err
 	}
-	if resp.Error.Message != "" {
+	if resp.Error != nil && resp.Error.Message != "" {
 		return errors.New(resp.Error.Message)
 	}
 

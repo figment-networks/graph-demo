@@ -48,6 +48,7 @@ func NewProcessHandler(log *zap.Logger, svc ManagerService, sched *scheduler.Sch
 		log:      log,
 		service:  svc,
 		reg:      reg,
+		sched:    sched,
 		registry: make(map[string]connectivity.Handler),
 	}
 
@@ -98,7 +99,7 @@ func (ph *ProcessHandler) StoreBlock(ctx context.Context, req connectivity.Reque
 	}
 
 	err := ph.service.StoreBlock(ctx, block)
-	resp.Send(json.RawMessage([]byte("ACK")), err)
+	resp.Send(json.RawMessage([]byte(`"ACK"`)), err)
 }
 
 func (ph *ProcessHandler) StoreTransactions(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
@@ -127,7 +128,7 @@ func (ph *ProcessHandler) StoreTransactions(ctx context.Context, req connectivit
 	}
 
 	err := ph.service.StoreTransactions(ctx, txs)
-	resp.Send(json.RawMessage([]byte("ACK")), err)
+	resp.Send(json.RawMessage([]byte(`"ACK"`)), err)
 }
 
 func (ph *ProcessHandler) Register(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
@@ -146,8 +147,8 @@ func (ph *ProcessHandler) Register(ctx context.Context, req connectivity.Request
 		return
 	}
 
-	var reg structs.Register
-	if err := json.Unmarshal(args[0], &reg); err != nil {
+	var chainID string
+	if err := json.Unmarshal(args[0], &chainID); err != nil {
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Error unmarshaling query " + err.Error(),
 		})
@@ -166,9 +167,8 @@ func (ph *ProcessHandler) Register(ctx context.Context, req connectivity.Request
 		return
 	}
 
-	// TODO(lukanus): start from somethign bigger
-	go ph.sched.Start(ctx, cliTr.NewCosmosWSTransport(ss), req.ConnID(), reg.ChainID)
+	go ph.sched.Start(ctx, cliTr.NewCosmosWSTransport(ss), req.ConnID(), chainID)
 
-	resp.Send(json.RawMessage([]byte("ACK")), nil)
+	resp.Send(json.RawMessage([]byte(`"ACK"`)), nil)
 
 }

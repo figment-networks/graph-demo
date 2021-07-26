@@ -16,7 +16,6 @@ import (
 	apiTransportWS "github.com/figment-networks/graph-demo/cosmos-worker/api/transport/ws"
 	"github.com/figment-networks/graph-demo/cosmos-worker/client"
 
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	grpc "google.golang.org/grpc"
 )
@@ -51,26 +50,15 @@ func main() {
 	logger.Info(config.IdentityString())
 	defer logger.Sync()
 
-	workerRunID, err := uuid.NewRandom() // UUID V4
-	if err != nil {
-		logger.Error(fmt.Errorf("error generating UUID: %w", err))
-		return
-	}
-
-	hostname := cfg.Hostname
-	if hostname == "" {
-		hostname = cfg.Address
-	}
-
-	logger.Info(fmt.Sprintf("Self-hostname (%s) is %s:%s ", workerRunID.String(), hostname, cfg.Port))
+	log := logger.GetLogger()
 
 	if cfg.CosmosGRPCAddr == "" {
-		logger.Error(fmt.Errorf("cosmos grpc address is not set"))
+		log.Error("cosmos grpc address is not set")
 		return
 	}
 	grpcConn, dialErr := grpc.DialContext(ctx, cfg.CosmosGRPCAddr, grpc.WithInsecure())
 	if dialErr != nil {
-		logger.Error(fmt.Errorf("error dialing grpc: %w", dialErr))
+		log.Error("error dialing grpc: %w", zap.Error(dialErr))
 		return
 	}
 	defer grpcConn.Close()
@@ -82,13 +70,17 @@ func main() {
 
 	apiClient := client.NewClient(logger.GetLogger(), grpcConn, cliCfg, "mainnet")
 	wstr := apiTransportWS.NewProcessHandler(logger.GetLogger(), apiClient)
+	apiClient.LinkPersistor(wstr)
 
-	if err := wstr.Connect(ctx, "0.0.0.0:8002"); err != nil {
-		logger.Error(fmt.Errorf("error connecting to manager "))
+	if err := wstr.Connect(ctx, cfg.Manager); err != nil {
+		log.Error("error connecting to manager ", zap.Error(err), zap.String("address", cfg.Manager))
 		return
 	}
 
-	apiClient.LinkPersistor(wstr)
+	if err := wstr.Register(ctx, cfg.ChainID); err != nil {
+		log.Error("error registering  to manager ", zap.Error(err), zap.String("chainID", cfg.ChainID))
+		return
+	}
 
 	mux := http.NewServeMux()
 	s := &http.Server{
