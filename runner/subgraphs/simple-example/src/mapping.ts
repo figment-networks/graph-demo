@@ -17,7 +17,7 @@ import { graphql, BlockEvent, store, log, TransactionEvent, Network } from "../.
    time: Date;
    myNote: string;
    transactions: TransactionEntity[];
- 
+
    constructor(...args: any[]) {
     Object.assign(this, args);
   }
@@ -30,8 +30,8 @@ import { graphql, BlockEvent, store, log, TransactionEvent, Network } from "../.
 /**
  * Mapping
  */
-const GET_BLOCK = `query GetBlock($height: Int) {
-  block( $height: Int = 0 ) {
+const GET_BLOCK = `query GetBlock($height: Int = 0) {
+  block( height: $height) {
     height
     time
     id
@@ -40,7 +40,7 @@ const GET_BLOCK = `query GetBlock($height: Int) {
 
 /**
  * This function is defined in the subgraph.yaml.
- * 
+ *
  * Ex:
  * ```yaml
  * # ...

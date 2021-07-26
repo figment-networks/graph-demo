@@ -29,7 +29,7 @@ var BlockEntity = /** @class */ (function () {
 /**
  * Mapping
  */
-var GET_BLOCK = "query GetBlock($height: Int) {\n  block( $height: Int = 0 ) {\n    height\n    time\n    id\n  }\n}";
+var GET_BLOCK = "query GetBlock($height: Int = 0) {\n  block( height: $height) {\n    height\n    time\n    id\n  }\n}";
 /**
  * This function is defined in the subgraph.yaml.
  *

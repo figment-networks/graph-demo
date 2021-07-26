@@ -32,6 +32,11 @@ type ErrorMessage struct {
 	Message string `json:"message,omitempty"`
 }
 
+type JSONGraphQLRequest struct {
+	Query     string                 `json:"query"`
+	Variables map[string]interface{} `json:"variables"`
+}
+
 type JSONGraphQLResponse struct {
 	Data   json.RawMessage `json:"data"`
 	Errors []ErrorMessage  `json:"errors,omitempty"`
@@ -106,9 +111,9 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 		return
 	}
 
-	var vars map[string]interface{}
-	if len(args) == 2 {
-		if err := json.Unmarshal(args[1], &vars); err != nil {
+	var gQLReq JSONGraphQLRequest
+	if len(args) > 1 {
+		if err := json.Unmarshal(args[1], &gQLReq); err != nil {
 			r.Errors = append(r.Errors, ErrorMessage{
 				Message: "Error unmarshaling query variables " + err.Error(),
 			})
@@ -118,7 +123,7 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 		}
 	}
 
-	response, err := ph.service.ProcessGraphqlQuery(ctx, vars, query)
+	response, err := ph.service.ProcessGraphqlQuery(ctx, gQLReq.Variables, gQLReq.Query)
 	resp.Send(response, err)
 }
 

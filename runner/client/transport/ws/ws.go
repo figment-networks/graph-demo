@@ -41,7 +41,6 @@ func (ng *NetworkGraphWSTransport) Connect(ctx context.Context, address string, 
 	if err != nil {
 		return err
 	}
-
 	ng.sess = wsapi.NewSession(ctx, ng.c, ng.l, RH)
 	go ng.sess.Recv()
 	go ng.sess.Req()

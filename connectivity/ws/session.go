@@ -128,7 +128,9 @@ func (s *Session) SendSync(method string, params []json.RawMessage) (resp jsonrp
 
 func (s *Session) Recv() {
 	defer func() {
-		s.c.Close()
+		if s.c != nil {
+			s.c.Close()
+		}
 	}()
 
 	err := s.c.SetReadDeadline(time.Now().Add(pongWait))

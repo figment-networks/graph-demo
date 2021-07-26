@@ -15,13 +15,13 @@ CREATE TABLE IF NOT EXISTS transactions
     block_hash      TEXT NOT NULL,
 
     type        VARCHAR(100)[] NOT NULL,
-    parties     TEXT[] NOT NULL,
-    senders     TEXT[] NOT NULL,
-    recipients  TEXT[] NOT NULL,
+    parties     TEXT[] ,
+    senders     TEXT[] ,
+    recipients  TEXT[] ,
 
-    fee         JSONB NOT NULL,
-    gas_wanted  DECIMAL(65, 0) NOT NULL,
-    gas_used    DECIMAL(65, 0) NOT NULL,
+    fee         JSONB  ,
+    gas_wanted  DECIMAL(65, 0),
+    gas_used    DECIMAL(65, 0),
 
     data    JSONB NOT NULL,
     raw     BYTEA NOT NULL,
