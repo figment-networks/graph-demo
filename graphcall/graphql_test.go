@@ -12,13 +12,13 @@ const t1 = `query GetBlock($height: Int = 6940033) {
 	  height
 	  time
 	  id
-	  unknwonField
+	  unknownField
 	}
 	getTransactions(height: $height) {
 	  hash
 	  time
 	  id
-	  unknwonField
+	  unknownField
 	}
 	getBlockHashAndTransactionHashes(height: $height) {
 	  block {
@@ -49,6 +49,10 @@ func TestParseQuery(t *testing.T) {
 		{name: "simple", args: args{
 			query:     t1,
 			variables: map[string]interface{}{"height": float64(120)},
+		}},
+		{name: "empty variables", args: args{
+			query:     t1,
+			variables: nil,
 		}},
 	}
 	for _, tt := range tests {

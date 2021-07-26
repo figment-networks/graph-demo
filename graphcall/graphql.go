@@ -248,15 +248,17 @@ func parseOperationDefinition(q *GraphQuery, od *ast.OperationDefinition, inputO
 	return nil
 }
 
-func queryQParams(q *GraphQuery, inputObjects map[string]Param, variableDefinitions []*ast.VariableDefinition, variables map[string]interface{}) error {
+func queryQParams(q *GraphQuery, inputObjects map[string]Param, variableDefinitions []*ast.VariableDefinition, variables map[string]interface{}) (err error) {
 	params := make(map[string]Param)
 
 	for _, vd := range variableDefinitions {
 		field := vd.Variable.Name.Value
-
 		value, ok := variables[field]
 		if !ok {
-			return errors.New("Missing input variable")
+			value, err = getQueryValue(vd.DefaultValue)
+			if err != nil {
+				return err
+			}
 		}
 
 		pField, err := newParam(inputObjects, vd.Type, value, field)
@@ -288,11 +290,11 @@ func queryParams(q *GraphQuery, arguments []*ast.Argument, i int) (err error) {
 			if err != nil {
 				return err
 			}
-			varValue = uint64(intValue)
+			varValue = float64(intValue)
 		case "Variable", "Name":
 			nameStr = value.(*ast.Name).Value
 		default:
-
+			varValue = value
 		}
 
 		variable := q.Q.Params[nameStr]
@@ -309,6 +311,21 @@ func queryParams(q *GraphQuery, arguments []*ast.Argument, i int) (err error) {
 	}
 
 	return nil
+}
+
+func getQueryValue(value ast.Value) (interface{}, error) {
+	val := value.GetValue()
+
+	switch value.GetKind() {
+	case "IntValue":
+		intValue, err := strconv.Atoi(val.(string))
+		if err != nil {
+			return nil, err
+		}
+		return float64(intValue), nil
+	default:
+		return val, nil
+	}
 }
 
 func queryFields(selections []ast.Selection) map[string]Field {
