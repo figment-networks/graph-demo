@@ -13,11 +13,13 @@ var (
 	ErrNotFound = errors.New("record not found")
 )
 
+type QueriesResp map[string]map[uint64]BlockAndTx
 type BlockAndTx struct {
 	BlockID      BlockID       `json:"block_id,omitempty"`
 	Block        Block         `json:"block"`
 	Transactions []Transaction `json:"transactions"`
 }
+
 
 // Block contains the block details
 type Block struct {

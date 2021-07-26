@@ -13,7 +13,7 @@ import (
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/cmd/cosmos-worker/config"
-	transportHTTP "github.com/figment-networks/graph-demo/cosmos-worker/api/transport/http"
+	apiTransportWS "github.com/figment-networks/graph-demo/cosmos-worker/api/transport/ws"
 	"github.com/figment-networks/graph-demo/cosmos-worker/client"
 
 	"github.com/google/uuid"
@@ -76,18 +76,21 @@ func main() {
 	defer grpcConn.Close()
 
 	cliCfg := &client.ClientConfig{
-		ReqPerSecond:        int(cfg.RequestsPerSecond),
 		TimeoutBlockCall:    cfg.TimeoutBlockCall,
 		TimeoutSearchTxCall: cfg.TimeoutTransactionCall,
 	}
 
-	apiClient := client.New(logger.GetLogger(), grpcConn, cliCfg, "mainnet")
+	apiClient := client.NewClient(logger.GetLogger(), grpcConn, cliCfg, "mainnet")
+	wstr := apiTransportWS.NewProcessHandler(logger.GetLogger(), apiClient)
+
+	if err := wstr.Connect(ctx, "0.0.0.0:8002"); err != nil {
+		logger.Error(fmt.Errorf("error connecting to manager "))
+		return
+	}
+
+	apiClient.LinkPersistor(wstr)
 
 	mux := http.NewServeMux()
-
-	httpHandler := transportHTTP.NewHandler(apiClient)
-	httpHandler.AttachToMux(mux)
-
 	s := &http.Server{
 		Addr:         "0.0.0.0:" + cfg.Port,
 		Handler:      mux,

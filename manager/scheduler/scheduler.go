@@ -4,33 +4,66 @@ import (
 	"context"
 	"time"
 
-	"github.com/figment-networks/graph-demo/manager/client"
+	"github.com/figment-networks/graph-demo/manager/structs"
 	"go.uber.org/zap"
 )
 
+type NetworkClient interface {
+	GetAll(ctx context.Context, height uint64) error
+	GetLatest(ctx context.Context) (structs.Block, error)
+}
+
+type Clienter interface {
+	ProcessHeight(ctx context.Context, nc NetworkClient, height uint64) (err error)
+	GetLatest(ctx context.Context, nc NetworkClient) (b structs.Block, err error)
+
+	GetLatestFromStorage(ctx context.Context, chainID string) (height uint64, err error)
+	SetLatestFromStorage(ctx context.Context, chainID string, height uint64) (err error)
+}
+
 type Scheduler struct {
-	client client.Client
-	log    *zap.Logger
+	log *zap.Logger
+	c   Clienter
 }
 
-func New(log *zap.Logger, c client.Client) *Scheduler {
-	return &Scheduler{
-		client: c,
-		log:    log,
+func NewScheduler(log *zap.Logger, c Clienter) *Scheduler {
+	return &Scheduler{log: log, c: c}
+}
+
+func (s *Scheduler) Start(ctx context.Context, nc NetworkClient, connID, chainID string) {
+
+	h, err := s.c.GetLatestFromStorage(ctx, chainID)
+	if err != nil {
+		s.log.Error("error getting height", zap.Uint64("height", h), zap.Error(err))
 	}
-}
-
-func (s *Scheduler) Start(ctx context.Context, height uint64) {
-	h := height
+	h++
 
 	tckr := time.NewTicker(10 * time.Second)
 	defer tckr.Stop()
 	for {
 		select {
 		case <-tckr.C:
-			_, err := s.client.GetByHeight(ctx, h)
+			lb, err := s.c.GetLatest(ctx, nc)
+			if err != nil {
+				s.log.Error("error getting latest height", zap.Error(err))
+				continue
+			}
+
+			if lb.Height-h > 2 {
+				tckr.Reset(time.Millisecond)
+			} else {
+				tckr.Reset(10 * time.Second)
+			}
+
+			// Here we can create multiple queries depending on number of currently connected workers
+			err = s.c.ProcessHeight(ctx, nc, h)
 			if err != nil {
 				s.log.Error("error getting height", zap.Uint64("height", h), zap.Error(err))
+				continue
+			}
+
+			if err := s.c.SetLatestFromStorage(ctx, chainID, h); err != nil {
+				s.log.Error("error setting latest height", zap.Uint64("height", h), zap.Error(err))
 				continue
 			}
 			h++
@@ -39,34 +72,3 @@ func (s *Scheduler) Start(ctx context.Context, height uint64) {
 		}
 	}
 }
-
-/*
-	s.fetchAndSaveBlockInDatbase()
-			s.height++
-		case <-ctx.Done():
-			break
-		}
-	}
-
-}
-
-func (s *Scheduler) fetchAndSaveBlockInDatbase() {
-	bTx, err := s.client.GetBlockByHeight(s.ctx, s.height)
-	if err != nil {
-		s.log.Error("[CRON] Error while getting block", zap.Uint64("height", s.height), zap.Error(err))
-		return
-	}
-
-	s.storeBlockAndTxs(bTx)
-}
-
-func (s *Scheduler) storeBlockAndTxs(bTx structs.BlockAndTx) {
-	if err := s.store.StoreBlock(s.ctx, bTx.Block); err != nil {
-		s.log.Error("[CRON] Error while saving block in database", zap.Uint64("height", s.height), zap.Error(err))
-		return
-	}
-
-	if bTx.Block.NumberOfTransactions > 0 {
-		if err := s.store.StoreTransactions(s.ctx, bTx.Transactions); err != nil {
-			s.log.Error("[CRON] Error while saving transactions in database", zap.Uint64("height", s.height), zap.Uint64("txs", bTx.Block.NumberOfTransactions), zap.Error(err))
-*/

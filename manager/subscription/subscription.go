@@ -2,13 +2,15 @@ package subscription
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"sync"
 
-	"github.com/figment-networks/graph-demo/connectivity/jsonrpc"
+	"go.uber.org/zap"
 )
 
 type Sub interface {
-	Send(jsonrpc.Response) error
+	Send(ctx context.Context, height uint64, resp json.RawMessage) error
 
 	ID() string
 
@@ -18,31 +20,74 @@ type Sub interface {
 
 type Evt struct {
 	EvType string
-	Height uint
+	Height uint64
 	Data   interface{}
 }
 
 type Handle struct {
 	in        chan Evt
+	l         sync.RWMutex
+	log       *zap.Logger
 	endpoints map[string]Sub
+	finish    chan struct{}
 }
 
 func NewHandle() *Handle {
 	return &Handle{
 		endpoints: make(map[string]Sub),
+		finish:    make(chan struct{}),
+		in:        make(chan Evt),
 	}
 }
 
-func (s *Handle) Send(ctx context.Context, ev Evt) {
+func (h *Handle) AddEndpoint(s Sub) {
+	h.l.Lock()
+	defer h.l.Unlock()
+	h.endpoints[s.ID()] = s
+}
+
+func (h *Handle) RemoveEndpoint(id string) {
+	h.l.Lock()
+	defer h.l.Unlock()
+	delete(h.endpoints, id)
+}
+
+func (h *Handle) Send(ctx context.Context, ev Evt) error {
 	select {
 	case <-ctx.Done():
-	case s.in <- ev:
+		return errors.New("error sending event context done")
+	case h.in <- ev:
 	}
-	return
+	return nil
 }
 
-func (s *Handle) Run(ctx string) error {
-
+// fan out event to all subscribers
+func (h *Handle) Run(ctx context.Context) {
+	for {
+		select {
+		case <-h.finish:
+			return
+		case <-ctx.Done():
+			return
+		case evt := <-h.in:
+			mD, err := json.Marshal(evt.Data)
+			if err != nil {
+				h.log.Error("error marshaing response", zap.Any("data", evt.Data))
+				continue
+			}
+			h.l.RLock()
+			for _, sub := range h.endpoints {
+				select {
+				case <-ctx.Done():
+					h.l.RUnlock()
+					return
+				default:
+					sub.Send(ctx, evt.Height, mD)
+				}
+			}
+			h.l.RUnlock()
+		}
+	}
 }
 
 type Subscriptions struct {
@@ -56,16 +101,18 @@ func NewSubscriptions() *Subscriptions {
 	}
 }
 
-// Populate - We populate events using heights, only to indicate a point time.
+// PopulateEvent - We populate events using heights, only to indicate a point time.
 // It might be something else in different networks
-func (s *Subscriptions) Populate(ctx context.Context, evType string, height uint, data interface{}) error {
+func (s *Subscriptions) PopulateEvent(ctx context.Context, evType string, height uint64, data interface{}) error {
+	s.l.RLock()
+	defer s.l.RUnlock()
+
 	t, ok := s.types[evType]
 	if !ok { // noone is subscribed
 		return nil
 	}
 
-	t.Send(ctx, Evt{EvType: evType, Height: height, Data: data})
-
+	return t.Send(ctx, Evt{EvType: evType, Height: height, Data: data})
 }
 
 func (s *Subscriptions) Add(ev string, sub Sub) error {
@@ -75,7 +122,7 @@ func (s *Subscriptions) Add(ev string, sub Sub) error {
 	if !ok {
 		t = NewHandle()
 	}
-	t[sub.ID()] = sub
+	t.AddEndpoint(sub)
 	s.types[ev] = t
 
 	return nil
@@ -84,54 +131,8 @@ func (s *Subscriptions) Add(ev string, sub Sub) error {
 func (s *Subscriptions) Remove(id string) error {
 	s.l.Lock()
 	defer s.l.Unlock()
-
 	for _, t := range s.types {
-		delete(t, id)
+		t.RemoveEndpoint(id)
 	}
 	return nil
-}
-
-func (s *Subscriptions) Send(ctx context.Context, event string, resp jsonrpc.Response) error {
-	s.l.RLock()
-	defer s.l.RUnlock()
-	for _, h := range s.types[event] {
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			h.Send(resp)
-		}
-	}
-	return nil
-}
-
-func NewSubI(jsonrpc.Response) Sub {
-	return &SubscriptionInstance{}
-}
-
-type SubscriptionInstance struct {
-	id string
-
-	from    uint64
-	current uint64
-}
-
-func (si *SubscriptionInstance) Send(jsonrpc.Response) error {
-	return nil
-}
-
-func (si *SubscriptionInstance) ID() string {
-	return si.id
-}
-
-func (si *SubscriptionInstance) FromHeight() uint64 {
-	return si.from
-}
-
-func (si *SubscriptionInstance) CurrentHeight() uint64 {
-	return si.current
-}
-
-func (si *SubscriptionInstance) SetCurrentHeight(c uint64) {
-	si.current = c
 }

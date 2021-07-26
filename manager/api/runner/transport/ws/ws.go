@@ -4,21 +4,29 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log"
+	"errors"
 	"sync"
 
 	"github.com/figment-networks/graph-demo/connectivity"
-	"github.com/figment-networks/graph-demo/connectivity/jsonrpc"
-	"github.com/figment-networks/graph-demo/manager/api/service"
+	"github.com/figment-networks/graph-demo/manager/structs"
+	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
 )
 
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+var ErrConnectionClosed = errors.New("connection closed")
+
 type Sub interface {
-	Send(jsonrpc.Response)
+	Send(ctx context.Context, height uint64, resp json.RawMessage) error
 
 	ID() string
 
-	FromHash() uint64
-	CurrentHash() uint64
+	FromHeight() uint64
+	CurrentHeight() uint64
 }
 
 type Subscriber interface {
@@ -27,7 +35,7 @@ type Subscriber interface {
 }
 
 type ErrorMessage struct {
-	Message string `json:"message",omitempty`
+	Message string `json:"message,omitempty"`
 }
 
 type JSONGraphQLResponse struct {
@@ -41,6 +49,7 @@ type ManagerService interface {
 
 type ProcessHandler struct {
 	service ManagerService
+	log     *zap.Logger
 
 	registry     map[string]connectivity.Handler
 	registrySync sync.RWMutex
@@ -48,8 +57,9 @@ type ProcessHandler struct {
 	subscriptions Subscriber
 }
 
-func NewProcessHandler(svc *service.Service) *ProcessHandler {
+func NewProcessHandler(log *zap.Logger, svc ManagerService) *ProcessHandler {
 	ph := &ProcessHandler{
+		log:      log,
 		service:  svc,
 		registry: make(map[string]connectivity.Handler),
 	}
@@ -102,7 +112,7 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 	if len(args) == 2 {
 		if err := json.Unmarshal(args[1], &vars); err != nil {
 			r.Errors = append(r.Errors, ErrorMessage{
-				Message: "Error unmarshaling quevatiablesry " + err.Error(),
+				Message: "Error unmarshaling query variables " + err.Error(),
 			})
 			enc.Encode(r)
 			resp.Send(json.RawMessage(b.Bytes()), nil)
@@ -115,6 +125,39 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 }
 
 func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
+	b := new(bytes.Buffer)
+	enc := json.NewEncoder(b)
+	r := JSONGraphQLResponse{}
+
+	args := req.Arguments()
+	if len(args) == 0 {
+		r.Errors = append(r.Errors, ErrorMessage{
+			Message: "Missing subscription",
+		})
+		enc.Encode(r)
+		resp.Send(json.RawMessage(b.Bytes()), nil)
+		return
+	}
+
+	var events []structs.Subs
+
+	if err := json.Unmarshal(args[1], &events); err != nil {
+		r.Errors = append(r.Errors, ErrorMessage{
+			Message: "Missing subscription",
+		})
+		enc.Encode(r)
+		// TODO(lukanus): error
+		resp.Send(json.RawMessage(b.Bytes()), nil)
+		return
+	}
+
+	for _, ev := range events {
+		ph.subscriptions.Add(ev.Name, NewSubscriptionInstance(req.ConnID(), resp, ev.StartingHeight))
+		ph.log.Debug("added subscription for event", zap.String("id", req.ConnID()), zap.String("event", ev.Name), zap.Uint64("from", ev.StartingHeight))
+	}
+}
+
+func (ph *ProcessHandler) Unsubscribe(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
 	b := new(bytes.Buffer)
 	enc := json.NewEncoder(b)
 	r := JSONGraphQLResponse{}
@@ -143,13 +186,55 @@ func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Reques
 	}
 
 	for _, ev := range events {
-		log.Println("ev", ev)
-		//	subscription.NewSubI()
-		//	err = ph.subscriptions.Add(ev)
+		err := ph.subscriptions.Remove(req.ConnID())
+		if err != nil {
+			r.Errors = append(r.Errors, ErrorMessage{
+				Message: "Missing subscription",
+			})
+			enc.Encode(r)
+			return
+		}
+		// TODO(lukanus): error
+		ph.log.Debug("removed subscription for event", zap.String("id", req.ConnID()), zap.String("event", ev))
 	}
+}
+
+func NewSubscriptionInstance(id string, resp connectivity.Response, from uint64) Sub {
+	return &SubscriptionInstance{
+		id:   id,
+		from: from,
+		resp: resp,
+	}
+}
+
+type SubscriptionInstance struct {
+	id string
+
+	resp    connectivity.Response
+	from    uint64
+	current uint64
+}
+
+func (si *SubscriptionInstance) Send(ctx context.Context, height uint64, resp json.RawMessage) error {
+
+	// TODO(l): send only if not initial
+
+	return si.resp.Send(resp, nil)
 
 }
 
-func (ph *ProcessHandler) Unsubscribe(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
+func (si *SubscriptionInstance) ID() string {
+	return si.id
+}
 
+func (si *SubscriptionInstance) FromHeight() uint64 {
+	return si.from
+}
+
+func (si *SubscriptionInstance) CurrentHeight() uint64 {
+	return si.current
+}
+
+func (si *SubscriptionInstance) SetCurrentHeight(c uint64) {
+	si.current = c
 }

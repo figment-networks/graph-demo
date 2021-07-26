@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/figment-networks/graph-demo/runner/store"
+	"github.com/figment-networks/graph-demo/runner/structs"
 	"go.uber.org/zap"
 
 	"rogchap.com/v8go"
@@ -20,7 +21,7 @@ import (
 type GQLCaller interface {
 	CallGQL(ctx context.Context, name, query string, variables map[string]interface{}, version string) ([]byte, error)
 
-	Subscribe(ctx context.Context, name string, events []string) error
+	Subscribe(ctx context.Context, name string, events []structs.Subs) error
 	Unsubscribe(ctx context.Context, name string, events []string) error
 }
 
@@ -81,7 +82,7 @@ func (l *Loader) LoadJS(name string, path string) error {
 	}
 
 	// TODO(l): load it from subgraph.yaml
-	l.rqstr.Subscribe(context.Background(), "cosmos", []string{"newTransaction", "newBlock"})
+	l.rqstr.Subscribe(context.Background(), "cosmos", []structs.Subs{{"newTransaction", 0}, {"newBlock", 0}})
 
 	return l.createRunable(name, b)
 }

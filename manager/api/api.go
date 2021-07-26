@@ -1,36 +1,38 @@
-package service
+package api
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/figment-networks/graph-demo/graphcall"
 	"github.com/figment-networks/graph-demo/manager/client"
 	"github.com/figment-networks/graph-demo/manager/store"
 	"github.com/figment-networks/graph-demo/manager/structs"
-	rStructs "github.com/figment-networks/graph-demo/runner/api/structs"
 )
 
 type Service struct {
 	clients map[string]client.Client
-	store   store.Store
+	store   store.Storager
 
-	blocksByChainID map[string]map[uint64]rStructs.BlockAndTx
-	lock            sync.RWMutex
 }
 
-func New(store store.Store, clients map[string]client.Client) *Service {
+func NewService(store store.Storager, clients map[string]client.Client) *Service {
 	return &Service{
-		clients:         clients,
-		store:           store,
-		blocksByChainID: make(map[string]map[uint64]rStructs.BlockAndTx),
+		clients: clients,
+		store:   store,
 	}
 }
 
-func (s *Service) Close() error {
-	return s.store.Close()
+func (s *Service) StoreBlock(ctx context.Context, block structs.Block) error {
+	return s.store.StoreBlock(ctx, block)
+}
+
+func (s *Service) StoreTransactions(ctx context.Context, txs []structs.Transaction) error {
+	if len(txs) > 0 {
+		return s.store.StoreTransactions(ctx, txs)
+	}
+	return nil
 }
 
 func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string) (structs.BlockAndTx, error) {
@@ -58,24 +60,24 @@ func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string
 func (s *Service) ProcessGraphqlQuery(ctx context.Context, v map[string]interface{}, q string) ([]byte, error) {
 	queries, err := graphcall.ParseQuery(q, v)
 	if err != nil {
-		return nil, fmt.Errorf("Error while parsing graphql query: %w", err)
+		return nil, fmt.Errorf("error while parsing graphql query: %w", err)
 	}
 
 	blocks, err := s.getBlocks(ctx, &queries)
 	if err != nil {
-		return nil, fmt.Errorf("Error while fetching data: %w", err)
+		return nil, fmt.Errorf("error while fetching data: %w", err)
 	}
 
 	rawResp, err := mapBlocksToResponse(queries.Queries, blocks)
 	if err != nil {
-		return nil, fmt.Errorf("Error while mapping response: %w", err)
+		return nil, fmt.Errorf("error while mapping response: %w", err)
 	}
 
 	return rawResp, nil
 }
 
-func (s *Service) getBlocks(ctx context.Context, query *graphcall.GraphQuery) (rStructs.QueriesResp, error) {
-	qResp := make(map[string]map[uint64]rStructs.BlockAndTx)
+func (s *Service) getBlocks(ctx context.Context, query *graphcall.GraphQuery) (structs.QueriesResp, error) {
+	qResp := make(map[string]map[uint64]structs.BlockAndTx)
 
 	for _, query := range query.Queries {
 		resp, err := s.getQueryBlocksByHeights(ctx, query.Params)
@@ -88,6 +90,7 @@ func (s *Service) getBlocks(ctx context.Context, query *graphcall.GraphQuery) (r
 	return qResp, nil
 }
 
+/*
 func (s *Service) getBlockFromCache(chainID string, height uint64) (rStructs.BlockAndTx, bool) {
 	blocks, ok := s.blocksByChainID[chainID]
 	if !ok {
@@ -101,29 +104,31 @@ func (s *Service) getBlockFromCache(chainID string, height uint64) (rStructs.Blo
 	return rStructs.BlockAndTx{}, false
 }
 
-type blocksByChain map[string]map[uint64]rStructs.BlockAndTx
 
-func (s *Service) getQueryBlocksByHeights(ctx context.Context, params map[string]graphcall.Part) (resp map[uint64]rStructs.BlockAndTx, err error) {
+type blocksByChain map[string]map[uint64]rStructs.BlockAndTx
+*/
+
+func (s *Service) getQueryBlocksByHeights(ctx context.Context, params map[string]graphcall.Part) (resp map[uint64]structs.BlockAndTx, err error) {
 	chainID, heights, err := getHeightsToFetchByChain(params)
 	if err != nil {
 		return nil, err
 	}
 
-	resp = make(map[uint64]rStructs.BlockAndTx)
+	resp = make(map[uint64]structs.BlockAndTx)
 	for _, h := range heights {
-		if r, ok := s.getBlockFromCache(chainID, h); ok {
-			resp[h] = r
-			continue
-		}
-
+		/*	if r, ok := s.getBlockFromCache(chainID, h); ok {
+				resp[h] = r
+				continue
+			}
+		*/
 		bTx, err := s.GetByHeight(ctx, h, chainID)
 		if err != nil {
 			return nil, err
 		}
 
-		resp[h] = rStructs.BlockAndTx{
-			Block: bTx.Block,
-			Txs:   bTx.Transactions,
+		resp[h] = structs.BlockAndTx{
+			Block:        bTx.Block,
+			Transactions: bTx.Transactions,
 		}
 	}
 
@@ -138,7 +143,7 @@ func getHeightsToFetchByChain(params map[string]graphcall.Part) (chainID string,
 
 		val := v.Params[key].Value
 		if val == nil {
-			return "", nil, errors.New("Empty parameter value")
+			return "", nil, errors.New("empty parameter value")
 		}
 
 		switch key {
@@ -154,7 +159,7 @@ func getHeightsToFetchByChain(params map[string]graphcall.Part) (chainID string,
 	}
 
 	if !isStart && isEnd || !isStart && !isEnd || (isEnd && (endHeight < startHeight)) {
-		return "", nil, errors.New("Bad height parameters")
+		return "", nil, errors.New("bad height parameters")
 	}
 
 	if !isEnd {

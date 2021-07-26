@@ -1,4 +1,4 @@
-package service
+package api
 
 import (
 	"bytes"
@@ -10,13 +10,12 @@ import (
 	"time"
 
 	"github.com/figment-networks/graph-demo/graphcall"
-	"github.com/figment-networks/graph-demo/runner/api/structs"
-	rStructs "github.com/figment-networks/graph-demo/runner/api/structs"
+	"github.com/figment-networks/graph-demo/manager/structs"
 
 	"github.com/google/uuid"
 )
 
-func mapBlocksToResponse(queries []graphcall.Query, qResp rStructs.QueriesResp) ([]byte, error) {
+func mapBlocksToResponse(queries []graphcall.Query, qResp structs.QueriesResp) ([]byte, error) {
 	var resp mapSlice
 	var err error
 
@@ -25,7 +24,7 @@ func mapBlocksToResponse(queries []graphcall.Query, qResp rStructs.QueriesResp) 
 
 		blocks, ok := qResp[query.Name]
 		if !ok {
-			return nil, errors.New("Response is empty")
+			return nil, errors.New("response is empty")
 		}
 
 		bLen := len(blocks)
@@ -62,7 +61,7 @@ func fieldsResp(q *graphcall.Query, blockAndTx structs.BlockAndTx) (resp interfa
 	if parseBlock && !parseTransaction {
 		resp = mapStructToFields(q.Fields, blockAndTx.Block)
 	} else if !parseBlock && parseTransaction {
-		resp = mapSliceToFields(q.Fields, blockAndTx.Txs)
+		resp = mapSliceToFields(q.Fields, blockAndTx.Transactions)
 	} else {
 		resp = mapStructToFields(q.Fields, blockAndTx)
 
