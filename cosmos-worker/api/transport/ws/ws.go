@@ -92,7 +92,7 @@ func (ph *ProcessHandler) GetAll(ctx context.Context, req connectivity.Request, 
 	args := req.Arguments()
 	if len(args) == 0 {
 		r.Errors = append(r.Errors, ErrorMessage{
-			Message: "Missing query",
+			Message: "Missing query (getAll)",
 		})
 		enc.Encode(r)
 		resp.Send(json.RawMessage(b.Bytes()), nil)
@@ -125,16 +125,6 @@ func (ph *ProcessHandler) GetLatest(ctx context.Context, req connectivity.Reques
 	b := new(bytes.Buffer)
 	enc := json.NewEncoder(b)
 	r := JSONGraphQLResponse{}
-
-	args := req.Arguments()
-	if len(args) == 0 {
-		r.Errors = append(r.Errors, ErrorMessage{
-			Message: "Missing query",
-		})
-		enc.Encode(r)
-		resp.Send(json.RawMessage(b.Bytes()), nil)
-		return
-	}
 
 	block, err := ph.service.GetLatest(ctx)
 	if err != nil {

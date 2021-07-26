@@ -81,7 +81,7 @@ func (ph *ProcessHandler) StoreBlock(ctx context.Context, req connectivity.Reque
 	args := req.Arguments()
 	if len(args) == 0 {
 		r.Errors = append(r.Errors, ErrorMessage{
-			Message: "Missing query",
+			Message: "Missing args (GraphQLRequest)",
 		})
 		enc.Encode(r)
 		resp.Send(json.RawMessage(b.Bytes()), nil)
@@ -110,7 +110,7 @@ func (ph *ProcessHandler) StoreTransactions(ctx context.Context, req connectivit
 	args := req.Arguments()
 	if len(args) == 0 {
 		r.Errors = append(r.Errors, ErrorMessage{
-			Message: "Missing query",
+			Message: "Missing args (StoreTransactions)",
 		})
 		enc.Encode(r)
 		resp.Send(json.RawMessage(b.Bytes()), nil)
@@ -140,7 +140,7 @@ func (ph *ProcessHandler) Register(ctx context.Context, req connectivity.Request
 	args := req.Arguments()
 	if len(args) == 0 {
 		r.Errors = append(r.Errors, ErrorMessage{
-			Message: "Missing query",
+			Message: "Missing args (Register)",
 		})
 		enc.Encode(r)
 		resp.Send(json.RawMessage(b.Bytes()), nil)

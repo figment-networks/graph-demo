@@ -36,7 +36,7 @@ func NewHandle() *Handle {
 	return &Handle{
 		endpoints: make(map[string]Sub),
 		finish:    make(chan struct{}),
-		in:        make(chan Evt),
+		in:        make(chan Evt, 10),
 	}
 }
 
@@ -115,12 +115,13 @@ func (s *Subscriptions) PopulateEvent(ctx context.Context, evType string, height
 	return t.Send(ctx, Evt{EvType: evType, Height: height, Data: data})
 }
 
-func (s *Subscriptions) Add(ev string, sub Sub) error {
+func (s *Subscriptions) Add(ctx context.Context, ev string, sub Sub) error {
 	s.l.Lock()
 	defer s.l.Unlock()
 	t, ok := s.types[ev]
 	if !ok {
 		t = NewHandle()
+		go t.Run(ctx)
 	}
 	t.AddEndpoint(sub)
 	s.types[ev] = t

@@ -22,7 +22,7 @@ var upgrader = websocket.Upgrader{
 var ErrConnectionClosed = errors.New("connection closed")
 
 type Subscriber interface {
-	Add(ev string, sub subscription.Sub) error
+	Add(ctx context.Context, ev string, sub subscription.Sub) error
 	Remove(id string) error
 }
 
@@ -84,7 +84,7 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 	args := req.Arguments()
 	if len(args) == 0 {
 		r.Errors = append(r.Errors, ErrorMessage{
-			Message: "Missing query",
+			Message: "Missing query (GraphQLRequest)",
 		})
 		enc.Encode(r)
 		resp.Send(json.RawMessage(b.Bytes()), nil)
@@ -145,7 +145,7 @@ func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Reques
 	}
 
 	for _, ev := range events {
-		ph.subscriptions.Add(ev.Name, NewSubscriptionInstance(req.ConnID(), resp, ev.StartingHeight))
+		ph.subscriptions.Add(ctx, ev.Name, NewSubscriptionInstance(req.ConnID(), resp, ev.StartingHeight))
 		ph.log.Debug("added subscription for event", zap.String("id", req.ConnID()), zap.String("event", ev.Name), zap.Uint64("from", ev.StartingHeight))
 	}
 }

@@ -161,8 +161,11 @@ func (s *Session) Recv() {
 			s.routingLock.RLock()
 			waitO, ok := s.routing[req.ID]
 			s.routingLock.RUnlock()
+
+			s.l.Debug("msg", zap.Any("message", req))
 			if !ok {
 				s.l.Error("unexpected message", zap.Any("message", req))
+				continue
 			}
 			waitO.returnCh <- jsonrpc.Response{ID: req.ID, JSONRPC: "2.0", Result: req.Result, Error: req.Error}
 
