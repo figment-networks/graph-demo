@@ -96,6 +96,6 @@ func (d *Driver) GetLatestHeight(ctx context.Context, chainID string) (height ui
 }
 
 func (d *Driver) SetLatestHeight(ctx context.Context, chainID string, height uint64) (err error) {
-	_, err = d.db.Exec(insertBlock, `INSERT INTO public.progress("chain_id", "height") VALUES ($1, $2) ON CONFLICT (chain_id) DO UPDATE SET height = EXCLUDED.height`, chainID, height)
+	_, err = d.db.ExecContext(ctx, `INSERT INTO public.progress("chain_id", "height") VALUES ($1, $2) ON CONFLICT (chain_id) DO UPDATE SET height = EXCLUDED.height`, chainID, height)
 	return err
 }

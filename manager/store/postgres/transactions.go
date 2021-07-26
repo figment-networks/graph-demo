@@ -9,7 +9,6 @@ import (
 
 	"github.com/figment-networks/graph-demo/manager/structs"
 	"github.com/lib/pq"
-	"go.uber.org/zap"
 )
 
 const (
@@ -176,21 +175,12 @@ func uniqueEntries(in, out []string) []string {
 }
 
 func (d *Driver) storeTx(ctx context.Context, db *sql.DB, t structs.Transaction, fee []byte, events fmt.Stringer, af additionalFields) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
 
 	// TODO(lukanus): store  REAL transation
-	_, err = tx.Exec(txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, fee, t.GasWanted, t.GasUsed, t.Memo, events.String(),
+	_, err := d.db.ExecContext(ctx, txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, fee, t.GasWanted, t.GasUsed, t.Memo, events.String(),
 		t.Raw, t.RawLog, t.HasErrors, pq.Array(af.types), pq.Array(af.parties), pq.Array(af.senders), pq.Array(af.recipients))
-	if err != nil {
-		d.log.Error("[DB] Rollback flushB error: ", zap.Error(err))
-		tx.Rollback()
-		return err
-	}
 
-	return tx.Commit()
+	return err
 }
 
 // Removes ASCII hex 0-7 causing utf-8 error in db

@@ -1,6 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE IF NOT EXISTS transaction_events
+CREATE TABLE IF NOT EXISTS transactions
 (
     id         uuid DEFAULT uuid_generate_v4(),
     time       TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -34,13 +34,13 @@ CREATE TABLE IF NOT EXISTS transaction_events
 );
 
 
-CREATE UNIQUE INDEX idx_tx_ev_hash on transaction_events (chain_id, hash, height);
-CREATE INDEX idx_tx_ev_ch_height on transaction_events (chain_id, height);
-CREATE INDEX idx_tx_ev_ch_time on transaction_events (chain_id, time);
-CREATE INDEX idx_tx_ev_block_hash on transaction_events (chain_id, block_hash);
-CREATE INDEX idx_tx_ev_parties_gin ON transaction_events USING GIN(parties);
-CREATE INDEX idx_partial_tx_ev_height on transaction_events (height);
-CREATE INDEX transaction_types_idx ON transaction_events USING GIN (type);
-CREATE INDEX transaction_senders_idx ON transaction_events USING GIN (senders);
-CREATE INDEX transaction_recipients_idx ON transaction_events USING GIN (recipients);
+CREATE UNIQUE INDEX idx_tx_ev_hash on transactions (chain_id, hash, height);
+CREATE INDEX idx_tx_ev_ch_height on transactions (chain_id, height);
+CREATE INDEX idx_tx_ev_ch_time on transactions (chain_id, time);
+CREATE INDEX idx_tx_ev_block_hash on transactions (chain_id, block_hash);
+CREATE INDEX idx_tx_ev_parties_gin ON transactions USING GIN(parties);
+CREATE INDEX idx_partial_tx_ev_height on transactions (height);
+CREATE INDEX transaction_types_idx ON transactions USING GIN (type);
+CREATE INDEX transaction_senders_idx ON transactions USING GIN (senders);
+CREATE INDEX transaction_recipients_idx ON transactions USING GIN (recipients);
 
