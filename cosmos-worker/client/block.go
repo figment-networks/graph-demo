@@ -79,7 +79,7 @@ func (c *Client) GetAll(ctx context.Context, height uint64) (er error) {
 
 	if c.persistor != nil {
 		if err := c.persistor.StoreTransactions(ctx, txs); err != nil {
-			c.log.Debug("[COSMOS-CLIENT] Error storing block at height", zap.Uint64("height", height), zap.Error(err))
+			c.log.Debug("[COSMOS-CLIENT] Error storing transaction at height", zap.Uint64("height", height), zap.Error(err))
 			return err
 		}
 	}

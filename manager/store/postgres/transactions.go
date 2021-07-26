@@ -14,7 +14,7 @@ import (
 const (
 	txInsert = `INSERT INTO public.transactions("chain_id", "height", "hash", "block_hash", "time", "fee", "gas_wanted", "gas_used", "memo", "data", "raw", "raw_log", "has_error", "type", "parties", "senders", "recipients") VALUES
 	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-	ON CONFLICT ( chain_id, hash)
+	ON CONFLICT (chain_id, hash, height)
 	DO UPDATE SET
 	height = EXCLUDED.height,
 	hash = EXCLUDED.hash,
