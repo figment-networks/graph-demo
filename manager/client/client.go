@@ -14,7 +14,6 @@ type NetworkClient interface {
 	GetLatest(ctx context.Context) (structs.Block, error)
 }
 
-
 type SubscriptionClient interface {
 	PopulateEvent(ctx context.Context, event string, height uint64, data interface{}) error
 }

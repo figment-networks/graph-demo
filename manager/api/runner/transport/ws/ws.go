@@ -134,7 +134,7 @@ func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Reques
 
 	var events []structs.Subs
 
-	if err := json.Unmarshal(args[1], &events); err != nil {
+	if err := json.Unmarshal(args[0], &events); err != nil {
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Missing subscription",
 		})
@@ -167,7 +167,7 @@ func (ph *ProcessHandler) Unsubscribe(ctx context.Context, req connectivity.Requ
 
 	var events []string
 
-	if err := json.Unmarshal(args[1], &events); err != nil {
+	if err := json.Unmarshal(args[0], &events); err != nil {
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Missing subscription",
 		})

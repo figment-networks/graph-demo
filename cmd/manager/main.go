@@ -57,7 +57,7 @@ func main() {
 		log.Fatal(fmt.Errorf("error initializing config [ERR: %+v]", err))
 	}
 
-	log.Println(" wCfg.WorkerAddrs",  wCfg.WorkerAddrs)
+	log.Println(" wCfg.WorkerAddrs", wCfg.WorkerAddrs)
 
 	if cfg.AppEnv == "development" || cfg.AppEnv == "local" {
 		logger.Init("console", "debug", []string{"stderr"})
@@ -76,8 +76,6 @@ func main() {
 		log.Error("Error while creating database driver", zap.Error(err))
 		os.Exit(1)
 	}
-
-	//httpTransport := transportHTTP.NewCosmosHTTPTransport(workerAddr.URL, httpClient, log)
 
 	st := store.NewStore(dbDriver)
 	mux := http.NewServeMux()
@@ -195,7 +193,7 @@ func linkWorker(ctx context.Context, l *zap.Logger, reg *connWS.Registry, callH 
 }
 
 func linkRunner(ctx context.Context, l *zap.Logger, callH connectivity.FunctionCallHandler, mux *http.ServeMux) {
-	mux.HandleFunc("/run", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/runner", func(w http.ResponseWriter, r *http.Request) {
 		uConn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			l.Warn("Error upgrading connection", zap.Error(err))

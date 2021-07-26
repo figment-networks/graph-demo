@@ -31,7 +31,6 @@ func NewNetworkGraphClient(l *zap.Logger, ec EventClient) *NetworkGraphClient {
 	return ph
 }
 
-
 func (ng *NetworkGraphClient) EventHandler(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
 	args := req.Arguments()
 	data := make(map[string]interface{})
