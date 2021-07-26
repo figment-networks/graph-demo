@@ -21,9 +21,14 @@ import (
 
 	"github.com/figment-networks/graph-demo/cmd/manager/config"
 	"github.com/figment-networks/graph-demo/manager/client"
+	"github.com/figment-networks/graph-demo/manager/scheduler"
 	"github.com/figment-networks/graph-demo/manager/store"
 	"github.com/figment-networks/graph-demo/manager/store/postgres"
 	"github.com/figment-networks/graph-demo/manager/subscription"
+
+	"github.com/figment-networks/graph-demo/manager/api"
+	runnerWSAPI "github.com/figment-networks/graph-demo/manager/api/runner/transport/ws"
+	workerWSAPI "github.com/figment-networks/graph-demo/manager/api/worker/transport/ws"
 
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
@@ -52,6 +57,8 @@ func main() {
 		log.Fatal(fmt.Errorf("error initializing config [ERR: %+v]", err))
 	}
 
+	log.Println(" wCfg.WorkerAddrs",  wCfg.WorkerAddrs)
+
 	if cfg.AppEnv == "development" || cfg.AppEnv == "local" {
 		logger.Init("console", "debug", []string{"stderr"})
 	} else {
@@ -72,26 +79,21 @@ func main() {
 
 	//httpTransport := transportHTTP.NewCosmosHTTPTransport(workerAddr.URL, httpClient, log)
 
-	/*
-		wsTransport := clientTrWS.NewCosmosWSTransport()
-		wsTransport.Connect(ctx, "0.0.0.0:6789", client)
-	*/
-
-	reg := connWS.NewRegistry()
-
 	st := store.NewStore(dbDriver)
 	mux := http.NewServeMux()
 	sc := subscription.NewSubscriptions()
 
+	reg := connWS.NewRegistry()
+
 	client := client.NewClient(log, st, sc)
+	sched := scheduler.NewScheduler(log, client)
 
-	linkWorker(ctx, log, reg, wsTransport, mux)
-	linkRunner(ctx, log, wsTransport, mux)
-	//con := connWS.NewConn(logger.GetLogger(), wsTransport)
-	//con.AttachToMux(ctx, mux)
+	serv := api.NewService(st)
+	wProc := workerWSAPI.NewProcessHandler(log, serv, sched, reg)
+	linkWorker(ctx, log, reg, wProc, mux)
 
-	//	sh := scheduler.New(log, client)
-	//	go sh.Start(ctx, 0)
+	proc := runnerWSAPI.NewProcessHandler(log, serv, sc)
+	linkRunner(ctx, log, proc, mux)
 
 	s := &http.Server{
 		Addr:    cfg.Address,

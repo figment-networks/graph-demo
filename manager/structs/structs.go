@@ -20,7 +20,6 @@ type BlockAndTx struct {
 	Transactions []Transaction `json:"transactions"`
 }
 
-
 // Block contains the block details
 type Block struct {
 	// Hash of the Block

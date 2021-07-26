@@ -33,7 +33,7 @@ type ManagerService interface {
 type ProcessHandler struct {
 	service ManagerService
 	log     *zap.Logger
-	sched   scheduler.Scheduler
+	sched   *scheduler.Scheduler
 
 	// session storagre
 	reg *wsConn.Registry
@@ -43,7 +43,7 @@ type ProcessHandler struct {
 	registrySync sync.RWMutex
 }
 
-func NewProcessHandler(log *zap.Logger, svc ManagerService, reg *wsConn.Registry) *ProcessHandler {
+func NewProcessHandler(log *zap.Logger, svc ManagerService, sched *scheduler.Scheduler, reg *wsConn.Registry) *ProcessHandler {
 	ph := &ProcessHandler{
 		log:      log,
 		service:  svc,

@@ -10,9 +10,10 @@ import (
 )
 
 type NetworkClient interface {
-	GetAll(ctx context.Context, height uint64) (structs.BlockAndTx, error)
+	GetAll(ctx context.Context, height uint64) error
 	GetLatest(ctx context.Context) (structs.Block, error)
 }
+
 
 type SubscriptionClient interface {
 	PopulateEvent(ctx context.Context, event string, height uint64, data interface{}) error
@@ -33,20 +34,17 @@ func NewClient(l *zap.Logger, st store.Storager, sc SubscriptionClient) *Client 
 }
 
 func (c *Client) ProcessHeight(ctx context.Context, nc NetworkClient, height uint64) (err error) {
-	btx, err := c.getByHeight(ctx, nc, height)
-	if err != nil {
+	if err = c.getByHeight(ctx, nc, height); err != nil {
 		return err
 	}
 
 	// We can populate some errors from here
-	if err := c.PopulateEvent(ctx, structs.EVENT_NEW_BLOCK, btx.Block.Height, structs.EventNewBlock{Height: btx.Block.Height}); err != nil {
+	if err := c.PopulateEvent(ctx, structs.EVENT_NEW_BLOCK, height, structs.EventNewBlock{Height: height}); err != nil {
 		return err
 	}
 
-	for _, tx := range btx.Transactions {
-		if err := c.PopulateEvent(ctx, structs.EVENT_NEW_TRANSACTION, btx.Block.Height, structs.EventNewTransaction{Height: tx.Height}); err != nil {
-			return err
-		}
+	if err := c.PopulateEvent(ctx, structs.EVENT_NEW_TRANSACTION, height, structs.EventNewTransaction{Height: height}); err != nil {
+		return err
 	}
 
 	return nil
@@ -59,17 +57,16 @@ func (c *Client) PopulateEvent(ctx context.Context, event string, height uint64,
 	return c.sc.PopulateEvent(ctx, event, height, data)
 }
 
-func (c *Client) getByHeight(ctx context.Context, nc NetworkClient, height uint64) (bTx structs.BlockAndTx, err error) {
-	bTx, err = nc.GetAll(ctx, height)
-	if err != nil {
-		c.l.Error("[CRON] Error while getting block", zap.Uint64("height", height), zap.Error(err))
-		return bTx, err
-	}
-	return bTx, err
+func (c *Client) getByHeight(ctx context.Context, nc NetworkClient, height uint64) (err error) {
+	return nc.GetAll(ctx, height)
 }
 
-func (c *Client) GetLatestBlock(ctx context.Context, nc NetworkClient) (structs.Block, error) {
-	return nc.GetLatest(ctx)
+func (c *Client) GetLatest(ctx context.Context, nc NetworkClient) (uint64, error) {
+	lst, err := nc.GetLatest(ctx)
+	if err != nil {
+		return 0, err
+	}
+	return lst.Height, err
 }
 
 func (c *Client) GetLatestFromStorage(ctx context.Context, chainID string) (height uint64, err error) {

@@ -4,18 +4,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/figment-networks/graph-demo/manager/structs"
+	"github.com/figment-networks/graph-demo/manager/client"
 	"go.uber.org/zap"
 )
 
-type NetworkClient interface {
-	GetAll(ctx context.Context, height uint64) error
-	GetLatest(ctx context.Context) (structs.Block, error)
-}
-
 type Clienter interface {
-	ProcessHeight(ctx context.Context, nc NetworkClient, height uint64) (err error)
-	GetLatest(ctx context.Context, nc NetworkClient) (b structs.Block, err error)
+	ProcessHeight(ctx context.Context, nc client.NetworkClient, height uint64) (err error)
+	GetLatest(ctx context.Context, nc client.NetworkClient) (height uint64, err error)
 
 	GetLatestFromStorage(ctx context.Context, chainID string) (height uint64, err error)
 	SetLatestFromStorage(ctx context.Context, chainID string, height uint64) (err error)
@@ -30,7 +25,7 @@ func NewScheduler(log *zap.Logger, c Clienter) *Scheduler {
 	return &Scheduler{log: log, c: c}
 }
 
-func (s *Scheduler) Start(ctx context.Context, nc NetworkClient, connID, chainID string) {
+func (s *Scheduler) Start(ctx context.Context, nc client.NetworkClient, connID, chainID string) {
 
 	h, err := s.c.GetLatestFromStorage(ctx, chainID)
 	if err != nil {
@@ -49,7 +44,7 @@ func (s *Scheduler) Start(ctx context.Context, nc NetworkClient, connID, chainID
 				continue
 			}
 
-			if lb.Height-h > 2 {
+			if lb-h > 2 {
 				tckr.Reset(time.Millisecond)
 			} else {
 				tckr.Reset(10 * time.Second)

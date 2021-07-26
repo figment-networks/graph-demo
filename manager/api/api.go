@@ -6,21 +6,17 @@ import (
 	"fmt"
 
 	"github.com/figment-networks/graph-demo/graphcall"
-	"github.com/figment-networks/graph-demo/manager/client"
 	"github.com/figment-networks/graph-demo/manager/store"
 	"github.com/figment-networks/graph-demo/manager/structs"
 )
 
 type Service struct {
-	clients map[string]client.Client
-	store   store.Storager
-
+	store store.Storager
 }
 
-func NewService(store store.Storager, clients map[string]client.Client) *Service {
+func NewService(store store.Storager) *Service {
 	return &Service{
-		clients: clients,
-		store:   store,
+		store: store,
 	}
 }
 

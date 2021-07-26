@@ -9,6 +9,7 @@ import (
 
 	"github.com/figment-networks/graph-demo/connectivity"
 	"github.com/figment-networks/graph-demo/manager/structs"
+	"github.com/figment-networks/graph-demo/manager/subscription"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )
@@ -20,17 +21,8 @@ var upgrader = websocket.Upgrader{
 
 var ErrConnectionClosed = errors.New("connection closed")
 
-type Sub interface {
-	Send(ctx context.Context, height uint64, resp json.RawMessage) error
-
-	ID() string
-
-	FromHeight() uint64
-	CurrentHeight() uint64
-}
-
 type Subscriber interface {
-	Add(ev string, sub Sub) error
+	Add(ev string, sub subscription.Sub) error
 	Remove(id string) error
 }
 
@@ -57,11 +49,12 @@ type ProcessHandler struct {
 	subscriptions Subscriber
 }
 
-func NewProcessHandler(log *zap.Logger, svc ManagerService) *ProcessHandler {
+func NewProcessHandler(log *zap.Logger, svc ManagerService, subscriptions Subscriber) *ProcessHandler {
 	ph := &ProcessHandler{
-		log:      log,
-		service:  svc,
-		registry: make(map[string]connectivity.Handler),
+		log:           log,
+		service:       svc,
+		subscriptions: subscriptions,
+		registry:      make(map[string]connectivity.Handler),
 	}
 	ph.Add("query", ph.GraphQLRequest)
 	ph.Add("subscribe", ph.Subscribe)
@@ -199,7 +192,7 @@ func (ph *ProcessHandler) Unsubscribe(ctx context.Context, req connectivity.Requ
 	}
 }
 
-func NewSubscriptionInstance(id string, resp connectivity.Response, from uint64) Sub {
+func NewSubscriptionInstance(id string, resp connectivity.Response, from uint64) subscription.Sub {
 	return &SubscriptionInstance{
 		id:   id,
 		from: from,
