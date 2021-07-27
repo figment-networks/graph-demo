@@ -34,20 +34,19 @@ func (s *Service) StoreTransactions(ctx context.Context, txs []structs.Transacti
 func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string) (bTx structs.BlockAndTx, err error) {
 	bTx.Block, err = s.store.GetBlockByHeight(ctx, height, chainID)
 	if err != nil {
-		return structs.BlockAndTx{}, err
+		return bTx, err
 	}
 
 	if bTx.Block.NumberOfTransactions == 0 {
-		return structs.BlockAndTx{}, nil
+		return bTx, nil
 	}
 
 	bTx.Transactions, err = s.store.GetTransactionsByHeight(ctx, height, chainID)
 	if err != nil {
-		return structs.BlockAndTx{}, err
+		return bTx, err
 	}
 
 	return bTx, nil
-
 }
 
 func (s *Service) ProcessGraphqlQuery(ctx context.Context, q []byte, v map[string]interface{}) ([]byte, error) {
