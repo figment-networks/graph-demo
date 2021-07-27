@@ -67,8 +67,6 @@ func main() {
 	logger.Info(config.IdentityString())
 	l := logger.GetLogger()
 
-
-
 	// Using in-memory store. Create entity collections.
 	sStore := memap.NewSubgraphStore()
 
@@ -79,7 +77,6 @@ func main() {
 		logger.Error(fmt.Errorf("Loader.LoadFromFile() error = %v", err))
 		return
 	}
-
 
 	for _, sg := range schemas.Subgraphs {
 		for _, ent := range sg.Entities {
