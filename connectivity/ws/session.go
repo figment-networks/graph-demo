@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -230,7 +229,6 @@ WSLOOP:
 			}
 
 			buff.Reset()
-			log.Printf("message %+v", message)
 			if err := enc.Encode(message); err != nil {
 				s.l.Info("error in encode send", zap.Error(err), zap.Any("message", message))
 				continue WSLOOP
@@ -251,7 +249,6 @@ WSLOOP:
 			}
 
 			buff.Reset()
-			log.Printf("response %+v", message)
 			if err := enc.Encode(message); err != nil {
 				s.l.Info("error in encode response", zap.Error(err), zap.Any("message", message))
 				continue WSLOOP
@@ -262,13 +259,7 @@ WSLOOP:
 				break WSLOOP
 			}
 
-			/*
-				if err := w.Close(); err != nil {
-					return
-				}
-			*/
 		case <-tckr.C:
-			// conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := s.c.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}

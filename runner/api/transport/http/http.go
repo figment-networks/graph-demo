@@ -30,7 +30,7 @@ type Handler struct {
 	api API
 }
 
-func NewHandler(  api API) *Handler {
+func NewHandler(api API) *Handler {
 	return &Handler{
 		api: api,
 	}

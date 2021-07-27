@@ -30,3 +30,30 @@ type Param struct {
 	Variable string
 	Value    interface{}
 }
+
+// -------------------
+
+type Subgraph struct {
+	Name     string
+	Entities map[string]*Entity
+}
+
+func NewSubgraph(name string) *Subgraph {
+	return &Subgraph{Name: name, Entities: make(map[string]*Entity)}
+}
+
+type Entity struct {
+	Name   string
+	Fields map[string]Fields
+}
+
+func NewEntity(name string) *Entity {
+	return &Entity{Name: name, Fields: make(map[string]Fields)}
+}
+
+type Fields struct {
+	Name    string
+	Type    string
+	IsArray bool
+	NotNull bool
+}

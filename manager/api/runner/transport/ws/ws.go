@@ -97,7 +97,7 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 			Message: "Missing query (GraphQLRequest)",
 		})
 		enc.Encode(r)
-		resp.Send(json.RawMessage(b.Bytes()), nil)
+		resp.Send(b.Bytes(), nil)
 		return
 	}
 
@@ -107,7 +107,7 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 			Message: "Error unmarshaling query " + err.Error(),
 		})
 		enc.Encode(r)
-		resp.Send(json.RawMessage(b.Bytes()), nil)
+		resp.Send(b.Bytes(), nil)
 		return
 	}
 
@@ -118,15 +118,16 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 				Message: "Error unmarshaling query variables " + err.Error(),
 			})
 			enc.Encode(r)
-			resp.Send(json.RawMessage(b.Bytes()), nil)
+			resp.Send(b.Bytes(), nil)
 			return
 		}
 	}
 
-	response, err := ph.service.ProcessGraphqlQuery(ctx, gQLReq.Variables, gQLReq.Query)
+	var err error
+	r.Data, err = ph.service.ProcessGraphqlQuery(ctx, gQLReq.Variables, gQLReq.Query)
 
-	log.Println("response 111", string(response))
-	resp.Send(response, err)
+	enc.Encode(r)
+	resp.Send(b.Bytes(), err)
 }
 
 func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Request, resp connectivity.Response) {

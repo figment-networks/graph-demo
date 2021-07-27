@@ -11,24 +11,83 @@ import (
 	"github.com/graphql-go/graphql/language/source"
 )
 
-// var (
-// 	partRegxp = regexp.MustCompile("\\s*([a-zA-Z0-9_-]+)\\s*(|\\(?[a-zA-Z0-9\\=\\,\\s\\.\\$\\_\\-\\:\"\\!]*\\))\\s*({?)\\n")
-// 	params    = regexp.MustCompile("\\s*([a-zA-Z0-9_-]+)\\s*(|\\(?[a-zA-Z0-9\\=\\,\\s\\.\\$\\_\\-\\:\"\\!]*\\))\\s*({?)\\n")
-// )
-
-func ParseQuery(query string, variables map[string]interface{}) (GraphQuery, error) {
-	opts := parser.ParseOptions{
-		NoSource: true,
-	}
+func ParseSchema(name string, schema []byte) (s *Subgraph, err error) {
 	doc, err := parser.Parse(parser.ParseParams{
-		Options: opts,
+		Options: parser.ParseOptions{
+			NoSource: true,
+		},
 		Source: &source.Source{
-			Body: []byte(query),
+			Body: schema,
 		},
 	})
 
 	if err != nil {
-		return GraphQuery{}, fmt.Errorf("Error while parsing graphql query: %w", err)
+		return nil, err
+	}
+	var isEntity bool
+	s = NewSubgraph(name)
+	for _, def := range doc.Definitions {
+		if def.GetKind() != "ObjectDefinition" {
+			continue
+		}
+		od := def.(*ast.ObjectDefinition)
+		for _, dir := range od.Directives {
+			if dir.Name.Value == "entity" {
+				isEntity = true
+				break
+			}
+		}
+		if !isEntity {
+			continue
+		}
+		ent := NewEntity(od.Name.Value)
+
+		for _, f := range od.Fields {
+
+			nf := Fields{
+				Name: f.Name.Value,
+			}
+
+			switch f.Type.GetKind() {
+			case "NonNull":
+				ty := f.Type.(*ast.NonNull)
+				nty := ty.Type.(*ast.Named)
+				nf.Type = nty.Name.Value
+				nf.NotNull = true
+			case "Named":
+				ty := f.Type.(*ast.Named)
+				nf.Type = ty.Name.Value
+			case "List":
+				ty := f.Type.(*ast.List)
+				nty := ty.Type.(*ast.Named)
+				nf.Type = nty.Name.Value
+				nf.NotNull = true
+				nf.IsArray = true
+			default:
+			}
+
+			ent.Fields[f.Name.Value] = nf
+
+		}
+
+		s.Entities[od.Name.Value] = ent
+	}
+
+	return s, nil
+}
+
+func ParseQuery(query []byte, variables map[string]interface{}) (GraphQuery, error) {
+	doc, err := parser.Parse(parser.ParseParams{
+		Options: parser.ParseOptions{
+			NoSource: true,
+		},
+		Source: &source.Source{
+			Body: query,
+		},
+	})
+
+	if err != nil {
+		return GraphQuery{}, fmt.Errorf("error while parsing graphql query: %w", err)
 	}
 
 	q := GraphQuery{}
@@ -118,7 +177,7 @@ func getType(t ast.Type) (string, error) {
 		return fmt.Sprintf("[%s]", typeStr), nil
 
 	default:
-		return "", errors.New("Unknown input type")
+		return "", errors.New("unknown input type")
 	}
 }
 
@@ -136,7 +195,7 @@ func getVariable(inputParams map[string]Param, v interface{}, variableType strin
 	default:
 		param, ok := inputParams[variableType]
 		if !ok {
-			err = fmt.Errorf("Missing input scheme for %q", variableType)
+			err = fmt.Errorf("missing input scheme for %q", variableType)
 			return
 		}
 
@@ -188,14 +247,14 @@ func getValue(inputParams map[string]Param, v interface{}, field, variableType s
 	default:
 		param, ok := inputParams[variableType]
 		if !ok {
-			return nil, fmt.Errorf("Missing input scheme for %q", variableType)
+			return nil, fmt.Errorf("missing input scheme for %q", variableType)
 		}
 		param.Field = field
 
 		for key, par := range param.Value.(map[string]Param) {
 			parValue, ok := v.(map[string]interface{})[key]
 			if !ok {
-				return nil, fmt.Errorf("Missing input variable %q", key)
+				return nil, fmt.Errorf("missing input variable %q", key)
 			}
 
 			par.Value, err = getValue(inputParams, parValue, par.Field, par.Type)
@@ -213,7 +272,7 @@ func getValue(inputParams map[string]Param, v interface{}, field, variableType s
 
 func parseOperationDefinition(q *GraphQuery, od *ast.OperationDefinition, inputObjects map[string]Param, variables map[string]interface{}) (err error) {
 	if od.Operation != "query" {
-		return errors.New("Expected query operation")
+		return errors.New("expected query operation")
 	}
 
 	variableDefinitions := od.VariableDefinitions
@@ -345,14 +404,14 @@ func queryFields(selections []ast.Selection) map[string]Field {
 
 func float64Value(val interface{}) (float64, error) {
 	if reflect.TypeOf(val).Kind() != reflect.Float64 {
-		return 0, errors.New("Value is not float64")
+		return 0, errors.New("value is not float64")
 	}
 	return val.(float64), nil
 }
 
 func stringValue(val interface{}) (string, error) {
 	if reflect.TypeOf(val).Kind() != reflect.String {
-		return "", errors.New("Value is not string")
+		return "", errors.New("value is not string")
 	}
 	return val.(string), nil
 }

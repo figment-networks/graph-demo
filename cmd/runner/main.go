@@ -17,8 +17,8 @@ import (
 	transportHTTP "github.com/figment-networks/graph-demo/runner/api/transport/http"
 	runnerClient "github.com/figment-networks/graph-demo/runner/client"
 	clientWS "github.com/figment-networks/graph-demo/runner/client/transport/ws"
-	"github.com/figment-networks/graph-demo/runner/jsRuntime"
 	"github.com/figment-networks/graph-demo/runner/requester"
+	"github.com/figment-networks/graph-demo/runner/runtime"
 	"github.com/figment-networks/graph-demo/runner/schema"
 	"github.com/figment-networks/graph-demo/runner/store"
 	"github.com/figment-networks/graph-demo/runner/store/memap"
@@ -79,7 +79,7 @@ func main() {
 	for _, sg := range schemas.Subgraphs {
 		for _, ent := range sg.Entities {
 			indexed := []store.NT{}
-			for k, v := range ent.Params {
+			for k, v := range ent.Fields {
 				indexed = append(indexed, store.NT{Name: k, Type: v.Type})
 			}
 			sStore.NewStore(subgraph.name, ent.Name, indexed)
@@ -89,7 +89,7 @@ func main() {
 	rqstr := requester.NewRqstr()
 
 	// Init the javascript runtime
-	loader := jsRuntime.NewLoader(l, rqstr, sStore)
+	loader := runtime.NewLoader(l, rqstr, sStore)
 
 	ngc := runnerClient.NewNetworkGraphClient(l, loader)
 
@@ -109,11 +109,10 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	cli := http.DefaultClient
 	//svc := service.New(cli, l, cfg.ManagerURL)
 
 	aserv := api.NewService(sStore)
-	handler := transportHTTP.NewHandler( aserv)
+	handler := transportHTTP.NewHandler(aserv)
 	handler.AttachMux(mux)
 
 	s := &http.Server{
