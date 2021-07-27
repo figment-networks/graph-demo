@@ -19,6 +19,7 @@ require (
 	go.uber.org/zap v1.18.1
 	golang.org/x/time v0.0.0-20210611083556-38a9dc6acbc6
 	google.golang.org/grpc v1.37.0
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	rogchap.com/v8go v0.6.0
 )
 
