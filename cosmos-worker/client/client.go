@@ -24,7 +24,6 @@ type ClientConfig struct {
 
 // Client
 type Client struct {
-	chainID         string
 	log             *zap.Logger
 	cfg             *ClientConfig
 	txServiceClient tx.ServiceClient
@@ -35,9 +34,8 @@ type Client struct {
 type MsgServiceHandler = func(ctx types.Context, req types.Msg) (*types.Result, error)
 
 // New returns a new client for a given endpoint
-func NewClient(logger *zap.Logger, cli *grpc.ClientConn, cfg *ClientConfig, chainID string) *Client {
+func NewClient(logger *zap.Logger, cli *grpc.ClientConn, cfg *ClientConfig) *Client {
 	return &Client{
-		chainID:         chainID,
 		log:             logger,
 		cfg:             cfg,
 		txServiceClient: tx.NewServiceClient(cli),

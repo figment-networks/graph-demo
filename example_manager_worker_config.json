@@ -1,6 +1,6 @@
 {
     "worker_addrs": [{
-        "chain_id": "mainnet",
+        "chain_id": "cosmoshub-4",
         "url": "http://0.0.0.0:8088"
     }]
 }

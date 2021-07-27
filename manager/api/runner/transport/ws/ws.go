@@ -124,6 +124,8 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 	}
 
 	response, err := ph.service.ProcessGraphqlQuery(ctx, gQLReq.Variables, gQLReq.Query)
+
+	log.Println("response 111", string(response))
 	resp.Send(response, err)
 }
 

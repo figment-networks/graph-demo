@@ -96,7 +96,7 @@ func (c *Client) GetLatest(ctx context.Context) (bl structs.Block, er error) {
 
 	b, err := c.tmServiceClient.GetLatestBlock(ctx, &tmservice.GetLatestBlockRequest{}, grpc.WaitForReady(true))
 	if err != nil {
-		c.log.Debug("[COSMOS-CLIENT] Error getting latest block", zap.Error(err), zap.Int("txs", len(b.Block.Data.Txs)))
+		c.log.Debug("[COSMOS-CLIENT] Error getting latest block", zap.Error(err))
 		return bl, err
 	}
 

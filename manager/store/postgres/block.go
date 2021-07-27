@@ -1,11 +1,9 @@
 package postgres
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 
 	"github.com/figment-networks/graph-demo/manager/structs"
 )
@@ -29,22 +27,22 @@ const (
 // StoreBlock appends data to buffer
 func (d *Driver) StoreBlock(ctx context.Context, b structs.Block) error {
 
-	header, err := getJsonValue(b.Header)
+	header, err := json.Marshal(b.Header)
 	if err != nil {
 		return err
 	}
 
-	data, err := getJsonValue(b.Data)
+	data, err := json.Marshal(b.Data)
 	if err != nil {
 		return err
 	}
 
-	evidence, err := getJsonValue(b.Evidence)
+	evidence, err := json.Marshal(b.Evidence)
 	if err != nil {
 		return err
 	}
 
-	lastCommit, err := getJsonValue(&b.LastCommit)
+	lastCommit, err := json.Marshal(&b.LastCommit)
 	if err != nil {
 		return err
 	}
@@ -53,42 +51,42 @@ func (d *Driver) StoreBlock(ctx context.Context, b structs.Block) error {
 	return err
 }
 
-func getJsonValue(v interface{}) (string, error) {
-	buff := &bytes.Buffer{}
-	enc := json.NewEncoder(buff)
-
-	if v == nil {
-		return "", nil
-	}
-
-	if err := enc.Encode(v); err != nil {
-		return "", err
-	}
-	return (fmt.Stringer)(buff).String(), nil
-}
-
 func (d *Driver) GetBlockByHeight(ctx context.Context, height uint64, chainID string) (b structs.Block, err error) {
-	row := d.db.QueryRowContext(ctx, `SELECT chain_id, height, hash, time, header, data, evidence, last_commit, numtxs FROM public.blocks WHERE chain_id = $1 AND height = $2`, chainID, height)
-	if row == nil {
-		return b, sql.ErrNoRows
-	}
 
-	err = row.Scan(&b.ChainID, &b.Height, &b.Hash, &b.Time, &b.Header, &b.Data, &b.Evidence, &b.LastCommit, &b.NumberOfTransactions)
-	if err != sql.ErrNoRows {
+	row := d.db.QueryRowContext(ctx, `SELECT chain_id, height, hash, time, header, data, evidence, last_commit, numtxs FROM public.blocks WHERE chain_id = $1 AND height = $2`, chainID, height)
+
+	var (
+		header []byte
+		data   []byte
+		ev     []byte
+		lc     []byte
+	)
+
+	if err = row.Scan(&b.ChainID, &b.Height, &b.Hash, &b.Time, &header, &data, &ev, &lc, &b.NumberOfTransactions); err != nil {
 		return b, err
 	}
 
-	return b, nil
+	if err = json.Unmarshal(header, &b.Header); err != nil {
+		return b, err
+	}
+
+	if err = json.Unmarshal(data, &b.Data); err != nil {
+		return b, err
+	}
+
+	if err = json.Unmarshal(ev, &b.Evidence); err != nil {
+		return b, err
+	}
+
+	if err = json.Unmarshal(data, &b.LastCommit); err != nil {
+		return b, err
+	}
+	return b, err
 }
 
 func (d *Driver) GetLatestHeight(ctx context.Context, chainID string) (height uint64, err error) {
-	row := d.db.QueryRowContext(ctx, `SELECT height FROM public.progress WHERE chain_id = $1 `, chainID)
-	if row == nil {
-		return 0, nil
-	}
-
-	err = row.Scan(&height)
-	if err != sql.ErrNoRows {
+	row := d.db.QueryRowContext(ctx, `SELECT height FROM public.progress WHERE chain_id = $1`, chainID)
+	if err = row.Scan(&height); err != sql.ErrNoRows {
 		return height, err
 	}
 

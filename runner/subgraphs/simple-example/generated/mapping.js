@@ -48,7 +48,7 @@ var GET_BLOCK = "query GetBlock($height: Int = 0, $chain_id: String = \"mainnet\
  */
 function handleBlock(newBlockEvent) {
     graph_1.log.debug('newBlockEvent: ' + JSON.stringify(newBlockEvent));
-    var _a = graph_1.graphql.call("cosmos", GET_BLOCK, { height: newBlockEvent.height, chain_id: "mainnet" }, "0.0.1"), error = _a.error, data = _a.data;
+    var _a = graph_1.graphql.call("cosmos", GET_BLOCK, { height: newBlockEvent.height, chain_id: "cosmoshub-4" }, "0.0.1"), error = _a.error, data = _a.data;
     if (error) {
         graph_1.log.debug('GQL call error: ' + JSON.stringify(error));
         return;

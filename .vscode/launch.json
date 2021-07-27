@@ -11,7 +11,7 @@
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/cosmos-worker",
             "env": {
-                "CHAIN_ID": "mainnet",
+                "CHAIN_ID": "cosmoshub-4",
                 "COSMOS_GRPC_ADDR": "0.0.0.0:9090",
                 "MANAGER_URL": "ws://0.0.0.0:8085/work",
             },

@@ -3,13 +3,10 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/cmd/cosmos-worker/config"
@@ -34,7 +31,7 @@ func init() {
 }
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := context.Background()
 	// Initialize configuration
 	cfg, err := initConfig(configFlags.configPath)
 	if err != nil {
@@ -68,7 +65,7 @@ func main() {
 		TimeoutSearchTxCall: cfg.TimeoutTransactionCall,
 	}
 
-	apiClient := client.NewClient(logger.GetLogger(), grpcConn, cliCfg, "mainnet")
+	apiClient := client.NewClient(logger.GetLogger(), grpcConn, cliCfg)
 	wstr := apiTransportWS.NewProcessHandler(logger.GetLogger(), apiClient)
 	apiClient.LinkPersistor(wstr)
 
@@ -82,47 +79,13 @@ func main() {
 		return
 	}
 
-	mux := http.NewServeMux()
-	s := &http.Server{
-		Addr:         "0.0.0.0:" + cfg.Port,
-		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-	}
-
-	osSig := make(chan os.Signal)
-	exit := make(chan string, 2)
+	osSig := make(chan os.Signal, 1)
 	signal.Notify(osSig, syscall.SIGTERM)
 	signal.Notify(osSig, syscall.SIGINT)
 
-	go runHTTP(s, cfg.Port, logger.GetLogger(), exit)
-
-RunLoop:
-	for {
-		select {
-		case sig := <-osSig:
-			logger.Info("Stopping worker... ", zap.String("signal", sig.String()))
-			cancel()
-			logger.Info("Canceled context, gracefully stopping grpc")
-			err := s.Shutdown(ctx)
-			if err != nil {
-				logger.GetLogger().Error("Error stopping http server ", zap.Error(err))
-			}
-			break RunLoop
-		case k := <-exit:
-			logger.Info("Stopping worker... ", zap.String("reason", k))
-			cancel()
-			logger.Info("Canceled context, gracefully stopping grpc")
-			if k == "grpc" { // (lukanus): when grpc is finished, stop http and vice versa
-				err := s.Shutdown(ctx)
-				if err != nil {
-					logger.GetLogger().Error("Error stopping http server ", zap.Error(err))
-				}
-			}
-			break RunLoop
-		}
-	}
-
+	sig := <-osSig
+	logger.Info("Stopping worker... ", zap.String("signal", sig.String()))
+	logger.Info("Canceled context, gracefully stopping grpc")
 }
 
 func initConfig(path string) (*config.Config, error) {
@@ -142,14 +105,4 @@ func initConfig(path string) (*config.Config, error) {
 	}
 
 	return cfg, nil
-}
-
-func runHTTP(s *http.Server, port string, logger *zap.Logger, exit chan<- string) {
-	defer logger.Sync()
-
-	logger.Info(fmt.Sprintf("[HTTP] Listening on 0.0.0.0:%s", port))
-	if err := s.ListenAndServe(); err != nil {
-		logger.Error("[HTTP] failed to listen", zap.Error(err))
-	}
-	exit <- "http"
 }

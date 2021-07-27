@@ -57,7 +57,7 @@ const GET_BLOCK = `query GetBlock($height: Int = 0, $chain_id: String = "mainnet
 function handleBlock(newBlockEvent: BlockEvent) {
   log.debug('newBlockEvent: ' + JSON.stringify(newBlockEvent));
 
-  const {error, data} = graphql.call("cosmos" as Network, GET_BLOCK, { height: newBlockEvent.height, chain_id: "mainnet" }, "0.0.1");
+  const {error, data} = graphql.call("cosmos" as Network, GET_BLOCK, { height: newBlockEvent.height, chain_id: "cosmoshub-4" }, "0.0.1");
 
   if (error) {
     log.debug('GQL call error: ' + JSON.stringify(error));
