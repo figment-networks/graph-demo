@@ -10,11 +10,11 @@ import (
 )
 
 type ManagerService interface {
-	ProcessGraphqlQuery(ctx context.Context, v map[string]interface{}, q string) ([]byte, error)
+	ProcessGraphqlQuery(ctx context.Context, q []byte, v map[string]interface{}) ([]byte, error)
 }
 
 type JSONGraphQLRequest struct {
-	Query     string                 `json:"query"`
+	Query     []byte                 `json:"query"`
 	Variables map[string]interface{} `json:"variables"`
 }
 
@@ -60,7 +60,7 @@ func (h *Handler) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	response, err := h.service.ProcessGraphqlQuery(ctx, req.Variables, req.Query)
+	response, err := h.service.ProcessGraphqlQuery(ctx, req.Query, req.Variables)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		resp.Errors = []ErrorMessage{{Message: err.Error()}}

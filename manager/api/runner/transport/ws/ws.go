@@ -33,7 +33,7 @@ type ErrorMessage struct {
 }
 
 type JSONGraphQLRequest struct {
-	Query     string                 `json:"query"`
+	Query     []byte                 `json:"query"`
 	Variables map[string]interface{} `json:"variables"`
 }
 
@@ -43,7 +43,7 @@ type JSONGraphQLResponse struct {
 }
 
 type ManagerService interface {
-	ProcessGraphqlQuery(ctx context.Context, v map[string]interface{}, q string) ([]byte, error)
+	ProcessGraphqlQuery(ctx context.Context, q []byte, v map[string]interface{}) ([]byte, error)
 }
 
 type ProcessHandler struct {
@@ -87,6 +87,7 @@ func (ph *ProcessHandler) Get(name string) (h connectivity.Handler, ok bool) {
 }
 
 func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
+	var err error
 	b := new(bytes.Buffer)
 	enc := json.NewEncoder(b)
 	r := JSONGraphQLResponse{}
@@ -102,7 +103,7 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 	}
 
 	var query string
-	if err := json.Unmarshal(args[0], &query); err != nil {
+	if err = json.Unmarshal(args[0], &query); err != nil {
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Error unmarshaling query " + err.Error(),
 		})
@@ -113,7 +114,7 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 
 	var gQLReq JSONGraphQLRequest
 	if len(args) > 1 {
-		if err := json.Unmarshal(args[1], &gQLReq); err != nil {
+		if err = json.Unmarshal(args[1], &gQLReq); err != nil {
 			r.Errors = append(r.Errors, ErrorMessage{
 				Message: "Error unmarshaling query variables " + err.Error(),
 			})
@@ -123,8 +124,15 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 		}
 	}
 
-	var err error
-	r.Data, err = ph.service.ProcessGraphqlQuery(ctx, gQLReq.Variables, gQLReq.Query)
+	r.Data, err = ph.service.ProcessGraphqlQuery(ctx, gQLReq.Query, gQLReq.Variables)
+	if err != nil {
+		r.Errors = append(r.Errors, ErrorMessage{
+			Message: "Error while processing graphql query " + err.Error(),
+		})
+		enc.Encode(r)
+		resp.Send(json.RawMessage(b.Bytes()), nil)
+		return
+	}
 
 	enc.Encode(r)
 	resp.Send(b.Bytes(), err)

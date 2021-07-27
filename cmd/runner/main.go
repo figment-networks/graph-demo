@@ -13,7 +13,8 @@ import (
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/cmd/runner/config"
-	"github.com/figment-networks/graph-demo/runner/api"
+	"github.com/figment-networks/graph-demo/runner/api/client"
+	"github.com/figment-networks/graph-demo/runner/api/service"
 	transportHTTP "github.com/figment-networks/graph-demo/runner/api/transport/http"
 	runnerClient "github.com/figment-networks/graph-demo/runner/client"
 	clientWS "github.com/figment-networks/graph-demo/runner/client/transport/ws"
@@ -95,9 +96,11 @@ func main() {
 
 	ngc := runnerClient.NewNetworkGraphClient(l, loader)
 
+	wsManagerRunnerURL := fmt.Sprintf("ws://%s/runner", cfg.ManagerURL)
+
 	// Cosmos configuration
 	wst := clientWS.NewNetworkGraphWSTransport(l)
-	if err := wst.Connect(context.Background(), cfg.ManagerURL, ngc); err != nil {
+	if err := wst.Connect(context.Background(), wsManagerRunnerURL, ngc); err != nil {
 		l.Fatal("error conectiong to websocket", zap.Error(err))
 	}
 
@@ -111,10 +114,13 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	//svc := service.New(cli, l, cfg.ManagerURL)
+	httpManagerURL := fmt.Sprintf("http://%s", cfg.ManagerURL)
 
-	aserv := api.NewService(sStore)
-	handler := transportHTTP.NewHandler(aserv)
+	cli := http.DefaultClient
+	apiClient := client.New(cli, l, httpManagerURL)
+	svc := service.New(apiClient, sStore)
+
+	handler := transportHTTP.NewHandler(svc)
 	handler.AttachMux(mux)
 
 	s := &http.Server{

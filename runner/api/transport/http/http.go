@@ -10,7 +10,7 @@ import (
 )
 
 type API interface {
-	ProcessGraphqlQuery(ctx context.Context, v map[string]interface{}, q string) ([]byte, error)
+	ProcessGraphqlQuery(ctx context.Context, q []byte, v map[string]interface{}) ([]byte, error)
 }
 type JSONGraphQLRequest struct {
 	Query     string                 `json:"query"`
@@ -59,7 +59,7 @@ func (h *Handler) HandleGraphql(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	response, err := h.api.ProcessGraphqlQuery(ctx, req.Variables, req.Query)
+	response, err := h.api.ProcessGraphqlQuery(ctx, []byte(req.Query), req.Variables)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		resp.Errors = []errorMessage{{Message: err.Error()}}
@@ -68,11 +68,10 @@ func (h *Handler) HandleGraphql(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-
-	resp.Data = response
-	if err = enc.Encode(resp); err != nil {
+	_, err = w.Write(response)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		resp.Errors = []errorMessage{{Message: fmt.Sprintf("Error while encoding response: %w", err)}}
+		resp.Errors = []errorMessage{{Message: fmt.Sprintf("Error while writing response: %w", err)}}
 		enc.Encode(resp)
 		return
 	}

@@ -388,15 +388,23 @@ func queryFields(selections []ast.Selection) map[string]Field {
 	fields := make(map[string]Field)
 
 	for i, s := range selections {
-		var f Field
-		field := ast.NewField(s.(*ast.Field))
-		f.Name = field.Name.Value
-		f.Order = i
 
-		if field.SelectionSet != nil {
-			f.Fields = queryFields(field.SelectionSet.Selections)
+		switch reflect.TypeOf(s) {
+		case reflect.TypeOf(&ast.Field{}):
+			var f Field
+			field := ast.NewField(s.(*ast.Field))
+			f.Name = field.Name.Value
+			f.Order = i
+
+			if field.SelectionSet != nil {
+				f.Fields = queryFields(field.SelectionSet.Selections)
+			}
+			fields[f.Name] = f
+		case reflect.TypeOf(&ast.FragmentSpread{}):
+			fs := ast.NewFragmentSpread(s.(*ast.FragmentSpread))
+			fmt.Println(fs)
 		}
-		fields[f.Name] = f
+
 	}
 
 	return fields

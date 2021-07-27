@@ -118,7 +118,6 @@ func (s *Session) SendSync(method string, params []json.RawMessage) (resp jsonrp
 
 	select {
 	case <-s.ctx.Done():
-		return resp, nil
 	case resp = <-w.returnCh:
 	}
 

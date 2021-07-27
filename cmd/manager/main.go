@@ -27,6 +27,7 @@ import (
 	"github.com/figment-networks/graph-demo/manager/subscription"
 
 	"github.com/figment-networks/graph-demo/manager/api"
+	runnerHTTP "github.com/figment-networks/graph-demo/manager/api/runner/transport/http"
 	runnerWSAPI "github.com/figment-networks/graph-demo/manager/api/runner/transport/ws"
 	workerWSAPI "github.com/figment-networks/graph-demo/manager/api/worker/transport/ws"
 
@@ -92,6 +93,10 @@ func main() {
 
 	proc := runnerWSAPI.NewProcessHandler(log, serv, reg, sc)
 	linkRunner(ctx, log, reg, proc, mux)
+
+	ms := api.NewService(st)
+	handler := runnerHTTP.NewHandler(ms)
+	handler.AttachMux(mux)
 
 	s := &http.Server{
 		Addr:    cfg.Address,
