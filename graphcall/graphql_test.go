@@ -7,7 +7,7 @@ import (
 	"github.com/figment-networks/graph-demo/graphcall"
 )
 
-const t1 = `query GetBlock($height: Int = 6940033) {
+var t1 = []byte(`query GetBlock($height: Int = 6940033) {
 	block(height: 6940034) {
 	  height
 	  time
@@ -33,11 +33,11 @@ const t1 = `query GetBlock($height: Int = 6940033) {
 		time
 	  }
 	}
-  }`
+  }`)
 
 func TestParseQuery(t *testing.T) {
 	type args struct {
-		query     string
+		query     []byte
 		variables map[string]interface{}
 	}
 	tests := []struct {
@@ -64,6 +64,47 @@ func TestParseQuery(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ParseQuery() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+var schemaT1 = []byte(`type Block @entity {
+	id: ID!
+	height: Int!
+	time: String!
+	myNote: String
+	transactions: [Transaction]
+  }
+
+  type Transaction @entity {
+	id: ID!
+	blockID: Int!
+	height: Int!
+	time: String!
+	myNote: String!
+  }`)
+
+func TestParseSchema(t *testing.T) {
+	type args struct {
+		query []byte
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    graphcall.GraphQuery
+		wantErr bool
+	}{
+		{name: "simple", args: args{
+			query: schemaT1,
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := graphcall.ParseSchema(tt.name, tt.args.query)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseQuery() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
 		})
 	}

@@ -79,7 +79,6 @@ func (ss *SubgraphStore) Store(ctx context.Context, name, structure string, data
 	if !ok {
 		return fmt.Errorf("subgraph not found")
 	}
-
 	return subgraph.Store(ctx, structure, data)
 }
 
@@ -88,12 +87,10 @@ func (ss *SubgraphStore) Get(ctx context.Context, name, kind, key, value string)
 	if !ok {
 		return nil, fmt.Errorf("subgraph not found")
 	}
-
 	return subgraph.Get(ctx, kind, key, value)
 }
 
 func (mm *MemoryMapStore) Store(ctx context.Context, name string, data map[string]interface{}) error {
-
 	s, ok := mm.storages[name]
 	if !ok {
 		return errors.New("storage does not exists")

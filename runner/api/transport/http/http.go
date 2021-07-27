@@ -7,15 +7,11 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/figment-networks/graph-demo/runner/api/service"
-	"github.com/figment-networks/graph-demo/runner/store"
 )
 
-type API struct {
-	s store.Storage
+type API interface {
+	ProcessGraphqlQuery(ctx context.Context, v map[string]interface{}, q string) ([]byte, error)
 }
-
 type JSONGraphQLRequest struct {
 	Query     string                 `json:"query"`
 	Variables map[string]interface{} `json:"variables"`
@@ -31,12 +27,12 @@ type errorMessage struct {
 }
 
 type Handler struct {
-	service *service.Service
+	api API
 }
 
-func New(svc *service.Service) *Handler {
+func NewHandler(api API) *Handler {
 	return &Handler{
-		service: svc,
+		api: api,
 	}
 }
 
@@ -63,7 +59,7 @@ func (h *Handler) HandleGraphql(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	response, err := h.service.ProcessGraphqlQuery(ctx, req.Variables, req.Query)
+	response, err := h.api.ProcessGraphqlQuery(ctx, req.Variables, req.Query)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		resp.Errors = []errorMessage{{Message: err.Error()}}

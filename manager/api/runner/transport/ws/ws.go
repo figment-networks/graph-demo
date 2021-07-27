@@ -87,6 +87,7 @@ func (ph *ProcessHandler) Get(name string) (h connectivity.Handler, ok bool) {
 }
 
 func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
+	var err error
 	b := new(bytes.Buffer)
 	enc := json.NewEncoder(b)
 	r := JSONGraphQLResponse{}
@@ -97,33 +98,33 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 			Message: "Missing query (GraphQLRequest)",
 		})
 		enc.Encode(r)
-		resp.Send(json.RawMessage(b.Bytes()), nil)
+		resp.Send(b.Bytes(), nil)
 		return
 	}
 
 	var query string
-	if err := json.Unmarshal(args[0], &query); err != nil {
+	if err = json.Unmarshal(args[0], &query); err != nil {
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Error unmarshaling query " + err.Error(),
 		})
 		enc.Encode(r)
-		resp.Send(json.RawMessage(b.Bytes()), nil)
+		resp.Send(b.Bytes(), nil)
 		return
 	}
 
 	var gQLReq JSONGraphQLRequest
 	if len(args) > 1 {
-		if err := json.Unmarshal(args[1], &gQLReq); err != nil {
+		if err = json.Unmarshal(args[1], &gQLReq); err != nil {
 			r.Errors = append(r.Errors, ErrorMessage{
 				Message: "Error unmarshaling query variables " + err.Error(),
 			})
 			enc.Encode(r)
-			resp.Send(json.RawMessage(b.Bytes()), nil)
+			resp.Send(b.Bytes(), nil)
 			return
 		}
 	}
 
-	response, err := ph.service.ProcessGraphqlQuery(ctx, gQLReq.Variables, gQLReq.Query)
+	r.Data, err = ph.service.ProcessGraphqlQuery(ctx, gQLReq.Variables, gQLReq.Query)
 	if err != nil {
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Error while processing graphql query " + err.Error(),
@@ -133,8 +134,8 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 		return
 	}
 
-	log.Println("response 111", string(response))
-	resp.Send(response, err)
+	enc.Encode(r)
+	resp.Send(b.Bytes(), err)
 }
 
 func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Request, resp connectivity.Response) {

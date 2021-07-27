@@ -1,4 +1,4 @@
-package jsRuntime
+package runtime
 
 import (
 	"context"
@@ -16,6 +16,12 @@ import (
 	"go.uber.org/zap"
 
 	"rogchap.com/v8go"
+)
+
+var (
+	regxp1 = regexp.MustCompile(`([^=[:space:]\\{]*)graphql.call`)
+	regxp2 = regexp.MustCompile(`([^=[:space:]\\{]*)log.debug`)
+	regxp3 = regexp.MustCompile(`([^=[:space:]\\{]*)store.save`)
 )
 
 type GQLCaller interface {
@@ -102,7 +108,7 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	storeRecord, _ := v8go.NewFunctionTemplate(iso, subgr.storeRecord)
 
 	logDebug, _ := v8go.NewFunctionTemplate(iso, func(info *v8go.FunctionCallbackInfo) *v8go.Value {
-		fmt.Printf("v8LogDebug:  %+v  \n", info.Args()[0])
+		l.log.Debug("v8LogDebug", zap.Any("args", info.Args()))
 		return nil
 	})
 
@@ -132,6 +138,8 @@ func (l *Loader) createRunable(name string, code []byte) error {
 	return nil
 }
 
+// cleanJS - To mimic assemblyscript that currently runs webassembly
+// we need to change some function names
 func cleanJS(code []byte) string {
 	b := strings.Builder{}
 	for _, l := range strings.Split(string(code), "\n") {
@@ -140,17 +148,9 @@ func cleanJS(code []byte) string {
 			b.WriteString("\n")
 		}
 	}
-	m1 := regexp.MustCompile(`([^=[:space:]\\{]*)graphql.call`)
-	res1 := m1.ReplaceAllString(b.String(), " v8Call")
-
-	m3 := regexp.MustCompile(`([^=[:space:]\\{]*)log.debug`)
-	res2 := m3.ReplaceAllString(res1, " v8LogDebug")
-
-	m2 := regexp.MustCompile(`([^=[:space:]\\{]*)store.save`)
-	a := m2.ReplaceAllString(res2, " v8StoreSave")
-
-	return a
-
+	res1 := regxp1.ReplaceAllString(b.String(), " v8Call")
+	res2 := regxp2.ReplaceAllString(res1, " v8LogDebug")
+	return regxp3.ReplaceAllString(res2, " v8StoreSave")
 }
 
 type Subgraph struct {
@@ -158,7 +158,6 @@ type Subgraph struct {
 	body []byte
 
 	callbacks map[string]callback //name - callback
-	dependsON []string
 
 	caller  GQLCaller
 	stor    store.Storage
