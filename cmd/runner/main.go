@@ -67,15 +67,20 @@ func main() {
 	logger.Info(config.IdentityString())
 	l := logger.GetLogger()
 
+
+
+	// Using in-memory store. Create entity collections.
+	sStore := memap.NewSubgraphStore()
+
 	// Load GraphQL schema for subgraph
-	schemas := schema.NewSchemas()
+	schemas := schema.NewSchemas(sStore)
 	logger.Info(fmt.Sprintf("Loading subgraph schema file %s", subgraph.schema))
 	if err := schemas.LoadFromFile(subgraph.name, subgraph.schema); err != nil {
 		logger.Error(fmt.Errorf("Loader.LoadFromFile() error = %v", err))
 		return
 	}
-	// Using in-memory store. Create entity collections.
-	sStore := memap.NewSubgraphStore()
+
+
 	for _, sg := range schemas.Subgraphs {
 		for _, ent := range sg.Entities {
 			indexed := []store.NT{}
