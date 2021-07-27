@@ -13,7 +13,7 @@ import (
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/cmd/runner/config"
-	"github.com/figment-networks/graph-demo/runner/api/service"
+	"github.com/figment-networks/graph-demo/runner/api"
 	transportHTTP "github.com/figment-networks/graph-demo/runner/api/transport/http"
 	runnerClient "github.com/figment-networks/graph-demo/runner/client"
 	clientWS "github.com/figment-networks/graph-demo/runner/client/transport/ws"
@@ -110,9 +110,10 @@ func main() {
 	mux := http.NewServeMux()
 
 	cli := http.DefaultClient
-	svc := service.New(cli, l, cfg.ManagerURL)
+	//svc := service.New(cli, l, cfg.ManagerURL)
 
-	handler := transportHTTP.New(svc)
+	aserv := api.NewService(sStore)
+	handler := transportHTTP.NewHandler( aserv)
 	handler.AttachMux(mux)
 
 	s := &http.Server{

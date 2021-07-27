@@ -356,7 +356,3 @@ func stringValue(val interface{}) (string, error) {
 	}
 	return val.(string), nil
 }
-
-// func uint64Value(value float64) *big.Int {
-// 	return new(big.Int).SetInt64(int64(value))
-// }
