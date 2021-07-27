@@ -33,7 +33,7 @@ type ErrorMessage struct {
 }
 
 type JSONGraphQLRequest struct {
-	Query     string                 `json:"query"`
+	Query     []byte                 `json:"query"`
 	Variables map[string]interface{} `json:"variables"`
 }
 
@@ -43,7 +43,7 @@ type JSONGraphQLResponse struct {
 }
 
 type ManagerService interface {
-	ProcessGraphqlQuery(ctx context.Context, v map[string]interface{}, q string) ([]byte, error)
+	ProcessGraphqlQuery(ctx context.Context, q []byte, v map[string]interface{}) ([]byte, error)
 }
 
 type ProcessHandler struct {
@@ -124,7 +124,7 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 		}
 	}
 
-	r.Data, err = ph.service.ProcessGraphqlQuery(ctx, gQLReq.Variables, gQLReq.Query)
+	r.Data, err = ph.service.ProcessGraphqlQuery(ctx, gQLReq.Query, gQLReq.Variables)
 	if err != nil {
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Error while processing graphql query " + err.Error(),

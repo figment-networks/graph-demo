@@ -50,7 +50,7 @@ func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string
 
 }
 
-func (s *Service) ProcessGraphqlQuery(ctx context.Context, v map[string]interface{}, q string) ([]byte, error) {
+func (s *Service) ProcessGraphqlQuery(ctx context.Context, q []byte, v map[string]interface{}) ([]byte, error) {
 	queries, err := graphcall.ParseQuery(q, v)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing graphql query: %w", err)
