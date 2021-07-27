@@ -72,11 +72,10 @@ func (h *Handler) HandleGraphql(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-
-	resp.Data = response
-	if err = enc.Encode(resp); err != nil {
+	_, err = w.Write(response)
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		resp.Errors = []errorMessage{{Message: fmt.Sprintf("Error while encoding response: %w", err)}}
+		resp.Errors = []errorMessage{{Message: fmt.Sprintf("Error while writing response: %w", err)}}
 		enc.Encode(resp)
 		return
 	}

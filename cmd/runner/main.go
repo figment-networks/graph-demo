@@ -93,9 +93,11 @@ func main() {
 
 	ngc := runnerClient.NewNetworkGraphClient(l, loader)
 
+	wsManagerRunnerURL := fmt.Sprintf("ws://%s/runner", cfg.ManagerURL)
+
 	// Cosmos configuration
 	wst := clientWS.NewNetworkGraphWSTransport(l)
-	if err := wst.Connect(context.Background(), cfg.ManagerURL, ngc); err != nil {
+	if err := wst.Connect(context.Background(), wsManagerRunnerURL, ngc); err != nil {
 		l.Fatal("error conectiong to websocket", zap.Error(err))
 	}
 
@@ -109,8 +111,10 @@ func main() {
 
 	mux := http.NewServeMux()
 
+	httpManagerURL := fmt.Sprintf("http://%s", cfg.ManagerURL)
+
 	cli := http.DefaultClient
-	svc := service.New(cli, l, cfg.ManagerURL)
+	svc := service.New(cli, l, httpManagerURL)
 
 	handler := transportHTTP.New(svc)
 	handler.AttachMux(mux)

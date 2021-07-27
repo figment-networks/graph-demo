@@ -47,9 +47,6 @@
             "request": "launch",
             "mode": "auto",
             "program": "${workspaceFolder}/cmd/runner",
-            "env": {
-                "MANAGER_URL": "ws://0.0.0.0:8085/runner"
-            },
             "buildFlags": "-race"
         }
     ]

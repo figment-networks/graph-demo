@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 
 	"github.com/figment-networks/graph-demo/manager/structs"
 )
@@ -63,23 +64,23 @@ func (d *Driver) GetBlockByHeight(ctx context.Context, height uint64, chainID st
 	)
 
 	if err = row.Scan(&b.ChainID, &b.Height, &b.Hash, &b.Time, &header, &data, &ev, &lc, &b.NumberOfTransactions); err != nil {
-		return b, err
+		return structs.Block{}, fmt.Errorf("%s, height: %d", err.Error(), height)
 	}
 
 	if err = json.Unmarshal(header, &b.Header); err != nil {
-		return b, err
+		return structs.Block{}, err
 	}
 
 	if err = json.Unmarshal(data, &b.Data); err != nil {
-		return b, err
+		return structs.Block{}, err
 	}
 
 	if err = json.Unmarshal(ev, &b.Evidence); err != nil {
-		return b, err
+		return structs.Block{}, err
 	}
 
 	if err = json.Unmarshal(data, &b.LastCommit); err != nil {
-		return b, err
+		return structs.Block{}, err
 	}
 	return b, err
 }

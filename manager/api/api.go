@@ -31,23 +31,20 @@ func (s *Service) StoreTransactions(ctx context.Context, txs []structs.Transacti
 	return nil
 }
 
-func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string) (structs.BlockAndTx, error) {
-	bTx := structs.BlockAndTx{}
-	block, err := s.store.GetBlockByHeight(ctx, height, chainID)
+func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string) (bTx structs.BlockAndTx, err error) {
+	bTx.Block, err = s.store.GetBlockByHeight(ctx, height, chainID)
 	if err != nil {
-		return bTx, err
-	}
-	bTx.Block = block
-
-	if block.NumberOfTransactions == 0 {
-		return bTx, nil
+		return structs.BlockAndTx{}, err
 	}
 
-	txs, err := s.store.GetTransactionsByHeight(ctx, height, chainID)
-	if err != nil {
-		return bTx, err
+	if bTx.Block.NumberOfTransactions == 0 {
+		return structs.BlockAndTx{}, nil
 	}
-	bTx.Transactions = txs
+
+	bTx.Transactions, err = s.store.GetTransactionsByHeight(ctx, height, chainID)
+	if err != nil {
+		return structs.BlockAndTx{}, err
+	}
 
 	return bTx, nil
 

@@ -124,6 +124,14 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 	}
 
 	response, err := ph.service.ProcessGraphqlQuery(ctx, gQLReq.Variables, gQLReq.Query)
+	if err != nil {
+		r.Errors = append(r.Errors, ErrorMessage{
+			Message: "Error while processing graphql query " + err.Error(),
+		})
+		enc.Encode(r)
+		resp.Send(json.RawMessage(b.Bytes()), nil)
+		return
+	}
 
 	log.Println("response 111", string(response))
 	resp.Send(response, err)
