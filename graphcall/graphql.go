@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/graphql-go/graphql/language/ast"
 	"github.com/graphql-go/graphql/language/parser"
@@ -66,7 +67,7 @@ func ParseSchema(name string, schema []byte) (s *Subgraph, err error) {
 			default:
 			}
 
-			ent.Fields[f.Name.Value] = nf
+			ent.Fields[strings.ToLower(f.Name.Value)] = nf
 
 		}
 
@@ -399,7 +400,7 @@ func queryFields(selections []ast.Selection) map[string]Field {
 			if field.SelectionSet != nil {
 				f.Fields = queryFields(field.SelectionSet.Selections)
 			}
-			fields[f.Name] = f
+			fields[strings.ToLower(field.Name.Value)] = f
 		case reflect.TypeOf(&ast.FragmentSpread{}):
 			fs := ast.NewFragmentSpread(s.(*ast.FragmentSpread))
 			fmt.Println(fs)

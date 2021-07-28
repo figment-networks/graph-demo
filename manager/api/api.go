@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/figment-networks/graph-demo/graphcall"
 	"github.com/figment-networks/graph-demo/manager/store"
@@ -32,6 +33,10 @@ func (s *Service) StoreTransactions(ctx context.Context, txs []structs.Transacti
 }
 
 func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string) (bTx structs.BlockAndTx, err error) {
+	if chainID == "" {
+		return bTx, errors.New("ChainID is empty")
+	}
+
 	bTx.Block, err = s.store.GetBlockByHeight(ctx, height, chainID)
 	if err != nil {
 		return bTx, err
@@ -138,14 +143,14 @@ func getHeightsToFetchByChain(params map[string]graphcall.Part) (chainID string,
 			return "", nil, errors.New("empty parameter value")
 		}
 
-		switch key {
-		case "height", "startHeight":
+		switch strings.ToLower(key) {
+		case "height", "startheight", "start_height":
 			startHeight = val.(uint64)
 			isStart = true
-		case "endHeight":
+		case "endheight", "end_height":
 			endHeight = val.(uint64)
 			isEnd = true
-		case "chain_id":
+		case "chain_id", "chainid":
 			chainID = val.(string)
 		}
 	}

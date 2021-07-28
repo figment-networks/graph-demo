@@ -193,7 +193,7 @@ func removeCharacters(r rune) rune {
 
 // GetTransactions gets transactions based on given criteria the order is forced to be time DESC
 func (d *Driver) GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) (txs []structs.Transaction, err error) {
-	rows, err := d.db.QueryContext(ctx, `SELECT chain_id, height, hash, block_hash, time, fee, gas_wanted, gas_used, memo, events, raw, has_error
+	rows, err := d.db.QueryContext(ctx, `SELECT chain_id, height, hash, block_hash, time, fee, gas_wanted, gas_used, memo, data, raw, has_error
 	FROM public.transactions WHERE chain_id = $1 AND height = $2`, chainID, height)
 	if err != nil {
 		return nil, err
@@ -212,7 +212,7 @@ func (d *Driver) GetTransactionsByHeight(ctx context.Context, height uint64, cha
 		byteFee := []byte{}
 
 		err = rows.Scan(&tx.ChainID, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &byteFee, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.Raw, &tx.HasErrors)
-		if err != sql.ErrNoRows {
+		if err != nil {
 			return nil, err
 		}
 

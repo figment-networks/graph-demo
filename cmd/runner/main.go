@@ -48,8 +48,8 @@ func main() {
 		schema string
 	}{
 		"simple-example",
-		"../../runner/subgraphs/simple-example/generated/mapping.js",
-		"../../runner/subgraphs/simple-example/schema.graphql",
+		"../../subgraphs/simple-example/generated/mapping.js",
+		"../../subgraphs/simple-example/schema.graphql",
 	}
 
 	// Initialize configuration
@@ -74,10 +74,10 @@ func main() {
 	// Load GraphQL schema for subgraph
 	schemas := schema.NewSchemas(sStore)
 	logger.Info(fmt.Sprintf("Loading subgraph schema file %s", subgraph.schema))
-	if err := schemas.LoadFromFile(subgraph.name, subgraph.schema); err != nil {
-		logger.Error(fmt.Errorf("Loader.LoadFromFile() error = %v", err))
-		return
-	}
+	// if err := schemas.LoadFromFile(subgraph.name, subgraph.schema); err != nil {
+	// 	logger.Error(fmt.Errorf("Loader.LoadFromFile() error = %v", err))
+	// 	return
+	// }
 
 	for _, sg := range schemas.Subgraphs {
 		for _, ent := range sg.Entities {
@@ -96,11 +96,9 @@ func main() {
 
 	ngc := runnerClient.NewNetworkGraphClient(l, loader)
 
-	wsManagerRunnerURL := fmt.Sprintf("ws://%s/runner", cfg.ManagerURL)
-
 	// Cosmos configuration
 	wst := clientWS.NewNetworkGraphWSTransport(l)
-	if err := wst.Connect(context.Background(), wsManagerRunnerURL, ngc); err != nil {
+	if err := wst.Connect(context.Background(), fmt.Sprintf("ws://%s/runner", cfg.ManagerURL), ngc); err != nil {
 		l.Fatal("error conectiong to websocket", zap.Error(err))
 	}
 
@@ -114,10 +112,8 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	httpManagerURL := fmt.Sprintf("http://%s", cfg.ManagerURL)
-
 	cli := http.DefaultClient
-	apiClient := client.New(cli, l, httpManagerURL)
+	apiClient := client.New(cli, l, fmt.Sprintf("http://%s", cfg.ManagerURL))
 	svc := service.New(apiClient, sStore)
 
 	handler := transportHTTP.NewHandler(svc)

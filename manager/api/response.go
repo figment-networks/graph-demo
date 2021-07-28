@@ -89,21 +89,17 @@ func mapStructToFields(fields map[string]graphcall.Field, s interface{}) mapSlic
 			continue
 		}
 
-		fieldType := reflect.TypeOf(v.Field(i).Interface())
-		fieldKind := fieldType.Kind()
+		filedValue := v.Field(i).Interface()
 
-		switch fieldType {
-		case reflect.TypeOf(time.Time{}):
-			value = formatValue(v.Field(i).Interface())
+		fieldKind := reflect.TypeOf(filedValue).Kind()
+
+		switch fieldKind {
+		case reflect.Slice:
+			value = mapSliceToFields(field.Fields, filedValue)
+		case reflect.Struct:
+			value = mapStructToFields(field.Fields, filedValue)
 		default:
-			switch fieldKind {
-			case reflect.Slice:
-				value = mapSliceToFields(field.Fields, v.Field(i).Interface())
-			case reflect.Struct:
-				value = mapStructToFields(field.Fields, v.Field(i).Interface())
-			default:
-				value = formatValue(v.Field(i).Interface())
-			}
+			value = formatValue(filedValue)
 		}
 
 		order := field.Order

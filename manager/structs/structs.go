@@ -48,17 +48,17 @@ type BlockHeader struct {
 	// prev block info
 	LastBlockId BlockID `json:"last_block_id"`
 	// hashes of block data
-	LastCommitHash []byte `json:"last_commit_hash,omitempty"`
-	DataHash       []byte `json:"data_hash,omitempty"`
+	LastCommitHash string `json:"last_commit_hash,omitempty"`
+	DataHash       string `json:"data_hash,omitempty"`
 	// hashes from the app output from the prev block
-	ValidatorsHash     []byte `json:"validators_hash,omitempty"`
-	NextValidatorsHash []byte `json:"next_validators_hash,omitempty"`
-	ConsensusHash      []byte `json:"consensus_hash,omitempty"`
-	AppHash            []byte `json:"app_hash,omitempty"`
-	LastResultsHash    []byte `json:"last_results_hash,omitempty"`
+	ValidatorsHash     string `json:"validators_hash,omitempty"`
+	NextValidatorsHash string `json:"next_validators_hash,omitempty"`
+	ConsensusHash      string `json:"consensus_hash,omitempty"`
+	AppHash            string `json:"app_hash,omitempty"`
+	LastResultsHash    string `json:"last_results_hash,omitempty"`
 	// consensus info
-	EvidenceHash    []byte `json:"evidence_hash,omitempty"`
-	ProposerAddress []byte `json:"proposer_address,omitempty"`
+	EvidenceHash    string `json:"evidence_hash,omitempty"`
+	ProposerAddress string `json:"proposer_address,omitempty"`
 }
 
 type BlockEvidenceList struct {
@@ -96,14 +96,14 @@ type BlockData struct {
 	Txs [][]byte `json:"txs,omitempty"`
 }
 type BlockID struct {
-	Hash          []byte        `json:"hash,omitempty"`
+	Hash          string        `json:"hash,omitempty"`
 	PartSetHeader PartSetHeader `json:"part_set_header"`
 }
 
 // PartsetHeader
 type PartSetHeader struct {
 	Total uint32 `json:"total,omitempty"`
-	Hash  []byte `json:"hash,omitempty"`
+	Hash  string `json:"hash,omitempty"`
 }
 
 // Consensus captures the consensus rules for processing a block in the blockchain,

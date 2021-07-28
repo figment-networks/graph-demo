@@ -35,21 +35,22 @@ func (c *Client) GetAll(ctx context.Context, height uint64) (er error) {
 		ChainID: b.Block.Header.ChainID,
 
 		Header: structs.BlockHeader{
+			Version: structs.Consensus(b.Block.Header.Version),
 			ChainID: b.Block.Header.ChainID,
 			Time:    b.Block.Header.Time,
 			Height:  b.Block.Header.Height,
 			LastBlockId: structs.BlockID{
-				Hash: b.Block.Header.LastBlockId.Hash,
+				Hash: bytes.HexBytes(b.Block.Header.LastBlockId.Hash).String(),
 			},
-			LastCommitHash:     b.Block.Header.LastCommitHash,
-			DataHash:           b.Block.Header.DataHash,
-			ValidatorsHash:     b.Block.Header.ValidatorsHash,
-			NextValidatorsHash: b.Block.Header.NextValidatorsHash,
-			ConsensusHash:      b.Block.Header.ConsensusHash,
-			AppHash:            b.Block.Header.AppHash,
-			LastResultsHash:    b.Block.Header.LastResultsHash,
-			EvidenceHash:       b.Block.Header.EvidenceHash,
-			ProposerAddress:    b.Block.Header.ProposerAddress,
+			LastCommitHash:     bytes.HexBytes(b.Block.Header.LastCommitHash).String(),
+			DataHash:           bytes.HexBytes(b.Block.Header.DataHash).String(),
+			ValidatorsHash:     bytes.HexBytes(b.Block.Header.ValidatorsHash).String(),
+			NextValidatorsHash: bytes.HexBytes(b.Block.Header.NextValidatorsHash).String(),
+			ConsensusHash:      bytes.HexBytes(b.Block.Header.ConsensusHash).String(),
+			AppHash:            bytes.HexBytes(b.Block.Header.AppHash).String(),
+			LastResultsHash:    bytes.HexBytes(b.Block.Header.LastResultsHash).String(),
+			EvidenceHash:       bytes.HexBytes(b.Block.Header.EvidenceHash).String(),
+			ProposerAddress:    bytes.HexBytes(b.Block.Header.ProposerAddress).String(),
 		},
 		Data: structs.BlockData{
 			Txs: b.Block.Data.Txs,
@@ -58,10 +59,13 @@ func (c *Client) GetAll(ctx context.Context, height uint64) (er error) {
 			Height: b.Block.LastCommit.Height,
 			Round:  b.Block.LastCommit.Round,
 			BlockID: structs.BlockID{
-				Hash:          b.Block.LastCommit.BlockID.Hash,
-				PartSetHeader: structs.PartSetHeader(b.Block.LastCommit.BlockID.PartSetHeader),
-			},
+				Hash: bytes.HexBytes(b.Block.LastCommit.BlockID.Hash).String(),
+				PartSetHeader: structs.PartSetHeader{
+					Total: b.Block.LastCommit.BlockID.PartSetHeader.Total,
+					Hash:  bytes.HexBytes(b.Block.LastCommit.BlockID.PartSetHeader.Hash).String(),
+				}},
 		},
+		NumberOfTransactions: uint64(len(b.Block.Data.Txs)),
 	}
 
 	if c.persistor != nil {
