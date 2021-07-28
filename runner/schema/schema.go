@@ -1,12 +1,15 @@
 package schema
 
 import (
+	"context"
 	"io/ioutil"
 	"path"
 	"regexp"
+	"strings"
 
 	"github.com/figment-networks/graph-demo/graphcall"
 	"github.com/figment-networks/graph-demo/runner/store"
+	"github.com/figment-networks/graph-demo/runner/structs"
 
 	"gopkg.in/yaml.v2"
 )
@@ -15,6 +18,14 @@ var (
 	entityRegxp = regexp.MustCompile("type\\s+([^\\s]+)\\s+\\@entity\\s+{([^\\}]+)}")
 	kvRegxp     = regexp.MustCompile("\\s+([a-zA-Z0-9]+):\\s+([\\[\\]a-zA-Z0-9]+)!?")
 )
+
+type GQLCaller interface {
+	Subscribe(ctx context.Context, name string, events []structs.Subs) error
+}
+
+type JSLoader interface {
+	LoadJS(name string, path string) error
+}
 
 type Manifest struct {
 	Description string         `yaml:"description"`
@@ -29,13 +40,19 @@ type ManifestSchema struct {
 type DataSources struct {
 	Kind    string             `yaml:"kind"`
 	Name    string             `yaml:"name"`
+	File    string             `yaml:"file"`
 	Network string             `yaml:"network"`
 	Mapping DataSourcesMapping `yaml:"mapping"`
+	Source  DataSourcesSource  `yaml:"source"`
 }
 
 type DataSourcesMapping struct {
 	Kind          string          `yaml:"kind"`
 	EventHandlers []EventHandlers `yaml:"eventHandlers"`
+}
+
+type DataSourcesSource struct {
+	StartBlock uint64 `yaml:"startBlock"`
 }
 
 type EventHandlers struct {
@@ -45,12 +62,15 @@ type EventHandlers struct {
 
 type Schemas struct {
 	ss        store.Storage
+	rqstr     GQLCaller
+	loader    JSLoader
 	Subgraphs map[string]*graphcall.Subgraph
 }
 
-func NewSchemas(ss store.Storage) *Schemas {
+func NewSchemas(ss store.Storage, loader JSLoader) *Schemas {
 	return &Schemas{
 		ss:        ss,
+		loader:    loader,
 		Subgraphs: make(map[string]*graphcall.Subgraph),
 	}
 }
@@ -61,22 +81,46 @@ func (s *Schemas) LoadFromSubgraphYaml(fpath string) error {
 	if err != nil {
 		return nil
 	}
+
 	m := &Manifest{}
-	err = yaml.Unmarshal(f, &m)
-	if err != nil {
-		return nil
+	if err = yaml.Unmarshal(f, &m); err != nil {
+		return err
 	}
 
+	paths := strings.Split(m.Schema.File, "/")
+	name := paths[len(paths)-1]
+	subg, err := processSchema(m.Schema.File, name)
 
-	/*
-		dir, err := os.ReadDir(path)
-		for _, fse := range dir {
-			if strings.HasSuffix(fse.Name(), ".graphQL") {
-
-			}
+	for _, ent := range subg.Entities {
+		indexed := []store.NT{}
+		for k, v := range ent.Fields {
+			indexed = append(indexed, store.NT{Name: k, Type: v.Type})
 		}
-		s.Subgraphs[name] = sg
-	*/
+		s.ss.NewStore(name, ent.Name, indexed)
+	}
+
+	for _, sourc := range m.Sources {
+
+		//	s.Subgraphs[name] = subg
+
+		subs := []structs.Subs{}
+		for _, evh := range sourc.Mapping.EventHandlers {
+			subs = append(subs, structs.Subs{Name: evh.Event, StartingHeight: sourc.Source.StartBlock})
+		}
+
+		if err := s.rqstr.Subscribe(context.Background(), sourc.Network, subs); err != nil {
+			//	logger.Error(fmt.Errorf("Loader.LoadJS() error = %v", err))
+			return err
+		}
+
+		//s.loglogger.Info(fmt.Sprintf("Loading subgraph js file %s", subgraph.path))
+		if err := s.loader.LoadJS(name, path.Join(fpath, sourc.File)); err != nil {
+			//	logger.Error(fmt.Errorf("Loader.LoadJS() error = %v", err))
+			return err
+		}
+
+	}
+
 	return nil
 
 }

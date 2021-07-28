@@ -1,6 +1,6 @@
-specVersion: 0.0.9
+specVersion: 0.0.1
 description: Example subgraph for graph-demo
-repository: https://github.com/figment-networks/simple-example
+repository: https://github.com/figment-networks/graph-demo/simple-example
 schema:
   file: ./schema.graphql
 dataSources:
@@ -11,6 +11,9 @@ dataSources:
   - kind: network-graph
     name: CosmosNetworkGraph
     network: cosmos
+    file: ./generated/mapping.js
+    source:
+      startBlock: 5200244
     mapping:
       kind: network-graph/events
       schemaVersion: 0.0.2
