@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log"
 
 	"github.com/figment-networks/graph-demo/connectivity"
 	wsapi "github.com/figment-networks/graph-demo/connectivity/ws"
@@ -68,8 +67,6 @@ func (ng *NetworkGraphWSTransport) CallGQL(ctx context.Context, name string, que
 
 	resp, err := ng.sess.SendSync("query", []json.RawMessage{q, buff.Bytes(), v})
 	buff.Reset()
-
-	log.Println("resp", resp, string(resp.Result))
 	return resp.Result, err
 }
 

@@ -35,15 +35,21 @@ type callback func(info *v8go.FunctionCallbackInfo) *v8go.Value
 
 type Loader struct {
 	subgraphs map[string]*Subgraph
-	lock      sync.RWMutex
-	rqstr     GQLCaller
-	stor      store.Storage
-	log       *zap.Logger
+
+	events map[string]map[string][]*Subgraph
+
+	lock  sync.RWMutex
+	rqstr GQLCaller
+	stor  store.Storage
+	log   *zap.Logger
+
+	data map[string]interface{}
 }
 
 func NewLoader(l *zap.Logger, rqstr GQLCaller, stor store.Storage) *Loader {
 	return &Loader{
 		subgraphs: make(map[string]*Subgraph),
+		events:    make(map[string]map[string][]*Subgraph),
 		rqstr:     rqstr,
 		stor:      stor,
 		log:       l,
@@ -65,41 +71,34 @@ func (l *Loader) CallSubgraphHandler(subgraph string, handler *SubgraphHandler) 
 	if err != nil {
 		return err
 	}
-	_, err = s.context.RunScript(e, "main.js")
+	_, err = s.context.RunScript(e, "mapping.js")
 	return err
 }
 
 func (l *Loader) NewEvent(typ string, data map[string]interface{}) error {
 	l.log.Debug("Event received ", zap.String("type", typ), zap.Any("data", data))
-
-	l.log.Debug("subgraphs ", zap.Any("data", l.subgraphs))
 	l.lock.RLock()
-	for name := range l.subgraphs {
-		// TODO(l): Add dictionary to map events
-		if err := l.CallSubgraphHandler(name, &SubgraphHandler{name: strings.Replace(typ, "new", "handle", -1), values: []interface{}{data}}); err != nil {
-			return err
+	defer l.lock.RUnlock()
+	for handler, subgs := range l.events[typ] {
+		for _, sgs := range subgs {
+			if err := l.CallSubgraphHandler(sgs.Name, &SubgraphHandler{name: handler, values: []interface{}{data}}); err != nil {
+				return err
+			}
 		}
 	}
-	l.lock.RUnlock()
+
 	return nil
 }
 
-func (l *Loader) LoadJS(name string, path string) error {
+func (l *Loader) LoadJS(name string, path string, evH map[string]string) error {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
 	}
-
-	// TODO(l): load it from subgraph.yaml
-	l.rqstr.Subscribe(context.Background(), "cosmos",
-		[]structs.Subs{
-			{"newTransaction", 0},
-			{"newBlock", 0}})
-
-	return l.createRunable(name, b)
+	return l.createRunable(name, b, evH)
 }
 
-func (l *Loader) createRunable(name string, code []byte) error {
+func (l *Loader) createRunable(name string, code []byte, evH map[string]string) error {
 
 	subgr := NewSubgraph(name, l.rqstr, l.stor)
 	iso, _ := v8go.NewIsolate()
@@ -131,10 +130,23 @@ func (l *Loader) createRunable(name string, code []byte) error {
 
 	l.lock.Lock()
 	l.subgraphs[name] = subgr
+	for event, handler := range evH {
+		e, ok := l.events[event]
+		if !ok {
+			e = make(map[string][]*Subgraph)
+		}
+		h, ok := e[handler]
+		if !ok {
+			h = []*Subgraph{}
+		}
+
+		h = append(h, subgr)
+		e[handler] = h
+		l.events[event] = e
+	}
 	l.lock.Unlock()
 
 	l.log.Debug("Loaded subgraph", zap.String("name", name), zap.Any("data", l.subgraphs))
-
 	return nil
 }
 
@@ -154,7 +166,7 @@ func cleanJS(code []byte) string {
 }
 
 type Subgraph struct {
-	name string
+	Name string
 	body []byte
 
 	callbacks map[string]callback //name - callback
@@ -166,7 +178,7 @@ type Subgraph struct {
 
 func NewSubgraph(name string, caller GQLCaller, stor store.Storage) *Subgraph {
 	return &Subgraph{
-		name:      name,
+		Name:      name,
 		caller:    caller,
 		stor:      stor,
 		callbacks: make(map[string]callback),
@@ -180,7 +192,7 @@ func (s *Subgraph) storeRecord(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	a := map[string]interface{}{}
 	_ = json.Unmarshal(mj, &a)
 
-	if err := s.stor.Store(context.Background(), s.name, `"`+args[0].String()+`"`, a); err != nil {
+	if err := s.stor.Store(context.Background(), s.Name, `"`+args[0].String()+`"`, a); err != nil {
 		return jsonError(info.Context(), err)
 	}
 
@@ -201,9 +213,8 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	if err != nil {
 		log.Println(fmt.Errorf("marshal error %w \n", err))
 	}
-
 	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a, args[2].String())
-	fmt.Println(string(resp))
+
 	if err != nil {
 		log.Println(fmt.Printf("callGQL error %v \n", err))
 		return jsonError(info.Context(), err)

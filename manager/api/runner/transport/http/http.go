@@ -14,7 +14,7 @@ type ManagerService interface {
 }
 
 type JSONGraphQLRequest struct {
-	Query     []byte                 `json:"query"`
+	Query     string                 `json:"query"`
 	Variables map[string]interface{} `json:"variables"`
 }
 
@@ -60,7 +60,7 @@ func (h *Handler) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	response, err := h.service.ProcessGraphqlQuery(ctx, req.Query, req.Variables)
+	response, err := h.service.ProcessGraphqlQuery(ctx, []byte(req.Query), req.Variables)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		resp.Errors = []ErrorMessage{{Message: err.Error()}}

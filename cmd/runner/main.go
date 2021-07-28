@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
 	"github.com/figment-networks/graph-demo/cmd/runner/config"
-	"github.com/figment-networks/graph-demo/runner/api/client"
 	"github.com/figment-networks/graph-demo/runner/api/service"
 	transportHTTP "github.com/figment-networks/graph-demo/runner/api/transport/http"
 	runnerClient "github.com/figment-networks/graph-demo/runner/client"
@@ -21,7 +21,6 @@ import (
 	"github.com/figment-networks/graph-demo/runner/requester"
 	"github.com/figment-networks/graph-demo/runner/runtime"
 	"github.com/figment-networks/graph-demo/runner/schema"
-	"github.com/figment-networks/graph-demo/runner/store"
 	"github.com/figment-networks/graph-demo/runner/store/memap"
 
 	"go.uber.org/zap"
@@ -41,17 +40,6 @@ func init() {
 func main() {
 	logger.Init("console", "debug", []string{"stderr"})
 
-	// TODO(l): read from config
-	subgraph := struct {
-		name   string
-		path   string
-		schema string
-	}{
-		"simple-example",
-		"../../subgraphs/simple-example/generated/mapping.js",
-		"../../subgraphs/simple-example/schema.graphql",
-	}
-
 	// Initialize configuration
 	cfg, err := initConfig(configFlags.configPath)
 	if err != nil {
@@ -70,53 +58,33 @@ func main() {
 
 	// Using in-memory store. Create entity collections.
 	sStore := memap.NewSubgraphStore()
-
-	// Load GraphQL schema for subgraph
-	schemas := schema.NewSchemas(sStore)
-	logger.Info(fmt.Sprintf("Loading subgraph schema file %s", subgraph.schema))
-	// if err := schemas.LoadFromFile(subgraph.name, subgraph.schema); err != nil {
-	// 	logger.Error(fmt.Errorf("Loader.LoadFromFile() error = %v", err))
-	// 	return
-	// }
-
-	for _, sg := range schemas.Subgraphs {
-		for _, ent := range sg.Entities {
-			indexed := []store.NT{}
-			for k, v := range ent.Fields {
-				indexed = append(indexed, store.NT{Name: k, Type: v.Type})
-			}
-			sStore.NewStore(subgraph.name, ent.Name, indexed)
-		}
-	}
-
 	rqstr := requester.NewRqstr()
 
 	// Init the javascript runtime
 	loader := runtime.NewLoader(l, rqstr, sStore)
 
-	ngc := runnerClient.NewNetworkGraphClient(l, loader)
-
 	// Cosmos configuration
 	wst := clientWS.NewNetworkGraphWSTransport(l)
-	if err := wst.Connect(context.Background(), fmt.Sprintf("ws://%s/runner", cfg.ManagerURL), ngc); err != nil {
+	rqstr.AddDestination("cosmos", wst)
+
+	ngc := runnerClient.NewNetworkGraphClient(l, loader)
+	if err := wst.Connect(context.Background(), cfg.ManagerURL, ngc); err != nil {
 		l.Fatal("error conectiong to websocket", zap.Error(err))
 	}
 
-	rqstr.AddDestination("cosmos", wst)
-
-	logger.Info(fmt.Sprintf("Loading subgraph js file %s", subgraph.path))
-	if err := loader.LoadJS(subgraph.name, subgraph.path); err != nil {
-		logger.Error(fmt.Errorf("Loader.LoadJS() error = %v", err))
-		return
+	// Load GraphQL schema for subgraph
+	schemas := schema.NewSchemas(sStore, loader, rqstr)
+	for _, path := range strings.Split(cfg.Subgraphs, ",") {
+		l.Debug("Loading Subgraph", zap.String("path", path))
+		if err := schemas.LoadFromSubgraphYaml(path); err != nil {
+			logger.Error(fmt.Errorf("Loader.LoadFromFile() error = %v", err))
+			return
+		}
 	}
 
 	mux := http.NewServeMux()
 
-	cli := http.DefaultClient
-	apiClient := client.New(cli, l, fmt.Sprintf("http://%s", cfg.ManagerURL))
-	svc := service.New(apiClient, sStore)
-
-	handler := transportHTTP.NewHandler(svc)
+	handler := transportHTTP.NewHandler(service.New(sStore))
 	handler.AttachMux(mux)
 
 	s := &http.Server{
@@ -125,25 +93,6 @@ func main() {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 40 * time.Second,
 	}
-
-	/*
-		// TODO This is here just for testing until we get manager <> runner comms working
-		evts := []jsRuntime.NewEvent{
-			{
-				Type: "block",
-				Data: map[string]interface{}{"network": "cosmos", "height": 1234},
-			},
-			{
-				Type: "transaction",
-				Data: map[string]interface{}{"network": "cosmos", "height": 1234},
-			},
-		}
-		for _, evt := range evts {
-			if err := loader.NewEvent(evt); err != nil {
-				logger.Error(fmt.Errorf("Loader.NewEvent() error = %v", err))
-			}
-		}
-	*/
 
 	osSig := make(chan os.Signal)
 	exit := make(chan string, 2)
