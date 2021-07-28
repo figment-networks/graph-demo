@@ -58,25 +58,24 @@ func main() {
 
 	// Using in-memory store. Create entity collections.
 	sStore := memap.NewSubgraphStore()
-
 	rqstr := requester.NewRqstr()
 
 	// Init the javascript runtime
 	loader := runtime.NewLoader(l, rqstr, sStore)
 
-	ngc := runnerClient.NewNetworkGraphClient(l, loader)
-
 	// Cosmos configuration
 	wst := clientWS.NewNetworkGraphWSTransport(l)
+	rqstr.AddDestination("cosmos", wst)
+
+	ngc := runnerClient.NewNetworkGraphClient(l, loader)
 	if err := wst.Connect(context.Background(), cfg.ManagerURL, ngc); err != nil {
 		l.Fatal("error conectiong to websocket", zap.Error(err))
 	}
 
-	rqstr.AddDestination("cosmos", wst)
-
 	// Load GraphQL schema for subgraph
-	schemas := schema.NewSchemas(sStore, loader)
+	schemas := schema.NewSchemas(sStore, loader,rqstr)
 	for _, path := range strings.Split(cfg.Subgraphs, ",") {
+		l.Debug("Loading Subgraph", zap.String("path", path))
 		if err := schemas.LoadFromSubgraphYaml(path); err != nil {
 			logger.Error(fmt.Errorf("Loader.LoadFromFile() error = %v", err))
 			return
@@ -84,8 +83,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	svc := service.New(sStore)
-	handler := transportHTTP.NewHandler(svc)
+	handler := transportHTTP.NewHandler(service.New(sStore))
 	handler.AttachMux(mux)
 
 	s := &http.Server{
@@ -94,25 +92,6 @@ func main() {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 40 * time.Second,
 	}
-
-	/*
-		// TODO This is here just for testing until we get manager <> runner comms working
-		evts := []jsRuntime.NewEvent{
-			{
-				Type: "block",
-				Data: map[string]interface{}{"network": "cosmos", "height": 1234},
-			},
-			{
-				Type: "transaction",
-				Data: map[string]interface{}{"network": "cosmos", "height": 1234},
-			},
-		}
-		for _, evt := range evts {
-			if err := loader.NewEvent(evt); err != nil {
-				logger.Error(fmt.Errorf("Loader.NewEvent() error = %v", err))
-			}
-		}
-	*/
 
 	osSig := make(chan os.Signal)
 	exit := make(chan string, 2)

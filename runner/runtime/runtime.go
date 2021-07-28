@@ -36,7 +36,7 @@ type callback func(info *v8go.FunctionCallbackInfo) *v8go.Value
 type Loader struct {
 	subgraphs map[string]*Subgraph
 
-	events map[string]map[string]*Subgraph
+	events map[string]map[string][]*Subgraph
 
 	lock  sync.RWMutex
 	rqstr GQLCaller
@@ -49,7 +49,7 @@ type Loader struct {
 func NewLoader(l *zap.Logger, rqstr GQLCaller, stor store.Storage) *Loader {
 	return &Loader{
 		subgraphs: make(map[string]*Subgraph),
-		events:    make(map[string]map[string]*Subgraph),
+		events:    make(map[string]map[string][]*Subgraph),
 		rqstr:     rqstr,
 		stor:      stor,
 		log:       l,
@@ -79,24 +79,26 @@ func (l *Loader) NewEvent(typ string, data map[string]interface{}) error {
 	l.log.Debug("Event received ", zap.String("type", typ), zap.Any("data", data))
 	l.lock.RLock()
 	defer l.lock.RUnlock()
-	for handler, subg := range l.events[typ] {
-		if err := l.CallSubgraphHandler(subg.Name, &SubgraphHandler{name: handler, values: []interface{}{data}}); err != nil {
-			return err
+	for handler, subgs := range l.events[typ] {
+		for _, sgs := range subgs {
+			if err := l.CallSubgraphHandler(sgs.Name, &SubgraphHandler{name: handler, values: []interface{}{data}}); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
-func (l *Loader) LoadJS(name string, path string) error {
+func (l *Loader) LoadJS(name string, path string, evH map[string]string) error {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
 	}
-	return l.createRunable(name, b)
+	return l.createRunable(name, b, evH)
 }
 
-func (l *Loader) createRunable(name string, code []byte) error {
+func (l *Loader) createRunable(name string, code []byte, evH map[string]string) error {
 
 	subgr := NewSubgraph(name, l.rqstr, l.stor)
 	iso, _ := v8go.NewIsolate()
@@ -128,10 +130,23 @@ func (l *Loader) createRunable(name string, code []byte) error {
 
 	l.lock.Lock()
 	l.subgraphs[name] = subgr
+	for event, handler := range evH {
+		e, ok := l.events[event]
+		if !ok {
+			e = make(map[string][]*Subgraph)
+		}
+		h, ok := e[handler]
+		if !ok {
+			h = []*Subgraph{}
+		}
+
+		h = append(h, subgr)
+		e[handler] = h
+		l.events[event] = e
+	}
 	l.lock.Unlock()
 
 	l.log.Debug("Loaded subgraph", zap.String("name", name), zap.Any("data", l.subgraphs))
-
 	return nil
 }
 

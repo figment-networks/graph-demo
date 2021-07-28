@@ -24,7 +24,7 @@ type GQLCaller interface {
 }
 
 type JSLoader interface {
-	LoadJS(name string, path string) error
+	LoadJS(name string, path string, ehs map[string]string) error
 }
 
 type Manifest struct {
@@ -61,17 +61,18 @@ type EventHandlers struct {
 }
 
 type Schemas struct {
-	ss        store.Storage
-	rqstr     GQLCaller
-	loader    JSLoader
-	Subgraphs map[string]*graphcall.Subgraph
+	ss     store.Storage
+	rqstr  GQLCaller
+	loader JSLoader
+	//	Subgraphs map[string]*graphcall.Subgraph
 }
 
-func NewSchemas(ss store.Storage, loader JSLoader) *Schemas {
+func NewSchemas(ss store.Storage, loader JSLoader, rqstr  GQLCaller) *Schemas {
 	return &Schemas{
-		ss:        ss,
-		loader:    loader,
-		Subgraphs: make(map[string]*graphcall.Subgraph),
+		ss:     ss,
+		loader: loader,
+		rqstr: rqstr,
+		//	Subgraphs: make(map[string]*graphcall.Subgraph),
 	}
 }
 
@@ -79,7 +80,7 @@ func (s *Schemas) LoadFromSubgraphYaml(fpath string) error {
 
 	f, err := ioutil.ReadFile(path.Join(fpath, "subgraph.yaml"))
 	if err != nil {
-		return nil
+		return err
 	}
 
 	m := &Manifest{}
@@ -89,7 +90,10 @@ func (s *Schemas) LoadFromSubgraphYaml(fpath string) error {
 
 	paths := strings.Split(m.Schema.File, "/")
 	name := paths[len(paths)-1]
-	subg, err := processSchema(m.Schema.File, name)
+	subg, err := processSchema(path.Join(fpath, m.Schema.File), name)
+	if err != nil {
+		return err
+	}
 
 	for _, ent := range subg.Entities {
 		indexed := []store.NT{}
@@ -100,26 +104,25 @@ func (s *Schemas) LoadFromSubgraphYaml(fpath string) error {
 	}
 
 	for _, sourc := range m.Sources {
-
-		//	s.Subgraphs[name] = subg
-
 		subs := []structs.Subs{}
+		ms := make(map[string]string)
+
 		for _, evh := range sourc.Mapping.EventHandlers {
 			subs = append(subs, structs.Subs{Name: evh.Event, StartingHeight: sourc.Source.StartBlock})
+			ms[evh.Event] = evh.Handler
 		}
 
 		if err := s.rqstr.Subscribe(context.Background(), sourc.Network, subs); err != nil {
-			//	logger.Error(fmt.Errorf("Loader.LoadJS() error = %v", err))
 			return err
 		}
 
-		//s.loglogger.Info(fmt.Sprintf("Loading subgraph js file %s", subgraph.path))
-		if err := s.loader.LoadJS(name, path.Join(fpath, sourc.File)); err != nil {
-			//	logger.Error(fmt.Errorf("Loader.LoadJS() error = %v", err))
+		if err := s.loader.LoadJS(name, path.Join(fpath, sourc.File), ms); err != nil {
 			return err
 		}
 
 	}
+
+	//	s.Subgraphs[name] = subg
 
 	return nil
 
