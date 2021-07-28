@@ -64,15 +64,13 @@ type Schemas struct {
 	ss     store.Storage
 	rqstr  GQLCaller
 	loader JSLoader
-	//	Subgraphs map[string]*graphcall.Subgraph
 }
 
-func NewSchemas(ss store.Storage, loader JSLoader, rqstr  GQLCaller) *Schemas {
+func NewSchemas(ss store.Storage, loader JSLoader, rqstr GQLCaller) *Schemas {
 	return &Schemas{
 		ss:     ss,
 		loader: loader,
-		rqstr: rqstr,
-		//	Subgraphs: make(map[string]*graphcall.Subgraph),
+		rqstr:  rqstr,
 	}
 }
 
@@ -88,7 +86,7 @@ func (s *Schemas) LoadFromSubgraphYaml(fpath string) error {
 		return err
 	}
 
-	paths := strings.Split(m.Schema.File, "/")
+	paths := strings.Split(fpath, "/")
 	name := paths[len(paths)-1]
 	subg, err := processSchema(path.Join(fpath, m.Schema.File), name)
 	if err != nil {
@@ -122,7 +120,6 @@ func (s *Schemas) LoadFromSubgraphYaml(fpath string) error {
 
 	}
 
-	//	s.Subgraphs[name] = subg
 
 	return nil
 

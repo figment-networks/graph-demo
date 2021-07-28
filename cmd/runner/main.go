@@ -73,7 +73,7 @@ func main() {
 	}
 
 	// Load GraphQL schema for subgraph
-	schemas := schema.NewSchemas(sStore, loader,rqstr)
+	schemas := schema.NewSchemas(sStore, loader, rqstr)
 	for _, path := range strings.Split(cfg.Subgraphs, ",") {
 		l.Debug("Loading Subgraph", zap.String("path", path))
 		if err := schemas.LoadFromSubgraphYaml(path); err != nil {
