@@ -120,7 +120,6 @@ func (s *Schemas) LoadFromSubgraphYaml(fpath string) error {
 
 	}
 
-
 	return nil
 
 }

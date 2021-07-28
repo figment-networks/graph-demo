@@ -213,9 +213,8 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	if err != nil {
 		log.Println(fmt.Errorf("marshal error %w \n", err))
 	}
-
 	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a, args[2].String())
-	fmt.Println(string(resp))
+
 	if err != nil {
 		log.Println(fmt.Printf("callGQL error %v \n", err))
 		return jsonError(info.Context(), err)
