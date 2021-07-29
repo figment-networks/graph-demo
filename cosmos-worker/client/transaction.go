@@ -28,8 +28,8 @@ var curencyRegex = regexp.MustCompile("([0-9\\.\\,\\-\\s]+)([^0-9\\s]+)$")
 
 // SearchTx is making search api call
 func (c *Client) SearchTx(ctx context.Context, block structs.Block) (txs []structs.Transaction, err error) {
-	height := block.Height
-	c.log.Debug("[COSMOS-WORKER] Getting transactions", zap.Uint64("height", height))
+	height := block.Header.Height
+	c.log.Debug("[COSMOS-WORKER] Getting transactions", zap.Int64("height", height))
 
 	pag := &query.PageRequest{
 		CountTotal: true,
@@ -43,7 +43,7 @@ func (c *Client) SearchTx(ctx context.Context, block structs.Block) (txs []struc
 
 		nctx, cancel := context.WithTimeout(ctx, c.cfg.TimeoutSearchTxCall)
 		grpcRes, err := c.txServiceClient.GetTxsEvent(nctx, &tx.GetTxsEventRequest{
-			Events:     []string{"tx.height=" + strconv.FormatUint(height, 10)},
+			Events:     []string{"tx.height=" + strconv.FormatInt(height, 10)},
 			Pagination: pag,
 		}, grpc.WaitForReady(true))
 		cancel()
@@ -60,8 +60,8 @@ func (c *Client) SearchTx(ctx context.Context, block structs.Block) (txs []struc
 				return nil, err
 			}
 			tx.BlockHash = block.Hash
-			tx.ChainID = block.ChainID
-			tx.Time = block.Time
+			tx.ChainID = block.Header.ChainID
+			tx.Time = block.Header.Time
 			txs = append(txs, tx)
 		}
 
@@ -73,7 +73,7 @@ func (c *Client) SearchTx(ctx context.Context, block structs.Block) (txs []struc
 
 	}
 
-	c.log.Debug("[COSMOS-WORKER] Got transactions", zap.Uint64("height", height))
+	c.log.Debug("[COSMOS-WORKER] Got transactions", zap.Int64("height", height))
 	return txs, nil
 }
 

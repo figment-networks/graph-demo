@@ -42,7 +42,7 @@ func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string
 		return bTx, err
 	}
 
-	if bTx.Block.NumberOfTransactions == 0 {
+	if len(bTx.Block.Data.Txs) == 0 {
 		return bTx, nil
 	}
 

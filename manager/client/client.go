@@ -11,7 +11,7 @@ import (
 
 type NetworkClient interface {
 	GetAll(ctx context.Context, height uint64) error
-	GetLatest(ctx context.Context) (structs.Block, error)
+	GetLatest(ctx context.Context) (uint64, error)
 }
 
 type SubscriptionClient interface {
@@ -61,11 +61,7 @@ func (c *Client) getByHeight(ctx context.Context, nc NetworkClient, height uint6
 }
 
 func (c *Client) GetLatest(ctx context.Context, nc NetworkClient) (uint64, error) {
-	lst, err := nc.GetLatest(ctx)
-	if err != nil {
-		return 0, err
-	}
-	return lst.Height, err
+	return nc.GetLatest(ctx)
 }
 
 func (c *Client) GetLatestFromStorage(ctx context.Context, chainID string) (height uint64, err error) {

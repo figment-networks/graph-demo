@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/figment-networks/graph-demo/cosmos-worker/client/mapper"
-	"github.com/figment-networks/graph-demo/manager/structs"
 
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	"go.uber.org/zap"
@@ -54,7 +53,7 @@ func (c *Client) GetAll(ctx context.Context, height uint64) (er error) {
 }
 
 // GetBlock fetches most recent block from chain
-func (c *Client) GetLatest(ctx context.Context) (bl structs.Block, er error) {
+func (c *Client) GetLatest(ctx context.Context) (uint64, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.cfg.TimeoutBlockCall)
 	defer cancel()
 
@@ -63,11 +62,11 @@ func (c *Client) GetLatest(ctx context.Context) (bl structs.Block, er error) {
 	b, err := c.tmServiceClient.GetLatestBlock(ctx, &tmservice.GetLatestBlockRequest{}, grpc.WaitForReady(true))
 	if err != nil {
 		c.log.Debug("[COSMOS-CLIENT] Error getting latest block", zap.Error(err))
-		return bl, err
+		return 0, err
 	}
 
 	c.log.Debug("[COSMOS-CLIENT] Got latest block", zap.Uint64("height", uint64(b.Block.Header.Height)))
 
-	return structs.Block{Height: uint64(b.Block.Header.Height)}, nil
+	return uint64(b.Block.Header.Height), nil
 
 }

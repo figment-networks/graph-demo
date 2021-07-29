@@ -26,7 +26,7 @@ type ErrorMessage struct {
 
 type CosmosClient interface {
 	GetAll(ctx context.Context, height uint64) error
-	GetLatest(ctx context.Context) (structs.Block, error)
+	GetLatest(ctx context.Context) (uint64, error)
 }
 
 type ProcessHandler struct {

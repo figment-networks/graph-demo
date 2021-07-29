@@ -98,6 +98,10 @@ func mapStructToFields(fields map[string]graphcall.Field, s interface{}) mapSlic
 			value = formatValue(filedValue)
 		default:
 			switch fieldKind {
+			case reflect.Ptr:
+				if filedValue = v.Field(i).Elem().Interface(); filedValue != nil {
+					value = mapStructToFields(field.Fields, filedValue)
+				}
 			case reflect.Slice:
 				value = mapSliceToFields(field.Fields, filedValue)
 			case reflect.Struct:

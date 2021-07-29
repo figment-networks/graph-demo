@@ -46,7 +46,7 @@ func (ng *CosmosHTTPTransport) GetAll(ctx context.Context, height uint64) (bTx s
 		return structs.BlockAndTx{}, err
 	}
 
-	ng.log.Debug("[HTTP] Got a block", zap.Uint64("height", height), zap.Uint64("txs", bTx.Block.NumberOfTransactions))
+	ng.log.Debug("[HTTP] Got a block", zap.Uint64("height", height), zap.Int("txs", len(bTx.Block.Data.Txs)))
 
 	return structs.BlockAndTx{
 		Block:        bTx.Block,
@@ -75,7 +75,7 @@ func (ng *CosmosHTTPTransport) GetLatest(ctx context.Context) (bTx structs.Block
 		return structs.BlockAndTx{}, err
 	}
 
-	ng.log.Debug("[HTTP] Got latest block", zap.Uint64("height", bTx.Block.Height), zap.Uint64("txs", bTx.Block.NumberOfTransactions))
+	ng.log.Debug("[HTTP] Got latest block", zap.Int64("height", bTx.Block.Header.Height), zap.Int("txs", len(bTx.Block.Data.Txs)))
 
 	return structs.BlockAndTx{
 		Block:        bTx.Block,

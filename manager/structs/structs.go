@@ -24,14 +24,14 @@ type BlockAndTx struct {
 type Block struct {
 	// Hash of the Block
 	Hash string `json:"hash,omitempty"`
-	// Height of the Block
-	Height uint64 `json:"height,omitempty"`
-	// Time of the Block
-	Time time.Time `json:"time,omitempty"`
-	// ChainID
-	ChainID string `json:"chain_id,omitempty"`
-	// Number of transactions
-	NumberOfTransactions uint64 `json:"tx_num,omitempty"`
+	// // Height of the Block
+	// Height uint64 `json:"height,omitempty"`
+	// // Time of the Block
+	// Time time.Time `json:"time,omitempty"`
+	// // ChainID
+	// ChainID string `json:"chain_id,omitempty"`
+	// // Number of transactions
+	// NumberOfTransactions uint64 `json:"tx_num,omitempty"`
 
 	Header     BlockHeader       `json:"header"`
 	Data       BlockData         `json:"data"`
@@ -83,9 +83,9 @@ type Commit struct {
 // CommitSig is a part of the Vote included in a Commit.
 type CommitSig struct {
 	BlockIdFlag      int32     `json:"block_id_flag,omitempty"`
-	ValidatorAddress []byte    `json:"validator_address,omitempty"`
+	ValidatorAddress string    `json:"validator_address,omitempty"`
 	Timestamp        time.Time `json:"timestamp"`
-	Signature        []byte    `json:"signature,omitempty"`
+	Signature        string    `json:"signature,omitempty"`
 }
 
 // Data contains the set of transactions included in the block
