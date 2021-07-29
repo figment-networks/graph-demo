@@ -90,16 +90,21 @@ func mapStructToFields(fields map[string]graphcall.Field, s interface{}) mapSlic
 		}
 
 		filedValue := v.Field(i).Interface()
+		fieldType := reflect.TypeOf(filedValue)
+		fieldKind := fieldType.Kind()
 
-		fieldKind := reflect.TypeOf(filedValue).Kind()
-
-		switch fieldKind {
-		case reflect.Slice:
-			value = mapSliceToFields(field.Fields, filedValue)
-		case reflect.Struct:
-			value = mapStructToFields(field.Fields, filedValue)
-		default:
+		switch fieldType {
+		case reflect.TypeOf(time.Time{}), reflect.TypeOf([][]uint8{}):
 			value = formatValue(filedValue)
+		default:
+			switch fieldKind {
+			case reflect.Slice:
+				value = mapSliceToFields(field.Fields, filedValue)
+			case reflect.Struct:
+				value = mapStructToFields(field.Fields, filedValue)
+			default:
+				value = formatValue(filedValue)
+			}
 		}
 
 		order := field.Order
@@ -144,6 +149,13 @@ func formatValue(v interface{}) (val interface{}) {
 		val = v.(uuid.UUID).String()
 	case reflect.TypeOf(time.Time{}):
 		val = v.(time.Time).Unix()
+	case reflect.TypeOf([][]uint8{}):
+		value := v.([][]uint8)
+		sliceVal := make([]string, len(value))
+		for i, byteSlice := range value {
+			sliceVal[i] = fmt.Sprintf("%x", byteSlice)
+		}
+		val = sliceVal
 	default:
 		val = v
 	}

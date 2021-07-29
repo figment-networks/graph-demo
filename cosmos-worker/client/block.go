@@ -3,10 +3,10 @@ package client
 import (
 	"context"
 
+	"github.com/figment-networks/graph-demo/cosmos-worker/client/mapper"
 	"github.com/figment-networks/graph-demo/manager/structs"
 
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
-	"github.com/tendermint/tendermint/libs/bytes"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -28,45 +28,7 @@ func (c *Client) GetAll(ctx context.Context, height uint64) (er error) {
 
 	c.log.Debug("[COSMOS-WORKER] Got block", zap.Uint64("height", height))
 
-	block := structs.Block{
-		Hash:    bytes.HexBytes(b.BlockId.Hash).String(),
-		Height:  uint64(b.Block.Header.Height),
-		Time:    b.Block.Header.Time,
-		ChainID: b.Block.Header.ChainID,
-
-		Header: structs.BlockHeader{
-			Version: structs.Consensus(b.Block.Header.Version),
-			ChainID: b.Block.Header.ChainID,
-			Time:    b.Block.Header.Time,
-			Height:  b.Block.Header.Height,
-			LastBlockId: structs.BlockID{
-				Hash: bytes.HexBytes(b.Block.Header.LastBlockId.Hash).String(),
-			},
-			LastCommitHash:     bytes.HexBytes(b.Block.Header.LastCommitHash).String(),
-			DataHash:           bytes.HexBytes(b.Block.Header.DataHash).String(),
-			ValidatorsHash:     bytes.HexBytes(b.Block.Header.ValidatorsHash).String(),
-			NextValidatorsHash: bytes.HexBytes(b.Block.Header.NextValidatorsHash).String(),
-			ConsensusHash:      bytes.HexBytes(b.Block.Header.ConsensusHash).String(),
-			AppHash:            bytes.HexBytes(b.Block.Header.AppHash).String(),
-			LastResultsHash:    bytes.HexBytes(b.Block.Header.LastResultsHash).String(),
-			EvidenceHash:       bytes.HexBytes(b.Block.Header.EvidenceHash).String(),
-			ProposerAddress:    bytes.HexBytes(b.Block.Header.ProposerAddress).String(),
-		},
-		Data: structs.BlockData{
-			Txs: b.Block.Data.Txs,
-		},
-		LastCommit: &structs.Commit{
-			Height: b.Block.LastCommit.Height,
-			Round:  b.Block.LastCommit.Round,
-			BlockID: structs.BlockID{
-				Hash: bytes.HexBytes(b.Block.LastCommit.BlockID.Hash).String(),
-				PartSetHeader: structs.PartSetHeader{
-					Total: b.Block.LastCommit.BlockID.PartSetHeader.Total,
-					Hash:  bytes.HexBytes(b.Block.LastCommit.BlockID.PartSetHeader.Hash).String(),
-				}},
-		},
-		NumberOfTransactions: uint64(len(b.Block.Data.Txs)),
-	}
+	block := mapper.BlockMapper(b)
 
 	if c.persistor != nil {
 		if err := c.persistor.StoreBlock(ctx, block); err != nil {
