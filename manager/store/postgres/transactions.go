@@ -1,14 +1,11 @@
 package postgres
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 
 	"github.com/figment-networks/graph-demo/manager/structs"
-	"github.com/lib/pq"
 )
 
 const (
@@ -36,37 +33,37 @@ const (
 
 // StoreTransactions adds transactions to storage buffer
 func (d *Driver) StoreTransactions(ctx context.Context, txs []structs.Transaction) error {
-	var fee []byte
-	buff := &bytes.Buffer{}
-	enc := json.NewEncoder(buff)
+	// var fee []byte
+	// buff := &bytes.Buffer{}
+	// enc := json.NewEncoder(buff)
 
 	tx, err := d.db.Begin()
 	if err != nil {
 		return err
 	}
 
-	for _, t := range txs {
+	// for _, t := range txs {
 
-		if err := enc.Encode(t.Events); err != nil {
-			return err
-		}
+	// 	if err := enc.Encode(t.Events); err != nil {
+	// 		return err
+	// 	}
 
-		af := getTransactionAdditionalFields(t)
+	// 	af := getTransactionAdditionalFields(t)
 
-		if t.Fee != nil {
-			fee, err = json.Marshal(t.Fee)
-			if err != nil {
-				fee = []byte("{}")
-			}
-		} else {
-			fee = []byte("{}")
-		}
+	// 	if t.Fee != nil {
+	// 		fee, err = json.Marshal(t.Fee)
+	// 		if err != nil {
+	// 			fee = []byte("{}")
+	// 		}
+	// 	} else {
+	// 		fee = []byte("{}")
+	// 	}
 
-		if err := d.storeTx(ctx, d.db, t, fee, buff, af); err != nil {
-			return err
-		}
+	// 	if err := d.storeTx(ctx, d.db, t, fee, buff, af); err != nil {
+	// 		return err
+	// 	}
 
-	}
+	// }
 
 	return tx.Commit()
 }
@@ -79,108 +76,108 @@ type additionalFields struct {
 }
 
 func getTransactionAdditionalFields(tx structs.Transaction) (af additionalFields) {
-	for _, ev := range tx.Events {
-		for _, sub := range ev.Sub {
-			if len(sub.Recipient) > 0 {
-				af.parties = uniqueEntriesEvTransfer(sub.Recipient, af.parties)
-				af.recipients = uniqueEntriesEvTransfer(sub.Recipient, af.recipients)
-			}
-			if len(sub.Sender) > 0 {
-				af.parties = uniqueEntriesEvTransfer(sub.Sender, af.parties)
-				af.senders = uniqueEntriesEvTransfer(sub.Sender, af.senders)
-			}
+	// for _, ev := range tx.Events {
+	// 	for _, sub := range ev.Sub {
+	// 		if len(sub.Recipient) > 0 {
+	// 			af.parties = uniqueEntriesEvTransfer(sub.Recipient, af.parties)
+	// 			af.recipients = uniqueEntriesEvTransfer(sub.Recipient, af.recipients)
+	// 		}
+	// 		if len(sub.Sender) > 0 {
+	// 			af.parties = uniqueEntriesEvTransfer(sub.Sender, af.parties)
+	// 			af.senders = uniqueEntriesEvTransfer(sub.Sender, af.senders)
+	// 		}
 
-			if len(sub.Node) > 0 {
-				for _, accounts := range sub.Node {
-					af.parties = uniqueEntriesAccount(accounts, af.parties)
-				}
-			}
+	// 		if len(sub.Node) > 0 {
+	// 			for _, accounts := range sub.Node {
+	// 				af.parties = uniqueEntriesAccount(accounts, af.parties)
+	// 			}
+	// 		}
 
-			if sub.Error != nil {
-				af.types = uniqueEntry("error", af.types)
-			}
+	// 		if sub.Error != nil {
+	// 			af.types = uniqueEntry("error", af.types)
+	// 		}
 
-			af.types = uniqueEntries(sub.Type, af.types)
-		}
-		af.types = uniqueEntries(ev.Type, af.types)
-	}
+	// 		af.types = uniqueEntries(sub.Type, af.types)
+	// 	}
+	// 	af.types = uniqueEntries(ev.Type, af.types)
+	// }
 
 	return
 }
 
-func uniqueEntriesEvTransfer(in []structs.EventTransfer, out []string) []string {
-	for _, r := range in { // (lukanus): faster than a map :)
-		var exists bool
-	Inner:
-		for _, re := range out {
-			if r.Account.ID == re {
-				exists = true
-				break Inner
-			}
-		}
-		if !exists {
-			out = append(out, r.Account.ID)
-		}
-	}
-	return out
-}
+// func uniqueEntriesEvTransfer(in []structs.EventTransfer, out []string) []string {
+// 	for _, r := range in { // (lukanus): faster than a map :)
+// 		var exists bool
+// 	Inner:
+// 		for _, re := range out {
+// 			if r.Account.ID == re {
+// 				exists = true
+// 				break Inner
+// 			}
+// 		}
+// 		if !exists {
+// 			out = append(out, r.Account.ID)
+// 		}
+// 	}
+// 	return out
+// }
 
-func uniqueEntriesAccount(in []structs.Account, out []string) []string {
-	for _, r := range in { // (lukanus): faster than a map :)
-		var exists bool
-	Inner:
-		for _, re := range out {
-			if r.ID == re {
-				exists = true
-				break Inner
-			}
-		}
-		if !exists {
-			out = append(out, r.ID)
-		}
-	}
-	return out
-}
+// func uniqueEntriesAccount(in []structs.Account, out []string) []string {
+// 	for _, r := range in { // (lukanus): faster than a map :)
+// 		var exists bool
+// 	Inner:
+// 		for _, re := range out {
+// 			if r.ID == re {
+// 				exists = true
+// 				break Inner
+// 			}
+// 		}
+// 		if !exists {
+// 			out = append(out, r.ID)
+// 		}
+// 	}
+// 	return out
+// }
 
-func uniqueEntry(in string, out []string) []string {
-	if in == "" {
-		return out
-	}
-	for _, re := range out {
-		if in == re {
-			return out
-		}
-	}
-	return append(out, in)
-}
+// func uniqueEntry(in string, out []string) []string {
+// 	if in == "" {
+// 		return out
+// 	}
+// 	for _, re := range out {
+// 		if in == re {
+// 			return out
+// 		}
+// 	}
+// 	return append(out, in)
+// }
 
-func uniqueEntries(in, out []string) []string {
-	for _, r := range in { // (lukanus): faster than a map :)
-		if r == "" {
-			continue
-		}
-		var exists bool
-	Inner:
-		for _, re := range out {
-			if r == re {
-				exists = true
-				break Inner
-			}
-		}
-		if !exists {
-			out = append(out, r)
-		}
-	}
-	return out
-}
+// func uniqueEntries(in, out []string) []string {
+// 	for _, r := range in { // (lukanus): faster than a map :)
+// 		if r == "" {
+// 			continue
+// 		}
+// 		var exists bool
+// 	Inner:
+// 		for _, re := range out {
+// 			if r == re {
+// 				exists = true
+// 				break Inner
+// 			}
+// 		}
+// 		if !exists {
+// 			out = append(out, r)
+// 		}
+// 	}
+// 	return out
+// }
 
 func (d *Driver) storeTx(ctx context.Context, db *sql.DB, t structs.Transaction, fee []byte, events fmt.Stringer, af additionalFields) error {
 
 	// TODO(lukanus): store  REAL transation
-	_, err := d.db.ExecContext(ctx, txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, fee, t.GasWanted, t.GasUsed, t.Memo, events.String(),
-		t.Raw, t.RawLog, t.HasErrors, pq.Array(af.types), pq.Array(af.parties), pq.Array(af.senders), pq.Array(af.recipients))
+	// _, err := d.db.ExecContext(ctx, txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, fee, t.GasWanted, t.GasUsed, t.Memo, events.String(),
+	// 	t.Raw, t.RawLog, t.HasErrors, pq.Array(af.types), pq.Array(af.parties), pq.Array(af.senders), pq.Array(af.recipients))
 
-	return err
+	return nil
 }
 
 // Removes ASCII hex 0-7 causing utf-8 error in db
@@ -203,29 +200,29 @@ func (d *Driver) GetTransactionsByHeight(ctx context.Context, height uint64, cha
 		return nil, sql.ErrNoRows
 	}
 
-	br := &bytes.Reader{}
-	feeDec := json.NewDecoder(br)
+	// br := &bytes.Reader{}
+	// feeDec := json.NewDecoder(br)
 
-	for rows.Next() {
-		var tx structs.Transaction
+	// for rows.Next() {
+	// 	var tx structs.Transaction
 
-		byteFee := []byte{}
+	// 	byteFee := []byte{}
 
-		err = rows.Scan(&tx.ChainID, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &byteFee, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.Raw, &tx.HasErrors)
-		if err != nil {
-			return nil, err
-		}
+	// 	err = rows.Scan(&tx.ChainID, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &byteFee, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.Raw, &tx.HasErrors)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		br.Reset(byteFee)
-		feeDec.Decode(&tx.Fee)
-		byteFee = nil
+	// 	br.Reset(byteFee)
+	// 	feeDec.Decode(&tx.Fee)
+	// 	byteFee = nil
 
-		if err != nil {
-			return nil, err
-		}
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		txs = append(txs, tx)
-	}
+	// 	txs = append(txs, tx)
+	// }
 
 	return txs, nil
 }
