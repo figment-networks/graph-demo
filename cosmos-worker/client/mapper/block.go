@@ -1,8 +1,6 @@
 package mapper
 
 import (
-	"fmt"
-
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
 	"github.com/figment-networks/graph-demo/manager/structs"
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -12,16 +10,15 @@ import (
 func BlockMapper(b *tmservice.GetBlockByHeightResponse) structs.Block {
 	bHeader := b.Block.Header
 
-	for _, evidence := range b.Block.Evidence.GetEvidence() {
-		fmt.Println(evidence)
-	}
-
 	return structs.Block{
-		Hash: bytes.HexBytes(b.BlockId.Hash).String(),
+		Hash:    bytes.HexBytes(b.BlockId.Hash).String(),
+		Height:  uint64(bHeader.Height),
+		Time:    bHeader.Time,
+		ChainID: bHeader.ChainID,
 		Data: structs.BlockData{
 			Txs: b.Block.Data.Txs,
 		},
-		// Evidence: ,
+		Evidence: getEvidence(b.Block.Evidence.GetEvidence()),
 		Header: structs.BlockHeader{
 			Version: structs.Consensus(bHeader.Version),
 			ChainID: bHeader.ChainID,
@@ -44,11 +41,19 @@ func BlockMapper(b *tmservice.GetBlockByHeightResponse) structs.Block {
 			EvidenceHash:       bytes.HexBytes(bHeader.EvidenceHash).String(),
 			ProposerAddress:    bytes.HexBytes(bHeader.ProposerAddress).String(),
 		},
-		LastCommit: lastCommit(b.Block.LastCommit),
+		LastCommit: getLastCommit(b.Block.LastCommit),
 	}
 }
 
-func lastCommit(c *types.Commit) *structs.Commit {
+func getEvidence(evidences []types.Evidence) []structs.BlockEvidence {
+	evidenceList := make([]structs.BlockEvidence, len(evidences))
+	for i, evidence := range evidences {
+		evidenceList[i] = structs.BlockEvidence(evidence.String())
+	}
+	return evidenceList
+}
+
+func getLastCommit(c *types.Commit) *structs.Commit {
 	if c == nil {
 		return nil
 	}

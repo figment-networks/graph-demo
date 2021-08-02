@@ -12,6 +12,8 @@ var (
 	ErrNotFound = errors.New("record not found")
 )
 
+type BlockEvidence string
+
 type QueriesResp map[string]map[uint64]BlockAndTx
 type BlockAndTx struct {
 	BlockID      BlockID       `json:"block_id,omitempty"`
@@ -23,19 +25,17 @@ type BlockAndTx struct {
 type Block struct {
 	// Hash of the Block
 	Hash string `json:"hash,omitempty"`
-	// // Height of the Block
-	// Height uint64 `json:"height,omitempty"`
-	// // Time of the Block
-	// Time time.Time `json:"time,omitempty"`
-	// // ChainID
-	// ChainID string `json:"chain_id,omitempty"`
-	// // Number of transactions
-	// NumberOfTransactions uint64 `json:"tx_num,omitempty"`
+	// Height of the Block
+	Height uint64 `json:"height,omitempty"`
+	// Time of the Block
+	Time time.Time `json:"time,omitempty"`
+	// ChainID
+	ChainID string `json:"chain_id,omitempty"`
 
-	Header     BlockHeader       `json:"header"`
-	Data       BlockData         `json:"data"`
-	Evidence   BlockEvidenceList `json:"evidence"`
-	LastCommit *Commit           `json:"last_commit,omitempty"`
+	Header     BlockHeader     `json:"header"`
+	Data       BlockData       `json:"data"`
+	Evidence   []BlockEvidence `json:"evidence,omitempty"`
+	LastCommit *Commit         `json:"last_commit,omitempty"`
 }
 
 type BlockHeader struct {
@@ -58,17 +58,6 @@ type BlockHeader struct {
 	// consensus info
 	EvidenceHash    string `json:"evidence_hash,omitempty"`
 	ProposerAddress string `json:"proposer_address,omitempty"`
-}
-
-type BlockEvidenceList struct {
-	Evidence []BlockEvidence `json:"evidence"`
-}
-
-type BlockEvidence struct {
-	// Types that are valid to be assigned to Sum:
-	//	*Evidence_DuplicateVoteEvidence
-	//	*Evidence_LightClientAttackEvidence
-	//Sum isEvidence_Sum `protobuf_oneof:"sum"`
 }
 
 // Commit contains the evidence that a block was committed by a set of validators.
@@ -122,14 +111,14 @@ type Transaction struct {
 	// Updated at
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 
+	// ChainID - chain id of transacion
+	ChainID string `json:"chain_id,omitempty"`
+	// Height - height of the block of transaction
+	Height uint64 `json:"height,omitempty"`
 	// Hash of the transaction
 	Hash string `json:"hash,omitempty"`
 	// BlockHash - hash of the block of transaction
 	BlockHash string `json:"block_hash,omitempty"`
-	// Height - height of the block of transaction
-	Height uint64 `json:"height,omitempty"`
-	// ChainID - chain id of transacion
-	ChainID string `json:"chain_id,omitempty"`
 	// Time - time of transaction
 	Time time.Time `json:"time,omitempty"`
 
@@ -137,37 +126,33 @@ type Transaction struct {
 	CodeSpace string `json:"code_space,omitempty"`
 
 	Code uint64 `json:"code,omitempty"`
-
-	Result string `json:"result,omitempty"`
-
-	Logs []Log `json:"logs,omitempty"`
-
-	Info string `json:"info,omitempty"`
-
-	TxRaw Any `json:"tx_bytes,omitempty"`
-
-	Messages []Message `json:"messages,omitempty"`
-
-	ExtensionOptions []Any `json:"extension_options,omitempty"`
-
-	NonCriticalExtensionOptions []Any `json:"non_critical_extension_options,omitempty"`
-
-	AuthInfo *AuthInfo `json:"auth_info,omitempty"`
-
-	Signatures []string `json:"signatures,omitempty"`
-
 	// GasWanted
 	GasWanted uint64 `json:"gas_wanted,omitempty"`
 	// GasUsed
 	GasUsed uint64 `json:"gas_used,omitempty"`
+
+	Info string `json:"info,omitempty"`
 	// Memo - the description attached to transactions
 	Memo string `json:"memo,omitempty"`
 
-	// // Raw - Raw transaction bytes
-	// Raw []byte `json:"raw,omitempty"`
+	Result string `json:"result,omitempty"`
+
+	Signatures []string `json:"signatures,omitempty"`
+
+	AuthInfo *AuthInfo `json:"auth_info,omitempty"`
+
+	ExtensionOptions []ExtensionOptions `json:"extension_options,omitempty"`
+
+	Logs []Log `json:"logs,omitempty"`
+
+	Messages []Message `json:"messages,omitempty"`
+
+	NonCriticalExtensionOptions []NonCriticalExtensionOptions `json:"non_critical_extension_options,omitempty"`
 
 	// RawLog - RawLog transaction's log bytes
 	RawLog []byte `json:"raw_log,omitempty"`
+	// TxRaw - Raw transaction bytes
+	TxRaw TxRaw `json:"tx_raw,omitempty"`
 }
 
 type Log struct {
@@ -184,6 +169,21 @@ type Message struct {
 type Event struct {
 	Type       string            `json:"type,omitempty"`
 	Attributes map[string]string `json:"attributes,omitempty"`
+}
+
+type TxRaw struct {
+	TxRaw []byte `json:"message,omietmpty"`
+	Raw   Any    `json:"raw,omitempty"`
+}
+
+type ExtensionOptions struct {
+	ExtensionOption []byte `json:"extension_option,omitempty"`
+	Raw             Any    `json:"raw,omitempty"`
+}
+
+type NonCriticalExtensionOptions struct {
+	NonCriticalExtensionOption []byte `json:"non_critical_extension_option,omitempty"`
+	Raw                        Any    `json:"raw,omitempty"`
 }
 
 type Any struct {

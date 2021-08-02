@@ -163,8 +163,9 @@ func getHeightsToFetchByChain(params map[string]graphcall.Part) (chainID string,
 		return chainID, []uint64{startHeight}, nil
 	}
 
-	heights = make([]uint64, endHeight-startHeight+1)
-	for i = 0; i < endHeight-startHeight+1; i++ {
+	hLen := endHeight - startHeight + 1
+	heights = make([]uint64, hLen)
+	for i = 0; i < hLen; i++ {
 		heights[i] = startHeight + i
 	}
 

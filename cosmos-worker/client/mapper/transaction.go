@@ -3,6 +3,7 @@ package mapper
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/figment-networks/graph-demo/manager/structs"
 
@@ -29,7 +30,6 @@ func TransactionMapper(ctx context.Context, in *tx.Tx, resp *types.TxResponse, b
 		Signatures: signatures(in.Signatures),
 		GasWanted:  uint64(resp.GasWanted),
 		GasUsed:    uint64(resp.GasUsed),
-		Time:       tx.Time,
 	}
 
 	if resp.RawLog != "" {
@@ -38,15 +38,17 @@ func TransactionMapper(ctx context.Context, in *tx.Tx, resp *types.TxResponse, b
 		tx.RawLog = []byte(resp.Logs.String())
 	}
 
-	// tx.Raw, err = in.Marshal()
-	// if err != nil {
-	// 	return structs.Transaction{}, errors.New("error marshaling tx to raw")
-	// }
-
 	if txBytes := resp.Tx; txBytes != nil {
-		tx.TxRaw = structs.Any{
-			TypeURL: txBytes.TypeUrl,
-			Value:   txBytes.Value,
+		txRaw, err := parseMessage(txBytes.Value, txBytes.TypeUrl)
+		if err != nil {
+			return structs.Transaction{}, err
+		}
+		tx.TxRaw = structs.TxRaw{
+			TxRaw: txRaw,
+			Raw: structs.Any{
+				TypeURL: txBytes.TypeUrl,
+				Value:   txBytes.Value,
+			},
 		}
 	}
 
@@ -69,6 +71,11 @@ func TransactionMapper(ctx context.Context, in *tx.Tx, resp *types.TxResponse, b
 
 	if tx.NonCriticalExtensionOptions != nil {
 		fmt.Println(tx.NonCriticalExtensionOptions)
+	}
+
+	tx.Time, err = time.Parse(time.RFC3339, resp.Timestamp)
+	if err != nil {
+		return tx, err
 	}
 
 	return tx, nil
@@ -141,16 +148,19 @@ func signers(signerInfos []*tx.SignerInfo) ([]structs.SignerInfo, error) {
 	return signers, nil
 }
 
-func extensionOptions(extensionOptions []*codectypes.Any) []structs.Any {
+func extensionOptions(extensionOptions []*codectypes.Any) []structs.ExtensionOptions {
 	if extensionOptions == nil {
 		return nil
 	}
 
-	eos := make([]structs.Any, len(extensionOptions))
+	eos := make([]structs.ExtensionOptions, len(extensionOptions))
 	for i, eo := range extensionOptions {
-		eos[i] = structs.Any{
-			TypeURL: eo.TypeUrl,
-			Value:   eo.Value,
+		eos[i] = structs.ExtensionOptions{
+			ExtensionOption: nil,
+			Raw: structs.Any{
+				TypeURL: eo.TypeUrl,
+				Value:   eo.Value,
+			},
 		}
 	}
 	return eos
@@ -181,16 +191,19 @@ func messages(txMsgs []*codectypes.Any) ([]structs.Message, error) {
 	return msgs, nil
 }
 
-func nonCriticalExtensionOptions(txNceos []*codectypes.Any) []structs.Any {
+func nonCriticalExtensionOptions(txNceos []*codectypes.Any) []structs.NonCriticalExtensionOptions {
 	if txNceos == nil {
 		return nil
 	}
 
-	nceos := make([]structs.Any, len(txNceos))
+	nceos := make([]structs.NonCriticalExtensionOptions, len(txNceos))
 	for i, nceo := range txNceos {
-		nceos[i] = structs.Any{
-			TypeURL: nceo.TypeUrl,
-			Value:   nceo.Value,
+		nceos[i] = structs.NonCriticalExtensionOptions{
+			NonCriticalExtensionOption: nil,
+			Raw: structs.Any{
+				TypeURL: nceo.TypeUrl,
+				Value:   nceo.Value,
+			},
 		}
 	}
 
