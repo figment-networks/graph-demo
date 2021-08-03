@@ -3,10 +3,9 @@ package client
 import (
 	"context"
 
-	"github.com/figment-networks/graph-demo/manager/structs"
+	"github.com/figment-networks/graph-demo/cosmos-worker/client/mapper"
 
 	"github.com/cosmos/cosmos-sdk/client/grpc/tmservice"
-	"github.com/tendermint/tendermint/libs/bytes"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -28,41 +27,7 @@ func (c *Client) GetAll(ctx context.Context, height uint64) (er error) {
 
 	c.log.Debug("[COSMOS-WORKER] Got block", zap.Uint64("height", height))
 
-	block := structs.Block{
-		Hash:    bytes.HexBytes(b.BlockId.Hash).String(),
-		Height:  uint64(b.Block.Header.Height),
-		Time:    b.Block.Header.Time,
-		ChainID: b.Block.Header.ChainID,
-
-		Header: structs.BlockHeader{
-			ChainID: b.Block.Header.ChainID,
-			Time:    b.Block.Header.Time,
-			Height:  b.Block.Header.Height,
-			LastBlockId: structs.BlockID{
-				Hash: b.Block.Header.LastBlockId.Hash,
-			},
-			LastCommitHash:     b.Block.Header.LastCommitHash,
-			DataHash:           b.Block.Header.DataHash,
-			ValidatorsHash:     b.Block.Header.ValidatorsHash,
-			NextValidatorsHash: b.Block.Header.NextValidatorsHash,
-			ConsensusHash:      b.Block.Header.ConsensusHash,
-			AppHash:            b.Block.Header.AppHash,
-			LastResultsHash:    b.Block.Header.LastResultsHash,
-			EvidenceHash:       b.Block.Header.EvidenceHash,
-			ProposerAddress:    b.Block.Header.ProposerAddress,
-		},
-		Data: structs.BlockData{
-			Txs: b.Block.Data.Txs,
-		},
-		LastCommit: &structs.Commit{
-			Height: b.Block.LastCommit.Height,
-			Round:  b.Block.LastCommit.Round,
-			BlockID: structs.BlockID{
-				Hash:          b.Block.LastCommit.BlockID.Hash,
-				PartSetHeader: structs.PartSetHeader(b.Block.LastCommit.BlockID.PartSetHeader),
-			},
-		},
-	}
+	block := mapper.BlockMapper(b)
 
 	if c.persistor != nil {
 		if err := c.persistor.StoreBlock(ctx, block); err != nil {
@@ -88,7 +53,7 @@ func (c *Client) GetAll(ctx context.Context, height uint64) (er error) {
 }
 
 // GetBlock fetches most recent block from chain
-func (c *Client) GetLatest(ctx context.Context) (bl structs.Block, er error) {
+func (c *Client) GetLatest(ctx context.Context) (uint64, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.cfg.TimeoutBlockCall)
 	defer cancel()
 
@@ -97,11 +62,11 @@ func (c *Client) GetLatest(ctx context.Context) (bl structs.Block, er error) {
 	b, err := c.tmServiceClient.GetLatestBlock(ctx, &tmservice.GetLatestBlockRequest{}, grpc.WaitForReady(true))
 	if err != nil {
 		c.log.Debug("[COSMOS-CLIENT] Error getting latest block", zap.Error(err))
-		return bl, err
+		return 0, err
 	}
 
 	c.log.Debug("[COSMOS-CLIENT] Got latest block", zap.Uint64("height", uint64(b.Block.Header.Height)))
 
-	return structs.Block{Height: uint64(b.Block.Header.Height)}, nil
+	return uint64(b.Block.Header.Height), nil
 
 }

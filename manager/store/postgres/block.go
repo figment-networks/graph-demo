@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	insertBlock = `INSERT INTO public.blocks("chain_id", "height", "hash", "time", "header", "data", "evidence", "last_commit", "numtxs") VALUES
-	($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	insertBlock = `INSERT INTO public.blocks("chain_id", "height", "hash", "time", "header", "data", "evidence", "last_commit") VALUES
+	($1, $2, $3, $4, $5, $6, $7, $8)
 	ON CONFLICT (chain_id, hash)
 	DO UPDATE SET
 	height = EXCLUDED.height,
@@ -20,9 +20,9 @@ const (
 	header = EXCLUDED.header,
 	data = EXCLUDED.data,
 	evidence = EXCLUDED.evidence,
-	last_commit = EXCLUDED.last_commit,
-	numtxs = EXCLUDED.numtxs
-	`
+	last_commit = EXCLUDED.last_commit`
+
+	selectBlock = `SELECT hash, time, header, data, evidence, last_commit FROM public.blocks WHERE chain_id = $1 AND height = $2`
 )
 
 // StoreBlock appends data to buffer
@@ -43,18 +43,18 @@ func (d *Driver) StoreBlock(ctx context.Context, b structs.Block) error {
 		return err
 	}
 
-	lastCommit, err := json.Marshal(&b.LastCommit)
+	lastCommit, err := json.Marshal(*b.LastCommit)
 	if err != nil {
 		return err
 	}
 
-	_, err = d.db.Exec(insertBlock, b.ChainID, b.Height, b.Hash, b.Time, header, data, evidence, lastCommit, b.NumberOfTransactions)
+	_, err = d.db.Exec(insertBlock, b.ChainID, b.Height, b.Hash, b.Time, header, data, evidence, lastCommit)
 	return err
 }
 
 func (d *Driver) GetBlockByHeight(ctx context.Context, height uint64, chainID string) (b structs.Block, err error) {
 
-	row := d.db.QueryRowContext(ctx, `SELECT chain_id, height, hash, time, header, data, evidence, last_commit, numtxs FROM public.blocks WHERE chain_id = $1 AND height = $2`, chainID, height)
+	row := d.db.QueryRowContext(ctx, selectBlock, chainID, height)
 
 	var (
 		header []byte
@@ -63,7 +63,12 @@ func (d *Driver) GetBlockByHeight(ctx context.Context, height uint64, chainID st
 		lc     []byte
 	)
 
-	if err = row.Scan(&b.ChainID, &b.Height, &b.Hash, &b.Time, &header, &data, &ev, &lc, &b.NumberOfTransactions); err != nil {
+	b = structs.Block{
+		Height:  height,
+		ChainID: chainID,
+	}
+
+	if err = row.Scan(&b.Hash, &b.Time, &header, &data, &ev, &lc); err != nil {
 		return b, fmt.Errorf("%s, height: %d", err.Error(), height)
 	}
 
@@ -79,9 +84,13 @@ func (d *Driver) GetBlockByHeight(ctx context.Context, height uint64, chainID st
 		return b, err
 	}
 
-	if err = json.Unmarshal(data, &b.LastCommit); err != nil {
-		return b, err
+	if lc != nil {
+		b.LastCommit = &structs.Commit{}
+		if err = json.Unmarshal(lc, b.LastCommit); err != nil {
+			return b, err
+		}
 	}
+
 	return b, err
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"reflect"
 	"strings"
 	"time"
@@ -89,20 +90,30 @@ func mapStructToFields(fields map[string]graphcall.Field, s interface{}) mapSlic
 			continue
 		}
 
-		fieldType := reflect.TypeOf(v.Field(i).Interface())
+		filedValue := v.Field(i).Interface()
+		fieldType := reflect.TypeOf(filedValue)
 		fieldKind := fieldType.Kind()
 
 		switch fieldType {
 		case reflect.TypeOf(time.Time{}):
-			value = formatValue(v.Field(i).Interface())
+			value = formatValue(fieldName, filedValue)
 		default:
 			switch fieldKind {
+			case reflect.Ptr:
+				if filedValue = v.Field(i).Elem().Interface(); filedValue != nil {
+					value = mapStructToFields(field.Fields, filedValue)
+				}
 			case reflect.Slice:
-				value = mapSliceToFields(field.Fields, v.Field(i).Interface())
+				if reflect.TypeOf(filedValue).Elem().Kind() == reflect.Struct {
+					value = mapSliceToFields(field.Fields, filedValue)
+				} else {
+					value = formatValue(fieldName, filedValue)
+				}
+
 			case reflect.Struct:
-				value = mapStructToFields(field.Fields, v.Field(i).Interface())
+				value = mapStructToFields(field.Fields, filedValue)
 			default:
-				value = formatValue(v.Field(i).Interface())
+				value = formatValue(fieldName, filedValue)
 			}
 		}
 
@@ -142,17 +153,38 @@ func nameIsStrict(name string) bool {
 	return name == "id"
 }
 
-func formatValue(v interface{}) (val interface{}) {
+func formatValue(fieldName string, v interface{}) (val interface{}) {
 	switch reflect.TypeOf(v) {
+	case reflect.TypeOf(&big.Int{}):
+		val = v.(*big.Int).String()
 	case reflect.TypeOf(uuid.UUID{}):
 		val = v.(uuid.UUID).String()
 	case reflect.TypeOf(time.Time{}):
 		val = v.(time.Time).Unix()
+	case reflect.TypeOf([]uint8{}):
+		formatStr := "%x"
+		if isJsonField(fieldName) {
+			formatStr = "%s"
+		}
+		value := v.([]uint8)
+		val = fmt.Sprintf(formatStr, value)
+	case reflect.TypeOf([][]uint8{}):
+		value := v.([][]uint8)
+		sliceVal := make([]string, len(value))
+		for i, byteSlice := range value {
+			sliceVal[i] = fmt.Sprintf("%x", byteSlice)
+		}
+		val = sliceVal
 	default:
 		val = v
 	}
 
 	return
+}
+
+func isJsonField(fieldName string) bool {
+	return fieldName == "message" || fieldName == "txraw" || fieldName == "extensionoptions" ||
+		fieldName == "noncriticalextensionoptions" || fieldName == "rawlog"
 }
 
 func mapSliceToFields(fields map[string]graphcall.Field, s interface{}) []mapSlice {

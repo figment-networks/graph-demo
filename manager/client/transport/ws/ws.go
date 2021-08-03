@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	wsapi "github.com/figment-networks/graph-demo/connectivity/ws"
-	"github.com/figment-networks/graph-demo/manager/structs"
 )
 
 type CosmosWSTransport struct {
@@ -30,16 +29,16 @@ func (ng *CosmosWSTransport) GetAll(ctx context.Context, height uint64) (err err
 	return nil
 }
 
-func (ng *CosmosWSTransport) GetLatest(ctx context.Context) (b structs.Block, err error) {
+func (ng *CosmosWSTransport) GetLatest(ctx context.Context) (h uint64, err error) {
 	resp, err := ng.sess.SendSync("get_latest", nil)
 	if err != nil {
-		return b, err
+		return h, err
 	}
 
-	if err = json.Unmarshal(resp.Result, &b); err != nil {
-		return b, err
+	if err = json.Unmarshal(resp.Result, &h); err != nil {
+		return h, err
 	}
 
-	return b, nil
+	return h, nil
 
 }

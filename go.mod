@@ -3,7 +3,7 @@ module github.com/figment-networks/graph-demo
 go 1.16
 
 require (
-	github.com/cosmos/cosmos-sdk v0.42.7
+	github.com/cosmos/cosmos-sdk v0.42.8
 	github.com/gogo/protobuf v1.3.3
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang/mock v1.5.0 // indirect

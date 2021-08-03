@@ -1,45 +1,49 @@
 package postgres
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 
 	"github.com/figment-networks/graph-demo/manager/structs"
 	"github.com/lib/pq"
 )
 
 const (
-	txInsert = `INSERT INTO public.transactions("chain_id", "height", "hash", "block_hash", "time", "fee", "gas_wanted", "gas_used", "memo", "data", "raw", "raw_log", "has_error", "type", "parties", "senders", "recipients") VALUES
-	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+	txInsert = `INSERT INTO public.transactions("chain_id", "height", "hash", "block_hash", "time", "code_space", "code", 
+	"result", "logs", "info", "tx_raw", "messages", "extension_options", "non_critical_extension_options", "auth_info", 
+	"signatures", "gas_wanted", "gas_used", "memo", "raw_log") VALUES
+	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 	ON CONFLICT (chain_id, hash, height)
 	DO UPDATE SET
 	height = EXCLUDED.height,
 	hash = EXCLUDED.hash,
-	time = EXCLUDED.time,
 	block_hash = EXCLUDED.block_hash,
-	fee = EXCLUDED.fee,
+	time = EXCLUDED.time,
+	code_space = EXCLUDED.code_space,
+	code = EXCLUDED.code,
+	result = EXCLUDED.result,
+	logs = EXCLUDED.logs,
+	info = EXCLUDED.info,
+	tx_raw = EXCLUDED.tx_raw,
+	messages = EXCLUDED.messages,
+	extension_options = EXCLUDED.extension_options,
+	non_critical_extension_options = EXCLUDED.non_critical_extension_options,
+	auth_info = EXCLUDED.auth_info,
+	signatures = EXCLUDED.signatures,
 	gas_wanted = EXCLUDED.gas_wanted,
 	gas_used = EXCLUDED.gas_used,
 	memo = EXCLUDED.memo,
-	data = EXCLUDED.data,
-	raw = EXCLUDED.raw,
-	raw_log = EXCLUDED.raw_log,
-	has_error = EXCLUDED.has_error,
-	type = EXCLUDED.type,
-	parties = EXCLUDED.parties,
-	senders = EXCLUDED.senders,
-	recipients = EXCLUDED.recipients`
+	raw_log = EXCLUDED.raw_log`
+
+	txSelect = `SELECT hash, block_hash, time, code_space, code, result, logs, info, tx_raw, messages, extension_options, 
+	non_critical_extension_options, auth_info, signatures, gas_wanted, gas_used, memo, raw_log
+	FROM public.transactions 
+	WHERE chain_id = $1 AND height = $2`
 )
 
 // StoreTransactions adds transactions to storage buffer
 func (d *Driver) StoreTransactions(ctx context.Context, txs []structs.Transaction) error {
-	var fee []byte
-	buff := &bytes.Buffer{}
-	enc := json.NewEncoder(buff)
-
 	tx, err := d.db.Begin()
 	if err != nil {
 		return err
@@ -47,22 +51,12 @@ func (d *Driver) StoreTransactions(ctx context.Context, txs []structs.Transactio
 
 	for _, t := range txs {
 
-		if err := enc.Encode(t.Events); err != nil {
+		mf, err := getMarshaledFields(t)
+		if err != nil {
 			return err
 		}
 
-		af := getTransactionAdditionalFields(t)
-
-		if t.Fee != nil {
-			fee, err = json.Marshal(t.Fee)
-			if err != nil {
-				fee = []byte("{}")
-			}
-		} else {
-			fee = []byte("{}")
-		}
-
-		if err := d.storeTx(ctx, d.db, t, fee, buff, af); err != nil {
+		if err := d.storeTx(ctx, t, mf); err != nil {
 			return err
 		}
 
@@ -71,116 +65,74 @@ func (d *Driver) StoreTransactions(ctx context.Context, txs []structs.Transactio
 	return tx.Commit()
 }
 
-type additionalFields struct {
-	types      []string
-	parties    []string
-	recipients []string
-	senders    []string
+type marshaledFields struct {
+	authInfo                    []byte
+	extensionOptions            []byte
+	logs                        []byte
+	messages                    []byte
+	nonCriticalExtensionOptions []byte
+	txRaw                       []byte
 }
 
-func getTransactionAdditionalFields(tx structs.Transaction) (af additionalFields) {
-	for _, ev := range tx.Events {
-		for _, sub := range ev.Sub {
-			if len(sub.Recipient) > 0 {
-				af.parties = uniqueEntriesEvTransfer(sub.Recipient, af.parties)
-				af.recipients = uniqueEntriesEvTransfer(sub.Recipient, af.recipients)
-			}
-			if len(sub.Sender) > 0 {
-				af.parties = uniqueEntriesEvTransfer(sub.Sender, af.parties)
-				af.senders = uniqueEntriesEvTransfer(sub.Sender, af.senders)
-			}
-
-			if len(sub.Node) > 0 {
-				for _, accounts := range sub.Node {
-					af.parties = uniqueEntriesAccount(accounts, af.parties)
-				}
-			}
-
-			if sub.Error != nil {
-				af.types = uniqueEntry("error", af.types)
-			}
-
-			af.types = uniqueEntries(sub.Type, af.types)
+func getMarshaledFields(tx structs.Transaction) (mf marshaledFields, err error) {
+	if tx.AuthInfo != nil {
+		if mf.authInfo, err = json.Marshal(&tx.AuthInfo); err != nil {
+			return mf, err
 		}
-		af.types = uniqueEntries(ev.Type, af.types)
 	}
+
+	if mf.logs, err = json.Marshal(tx.Logs); err != nil {
+		return mf, err
+	}
+
+	if mf.txRaw, err = json.Marshal(tx.TxRaw); err != nil {
+		return mf, err
+	}
+
+	if mf.extensionOptions, err = json.Marshal(tx.ExtensionOptions); err != nil {
+		return mf, err
+	}
+
+	if mf.nonCriticalExtensionOptions, err = json.Marshal(tx.NonCriticalExtensionOptions); err != nil {
+		return mf, err
+	}
+
+	if mf.messages, err = json.Marshal(tx.Messages); err != nil {
+		return mf, err
+	}
+
+	// mf.extensionOptions = make([][]byte, len(tx.ExtensionOptions))
+	// for i, extensionOption := range tx.ExtensionOptions {
+	// 	if mf.extensionOptions[i], err = json.Marshal(extensionOption); err != nil {
+	// 		return mf, err
+	// 	}
+	// }
+
+	// mf.nonCriticalExtensionOptions = make([][]byte, len(tx.NonCriticalExtensionOptions))
+	// for i, nonCriticalExtensionOption := range tx.NonCriticalExtensionOptions {
+	// 	if mf.nonCriticalExtensionOptions[i], err = json.Marshal(nonCriticalExtensionOption); err != nil {
+	// 		return mf, err
+	// 	}
+	// }
+
+	// mf.messages = make([][]byte, len(tx.Messages))
+	// for i, message := range tx.Messages {
+	// 	if mf.messages[i], err = json.Marshal(message); err != nil {
+	// 		return mf, err
+	// 	}
+	// }
 
 	return
 }
 
-func uniqueEntriesEvTransfer(in []structs.EventTransfer, out []string) []string {
-	for _, r := range in { // (lukanus): faster than a map :)
-		var exists bool
-	Inner:
-		for _, re := range out {
-			if r.Account.ID == re {
-				exists = true
-				break Inner
-			}
-		}
-		if !exists {
-			out = append(out, r.Account.ID)
-		}
-	}
-	return out
-}
-
-func uniqueEntriesAccount(in []structs.Account, out []string) []string {
-	for _, r := range in { // (lukanus): faster than a map :)
-		var exists bool
-	Inner:
-		for _, re := range out {
-			if r.ID == re {
-				exists = true
-				break Inner
-			}
-		}
-		if !exists {
-			out = append(out, r.ID)
-		}
-	}
-	return out
-}
-
-func uniqueEntry(in string, out []string) []string {
-	if in == "" {
-		return out
-	}
-	for _, re := range out {
-		if in == re {
-			return out
-		}
-	}
-	return append(out, in)
-}
-
-func uniqueEntries(in, out []string) []string {
-	for _, r := range in { // (lukanus): faster than a map :)
-		if r == "" {
-			continue
-		}
-		var exists bool
-	Inner:
-		for _, re := range out {
-			if r == re {
-				exists = true
-				break Inner
-			}
-		}
-		if !exists {
-			out = append(out, r)
-		}
-	}
-	return out
-}
-
-func (d *Driver) storeTx(ctx context.Context, db *sql.DB, t structs.Transaction, fee []byte, events fmt.Stringer, af additionalFields) error {
+func (d *Driver) storeTx(ctx context.Context, t structs.Transaction, mf marshaledFields) (err error) {
 
 	// TODO(lukanus): store  REAL transation
-	_, err := d.db.ExecContext(ctx, txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, fee, t.GasWanted, t.GasUsed, t.Memo, events.String(),
-		t.Raw, t.RawLog, t.HasErrors, pq.Array(af.types), pq.Array(af.parties), pq.Array(af.senders), pq.Array(af.recipients))
+	_, err = d.db.ExecContext(ctx, txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, t.CodeSpace, t.Code, t.Result, mf.logs,
+		t.Info, mf.txRaw, mf.messages, mf.extensionOptions, mf.nonCriticalExtensionOptions, mf.authInfo, pq.Array(t.Signatures),
+		t.GasWanted, t.GasUsed, t.Memo, t.RawLog)
 
-	return err
+	return
 }
 
 // Removes ASCII hex 0-7 causing utf-8 error in db
@@ -193,8 +145,7 @@ func removeCharacters(r rune) rune {
 
 // GetTransactions gets transactions based on given criteria the order is forced to be time DESC
 func (d *Driver) GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) (txs []structs.Transaction, err error) {
-	rows, err := d.db.QueryContext(ctx, `SELECT chain_id, height, hash, block_hash, time, fee, gas_wanted, gas_used, memo, events, raw, has_error
-	FROM public.transactions WHERE chain_id = $1 AND height = $2`, chainID, height)
+	rows, err := d.db.QueryContext(ctx, txSelect, chainID, height)
 	if err != nil {
 		return nil, err
 	}
@@ -203,25 +154,51 @@ func (d *Driver) GetTransactionsByHeight(ctx context.Context, height uint64, cha
 		return nil, sql.ErrNoRows
 	}
 
-	br := &bytes.Reader{}
-	feeDec := json.NewDecoder(br)
+	// br := &bytes.Reader{}
+	// feeDec := json.NewDecoder(br)
 
 	for rows.Next() {
-		var tx structs.Transaction
+		var authInfoBytes, eoBytes, logsBytes, msgsBytes, nceoBytes, txRawBytes []byte
+		var signatures pq.StringArray
+		tx := structs.Transaction{
+			Height:  height,
+			ChainID: chainID,
+		}
 
-		byteFee := []byte{}
-
-		err = rows.Scan(&tx.ChainID, &tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &byteFee, &tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.Events, &tx.Raw, &tx.HasErrors)
-		if err != sql.ErrNoRows {
+		err = rows.Scan(&tx.Hash, &tx.BlockHash, &tx.Time, &tx.CodeSpace, &tx.Code, &tx.Result, &logsBytes,
+			&tx.Info, &txRawBytes, &msgsBytes, &eoBytes, &nceoBytes, &authInfoBytes, &signatures,
+			&tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.RawLog)
+		if err != nil {
 			return nil, err
 		}
 
-		br.Reset(byteFee)
-		feeDec.Decode(&tx.Fee)
-		byteFee = nil
+		tx.Signatures = make([]string, len(signatures))
+		for i, signature := range signatures {
+			tx.Signatures[i] = signature
+		}
 
-		if err != nil {
-			return nil, err
+		if err = json.Unmarshal(authInfoBytes, &tx.AuthInfo); err != nil {
+			return txs, err
+		}
+
+		if err = json.Unmarshal(logsBytes, &tx.Logs); err != nil {
+			return txs, err
+		}
+
+		if err = json.Unmarshal(msgsBytes, &tx.Messages); err != nil {
+			return txs, err
+		}
+
+		if err = json.Unmarshal(eoBytes, &tx.ExtensionOptions); err != nil {
+			return txs, err
+		}
+
+		if err = json.Unmarshal(nceoBytes, &tx.NonCriticalExtensionOptions); err != nil {
+			return txs, err
+		}
+
+		if err = json.Unmarshal(txRawBytes, &tx.TxRaw); err != nil {
+			return txs, err
 		}
 
 		txs = append(txs, tx)

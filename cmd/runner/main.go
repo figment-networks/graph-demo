@@ -83,6 +83,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+
 	handler := transportHTTP.NewHandler(service.New(sStore))
 	handler.AttachMux(mux)
 

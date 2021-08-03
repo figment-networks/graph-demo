@@ -26,6 +26,7 @@
             "env": {
                 "ADDRESS": "0.0.0.0:8085",
                 "DATABASE_URL": "postgres://manager:manager@0.0.0.0:5432/manager?sslmode=disable",
+                "WORKER_CONFIG_PATH": "${workspaceFolder}/example_manager_worker_config.json"
             },
             "buildFlags": "-race"
         },

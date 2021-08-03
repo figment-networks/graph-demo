@@ -1,7 +1,6 @@
 package structs
 
 import (
-	"encoding/json"
 	"errors"
 	"math/big"
 	"time"
@@ -12,6 +11,8 @@ import (
 var (
 	ErrNotFound = errors.New("record not found")
 )
+
+type BlockEvidence string
 
 type QueriesResp map[string]map[uint64]BlockAndTx
 type BlockAndTx struct {
@@ -30,13 +31,11 @@ type Block struct {
 	Time time.Time `json:"time,omitempty"`
 	// ChainID
 	ChainID string `json:"chain_id,omitempty"`
-	// Number of transactions
-	NumberOfTransactions uint64 `json:"tx_num,omitempty"`
 
-	Header     BlockHeader       `json:"header"`
-	Data       BlockData         `json:"data"`
-	Evidence   BlockEvidenceList `json:"evidence"`
-	LastCommit *Commit           `json:"last_commit,omitempty"`
+	Header     BlockHeader     `json:"header"`
+	Data       BlockData       `json:"data"`
+	Evidence   []BlockEvidence `json:"evidence,omitempty"`
+	LastCommit *Commit         `json:"last_commit,omitempty"`
 }
 
 type BlockHeader struct {
@@ -48,28 +47,17 @@ type BlockHeader struct {
 	// prev block info
 	LastBlockId BlockID `json:"last_block_id"`
 	// hashes of block data
-	LastCommitHash []byte `json:"last_commit_hash,omitempty"`
-	DataHash       []byte `json:"data_hash,omitempty"`
+	LastCommitHash string `json:"last_commit_hash,omitempty"`
+	DataHash       string `json:"data_hash,omitempty"`
 	// hashes from the app output from the prev block
-	ValidatorsHash     []byte `json:"validators_hash,omitempty"`
-	NextValidatorsHash []byte `json:"next_validators_hash,omitempty"`
-	ConsensusHash      []byte `json:"consensus_hash,omitempty"`
-	AppHash            []byte `json:"app_hash,omitempty"`
-	LastResultsHash    []byte `json:"last_results_hash,omitempty"`
+	ValidatorsHash     string `json:"validators_hash,omitempty"`
+	NextValidatorsHash string `json:"next_validators_hash,omitempty"`
+	ConsensusHash      string `json:"consensus_hash,omitempty"`
+	AppHash            string `json:"app_hash,omitempty"`
+	LastResultsHash    string `json:"last_results_hash,omitempty"`
 	// consensus info
-	EvidenceHash    []byte `json:"evidence_hash,omitempty"`
-	ProposerAddress []byte `json:"proposer_address,omitempty"`
-}
-
-type BlockEvidenceList struct {
-	Evidence []BlockEvidence `json:"evidence"`
-}
-
-type BlockEvidence struct {
-	// Types that are valid to be assigned to Sum:
-	//	*Evidence_DuplicateVoteEvidence
-	//	*Evidence_LightClientAttackEvidence
-	//Sum isEvidence_Sum `protobuf_oneof:"sum"`
+	EvidenceHash    string `json:"evidence_hash,omitempty"`
+	ProposerAddress string `json:"proposer_address,omitempty"`
 }
 
 // Commit contains the evidence that a block was committed by a set of validators.
@@ -83,9 +71,9 @@ type Commit struct {
 // CommitSig is a part of the Vote included in a Commit.
 type CommitSig struct {
 	BlockIdFlag      int32     `json:"block_id_flag,omitempty"`
-	ValidatorAddress []byte    `json:"validator_address,omitempty"`
+	ValidatorAddress string    `json:"validator_address,omitempty"`
 	Timestamp        time.Time `json:"timestamp"`
-	Signature        []byte    `json:"signature,omitempty"`
+	Signature        string    `json:"signature,omitempty"`
 }
 
 // Data contains the set of transactions included in the block
@@ -96,14 +84,14 @@ type BlockData struct {
 	Txs [][]byte `json:"txs,omitempty"`
 }
 type BlockID struct {
-	Hash          []byte        `json:"hash,omitempty"`
+	Hash          string        `json:"hash,omitempty"`
 	PartSetHeader PartSetHeader `json:"part_set_header"`
 }
 
 // PartsetHeader
 type PartSetHeader struct {
 	Total uint32 `json:"total,omitempty"`
-	Hash  []byte `json:"hash,omitempty"`
+	Hash  string `json:"hash,omitempty"`
 }
 
 // Consensus captures the consensus rules for processing a block in the blockchain,
@@ -123,141 +111,106 @@ type Transaction struct {
 	// Updated at
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 
+	// ChainID - chain id of transacion
+	ChainID string `json:"chain_id,omitempty"`
+	// Height - height of the block of transaction
+	Height uint64 `json:"height,omitempty"`
 	// Hash of the transaction
 	Hash string `json:"hash,omitempty"`
 	// BlockHash - hash of the block of transaction
 	BlockHash string `json:"block_hash,omitempty"`
-	// Height - height of the block of transaction
-	Height uint64 `json:"height,omitempty"`
-
-	// ChainID - chain id of transacion
-	ChainID string `json:"chain_id,omitempty"`
 	// Time - time of transaction
 	Time time.Time `json:"time,omitempty"`
 
-	// Fee - Fees for transaction (if applies)
-	Fee []TransactionAmount `json:"transaction_fee,omitempty"`
+	// Namespace for the Code
+	CodeSpace string `json:"code_space,omitempty"`
+
+	Code uint64 `json:"code,omitempty"`
 	// GasWanted
 	GasWanted uint64 `json:"gas_wanted,omitempty"`
 	// GasUsed
 	GasUsed uint64 `json:"gas_used,omitempty"`
+
+	Info string `json:"info,omitempty"`
 	// Memo - the description attached to transactions
 	Memo string `json:"memo,omitempty"`
 
-	// Events - Transaction contents
-	Events TransactionEvents `json:"events,omitempty"`
+	Result string `json:"result,omitempty"`
 
-	// Raw - Raw transaction bytes
-	Raw []byte `json:"raw,omitempty"`
+	Signatures []string `json:"signatures,omitempty"`
+
+	AuthInfo *AuthInfo `json:"auth_info,omitempty"`
+
+	ExtensionOptions []ExtensionOptions `json:"extension_options,omitempty"`
+
+	Logs []Log `json:"logs,omitempty"`
+
+	Messages []Message `json:"messages,omitempty"`
+
+	NonCriticalExtensionOptions []NonCriticalExtensionOptions `json:"non_critical_extension_options,omitempty"`
 
 	// RawLog - RawLog transaction's log bytes
 	RawLog []byte `json:"raw_log,omitempty"`
-
-	// HasErrors - indicates if Transaction has any errors inside
-	HasErrors bool `json:"has_errors"`
+	// TxRaw - Raw transaction bytes
+	TxRaw TxRaw `json:"tx_raw,omitempty"`
 }
 
-// TransactionEvents - a set of TransactionEvent
-type TransactionEvents []TransactionEvent
-
-func (te *TransactionEvents) Scan(value interface{}) error {
-	b, ok := value.([]byte)
-	if !ok {
-		return errors.New("type assertion to []byte failed")
-	}
-
-	return json.Unmarshal(b, &te)
+type Log struct {
+	MsgIndex uint64  `json:"msg_index,omitempty"`
+	Log      string  `json:"log,omitempty"`
+	Events   []Event `json:"events,omitempty"`
 }
 
-// TransactionEvent part of transaction contents
-type TransactionEvent struct {
-	// ID UniqueID of event
-	ID string `json:"id,omitempty"`
-	// The Kind of event
-	Kind string `json:"kind,omitempty"`
-	// Type of transaction
-	Type []string `json:"type,omitempty"`
-	// Collection from where transaction came from
-	Module string `json:"module,omitempty"`
-	// List of sender accounts with optional amounts
-	// Subcontents of event
-	Sub []SubsetEvent `json:"sub,omitempty"`
+type Message struct {
+	Message []byte `json:"message,omitempty"`
+	Raw     Any    `json:"raw,omitempty"`
 }
 
-// TransactionAmount structure holding amount information with decimal implementation (numeric * 10 ^ exp)
-type TransactionAmount struct {
-	// Textual representation of Amount
-	Text string `json:"text,omitempty"`
-	// The currency in what amount is returned (if applies)
-	Currency string `json:"currency,omitempty"`
-
-	// Numeric part of the amount
-	Numeric *big.Int `json:"numeric,omitempty"`
-	// Exponential part of amount obviously 0 by default
-	Exp int32 `json:"exp,omitempty"`
+type Event struct {
+	Type       string            `json:"type,omitempty"`
+	Attributes map[string]string `json:"attributes,omitempty"`
 }
 
-// SubsetEvent - structure storing main contents of transacion
-type SubsetEvent struct {
-	// ID UniqueID of subsetevent
-	ID string `json:"id,omitempty"`
-	// Type of transaction
-	Type   []string `json:"type,omitempty"`
-	Action string   `json:"action,omitempty"`
-	// Collection from where transaction came from
-	Module string `json:"module,omitempty"`
-	// List of sender accounts with optional amounts
-	Sender []EventTransfer `json:"sender,omitempty"`
-	// List of recipient accounts with optional amounts
-	Recipient []EventTransfer `json:"recipient,omitempty"`
-	// The list of all accounts that took part in the subsetevent
-	Node map[string][]Account `json:"node,omitempty"`
-	// Transaction nonce
-	Nonce string `json:"nonce,omitempty"`
-	// Completion time
-	Completion *time.Time `json:"completion,omitempty"`
-	// List of Amounts
-	Amount map[string]TransactionAmount `json:"amount,omitempty"`
-	// List of Transfers with amounts and optional recipients
-	Transfers map[string][]EventTransfer `json:"transfers,omitempty"`
-	// Optional error if occurred
-	Error *SubsetEventError `json:"error,omitempty"`
-	// Set of additional parameters attached to transaction (used as last resort)
-	Additional map[string][]string `json:"additional,omitempty"`
-	// SubEvents because some messages are in fact carying another messages inside
-	Sub []SubsetEvent `json:"sub,omitempty"`
+type TxRaw struct {
+	TxRaw []byte `json:"message,omietmpty"`
+	Raw   Any    `json:"raw,omitempty"`
 }
 
-// EventTransfer - Account and Amounts pair
-type EventTransfer struct {
-	// Account recipient
-	Account Account `json:"account,omitempty"`
-	// Amounts from Transfer
-	Amounts []TransactionAmount `json:"amounts,omitempty"`
+type ExtensionOptions struct {
+	ExtensionOption []byte `json:"extension_option,omitempty"`
+	Raw             Any    `json:"raw,omitempty"`
 }
 
-// Account - Extended Account information
-type Account struct {
-	// Unique account identifier
-	ID string `json:"id"`
-	// External optional account details (if applies)
-	Details *AccountDetails `json:"detail,omitempty"`
+type NonCriticalExtensionOptions struct {
+	NonCriticalExtensionOption []byte `json:"non_critical_extension_option,omitempty"`
+	Raw                        Any    `json:"raw,omitempty"`
 }
 
-// AccountDetails External optional account details (if applies)
-type AccountDetails struct {
-	// Description of account
-	Description string `json:"description,omitempty"`
-	// Contact information
-	Contact string `json:"contact,omitempty"`
-	// Name of account
-	Name string `json:"name,omitempty"`
-	// Website address
-	Website string `json:"website,omitempty"`
+type Any struct {
+	TypeURL string `json:"type_url,omitempty"`
+	Value   []byte `json:"value,omitempty"`
 }
 
-// SubsetEventError error structure for event
-type SubsetEventError struct {
-	// Message from error event
-	Message string `json:"message,omitempty"`
+type AuthInfo struct {
+	Fee         *Fee         `json:"fee,omitempty"`
+	SignerInfos []SignerInfo `json:"signer_infos,omitempty"`
+}
+
+type SignerInfo struct {
+	PublicKey *PublicKey `json:"public_key,omitempty"`
+	ModeInfo  string     `json:"mode_info,omitempty"`
+	Sequence  uint64
+}
+
+type PublicKey struct {
+	Key string `json:"key,omitempty"`
+	Raw Any    `json:"raw,omitempty"`
+}
+
+type Fee struct {
+	Amount    *big.Int `json:"amount,omitempty"`
+	Currency  string   `json:"currency,omitempty"`
+	GasLimit  uint64   `json:"gas_limit,omitempty"`
+	Sender    string   `json:"payer,omitempty"`
+	Recipient string   `json:"grater,omitempty"`
 }
