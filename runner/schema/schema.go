@@ -6,6 +6,7 @@ import (
 	"path"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/figment-networks/graph-demo/graphcall"
 	"github.com/figment-networks/graph-demo/runner/store"
@@ -110,7 +111,10 @@ func (s *Schemas) LoadFromSubgraphYaml(fpath string) error {
 			ms[evh.Event] = evh.Handler
 		}
 
-		if err := s.rqstr.Subscribe(context.Background(), sourc.Network, subs); err != nil {
+		ctxWithTimeout, ctxCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer ctxCancel()
+
+		if err := s.rqstr.Subscribe(ctxWithTimeout, sourc.Network, subs); err != nil {
 			return err
 		}
 

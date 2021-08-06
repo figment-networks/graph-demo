@@ -87,24 +87,6 @@ func (s *Service) getBlocks(ctx context.Context, query *graphcall.GraphQuery) (s
 	return qResp, nil
 }
 
-/*
-func (s *Service) getBlockFromCache(chainID string, height uint64) (rStructs.BlockAndTx, bool) {
-	blocks, ok := s.blocksByChainID[chainID]
-	if !ok {
-		return rStructs.BlockAndTx{}, false
-	}
-
-	if r, ok := blocks[height]; ok {
-		return r, true
-	}
-
-	return rStructs.BlockAndTx{}, false
-}
-
-
-type blocksByChain map[string]map[uint64]rStructs.BlockAndTx
-*/
-
 func (s *Service) getQueryBlocksByHeights(ctx context.Context, params map[string]graphcall.Part) (resp map[uint64]structs.BlockAndTx, err error) {
 	chainID, heights, err := getHeightsToFetchByChain(params)
 	if err != nil {

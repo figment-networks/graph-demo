@@ -175,7 +175,6 @@ func messages(txMsgs []*codectypes.Any) ([]structs.Message, error) {
 	for i, msg := range txMsgs {
 		byteMsg, err := parseMessage(msg.Value, msg.TypeUrl)
 		if err != nil {
-			fmt.Println(err)
 			return nil, err
 		}
 
