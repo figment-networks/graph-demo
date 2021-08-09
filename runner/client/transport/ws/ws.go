@@ -15,7 +15,6 @@ import (
 type GQLPayload struct {
 	Query     string                 `json:"query"`
 	Variables map[string]interface{} `json:"variables"`
-	//	OperationName string                 `json:"operationName"`
 }
 
 type GQLResponse struct {

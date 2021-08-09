@@ -121,7 +121,6 @@ func (s *Schemas) LoadFromSubgraphYaml(fpath string) error {
 	}
 
 	return nil
-
 }
 
 func processSchema(filepath, name string) (*graphcall.Subgraph, error) {
