@@ -349,7 +349,7 @@ func queryParams(inputParams map[string]Param, arguments []*ast.Argument) (param
 			if err != nil {
 				return nil, err
 			}
-			value = float64(intValue)
+			value = uint64(intValue)
 		case "Variable", "Name":
 			nameStr = argValue.(*ast.Name).Value
 		default:

@@ -156,6 +156,7 @@ func jsonMarshalStructWithTypeAny(str interface{}) (raw json.RawMessage, err err
 		fieldName := v.Type().Field(i).Name
 		fieldValue := v.Field(i).Interface()
 		fieldType := reflect.TypeOf(fieldValue)
+
 		switch fieldType {
 		case reflect.TypeOf([]*types.Any{}):
 			anySlice := fieldValue.([]*types.Any)
@@ -218,10 +219,6 @@ func elemIsStructOrStructPtr(elemType reflect.Type) bool {
 func checkForTypeAnyRecursively(str interface{}) bool {
 	strValue := reflect.ValueOf(str)
 	v := reflect.Indirect(strValue)
-
-	// if strValue == reflect.ValueOf(&types.Any{}) {
-	// 	return true
-	// }
 
 	switch strValue.Kind() {
 	case reflect.Slice:
