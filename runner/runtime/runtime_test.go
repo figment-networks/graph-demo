@@ -2,88 +2,133 @@ package runtime
 
 import (
 	"context"
-	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/figment-networks/graph-demo/cmd/common/logger"
+	"github.com/figment-networks/graph-demo/connectivity"
+	runnerClient "github.com/figment-networks/graph-demo/runner/client"
 	"github.com/figment-networks/graph-demo/runner/requester"
 	"github.com/figment-networks/graph-demo/runner/schema"
-	"github.com/figment-networks/graph-demo/runner/store"
 	"github.com/figment-networks/graph-demo/runner/store/memap"
+	"github.com/figment-networks/graph-demo/runner/structs"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLoader_LoadJS(t *testing.T) {
+	type connectArgs struct {
+		managerURL string
+		subs       []structs.Subs
+	}
+	type storeArgs struct {
+		str   string
+		data  map[string]interface{}
+		key   string
+		value string
+	}
 	type args struct {
-		name   string
-		path   string
-		schema string
+		subgraphName string
+		schema       string
+		connect      connectArgs
+		store        storeArgs
 	}
 	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
+		name string
+		args args
 	}{
 		{
 			name: "a",
 			args: args{
-				"one",
-				"../subgraphs/test/generated/mapping.js",
-				"../subgraphs/test/schema.graphql"},
+				"test",
+				"../../subgraphs/test",
+				connectArgs{
+					managerURL: "ws://localhost:8085",
+					subs: []structs.Subs{
+						{
+							Name:           "newTransaction",
+							StartingHeight: 5200244,
+						},
+						{
+							Name:           "newBlock",
+							StartingHeight: 5200244,
+						},
+					},
+				},
+				storeArgs{
+					"Block",
+					map[string]interface{}{
+						"id":      "qazxsw23edcvfr45tgbnhyujm",
+						"network": "testNetwork",
+						"height":  1234,
+						"time":    time.Now().String(),
+						"mynote":  "sugar",
+					},
+					"id",
+					"qazxsw23edcvfr45tgbnhyujm",
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
 
-		testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintln(w, `{"data": {"time": "12345677", "height":2345, "id": "qazxsw23edcvfr45tgbnhyujm"} }`)
-		}))
-		defer testServer.Close()
-
 		t.Run(tt.name, func(t *testing.T) {
-			cli := &http.Client{}
-			rqstr := requester.NewRqstr(cli)
-			rqstr.AddDestination(requester.Destination{
-				Name:    "testNetwork",
-				Kind:    "http",
-				Address: testServer.URL,
-			})
+			ctx := context.Background()
 
-			schemas := schema.NewSchemas()
-			schemas.LoadFromFile(tt.args.name, tt.args.schema)
+			logger.Init("console", "debug", []string{"stderr"})
+			defer logger.Sync()
+			log := logger.GetLogger()
+
+			rqstr := requester.NewRqstr()
+			wst := &networkGraphWSTransportMock{}
+			wst.On("Connect", mock.AnythingOfType("*context.emptyCtx"), tt.args.connect.managerURL, mock.AnythingOfType("*client.NetworkGraphClient")).Return(nil)
+			wst.On("Subscribe", mock.AnythingOfType("*context.emptyCtx"), tt.args.connect.subs).Return(nil)
+
+			rqstr.AddDestination("testNetwork", wst)
 
 			sStore := memap.NewSubgraphStore()
+			loader := NewLoader(log, rqstr, sStore)
 
-			for _, sg := range schemas.Subgraphs {
-				for _, ent := range sg.Entities {
-					indexed := []store.NT{}
-					for k, v := range ent.Params {
-						indexed = append(indexed, store.NT{Name: k, Type: v.Type})
-					}
-					sStore.NewStore(tt.args.name, ent.Name, indexed)
-				}
-			}
+			ngc := runnerClient.NewNetworkGraphClient(log, loader)
 
-			l := NewLoader(rqstr, sStore)
-			if err := l.LoadJS(tt.args.name, tt.args.path); (err != nil) != tt.wantErr {
-				t.Errorf("Loader.LoadJS() error = %v, wantErr %v", err, tt.wantErr)
-			}
+			require.Nil(t, wst.Connect(ctx, tt.args.connect.managerURL, ngc))
 
-			if err := l.NewEvent("block", map[string]interface{}{
-				"network": "testNetwork",
-				"height":  1234,
-			}); err != nil {
-				t.Errorf("Loader.NewBlockEvent() error = %v", err)
-			}
+			schemas := schema.NewSchemas(sStore, loader, rqstr)
+			require.Nil(t, schemas.LoadFromSubgraphYaml(tt.args.schema))
 
-			st, err := sStore.Get(context.Background(), tt.args.name, "Block", "id", "qazxsw23edcvfr45tgbnhyujm")
-			if err != nil {
-				t.Errorf("mStore.Get error = %v, wantErr %v", err, tt.wantErr)
-			}
+			require.Nil(t, sStore.Store(ctx, tt.args.subgraphName, tt.args.store.str, tt.args.store.data))
 
+			st, err := sStore.Get(ctx, tt.args.subgraphName, tt.args.store.str, tt.args.store.key, tt.args.store.value)
+			require.Nil(t, err)
 			require.NotNil(t, st)
+
+			expected := []map[string]interface{}{tt.args.store.data}
+			assert.Equal(t, expected, st)
 
 		})
 	}
+}
+
+type networkGraphWSTransportMock struct {
+	mock.Mock
+}
+
+func (ng *networkGraphWSTransportMock) Connect(ctx context.Context, address string, RH connectivity.FunctionCallHandler) (err error) {
+	args := ng.Called(ctx, address, RH)
+	return args.Error(0)
+}
+
+func (ng *networkGraphWSTransportMock) CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}, version string) ([]byte, error) {
+	args := ng.Called(ctx, name, query, variables, version)
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (ng *networkGraphWSTransportMock) Subscribe(ctx context.Context, events []structs.Subs) error {
+	return ng.Called(ctx, events).Error(0)
+}
+
+func (ng *networkGraphWSTransportMock) Unsubscribe(ctx context.Context, events []string) error {
+	return ng.Called(ctx, events).Error(0)
 }

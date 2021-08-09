@@ -38,8 +38,6 @@ func init() {
 }
 
 func main() {
-	logger.Init("console", "debug", []string{"stderr"})
-
 	// Initialize configuration
 	cfg, err := initConfig(configFlags.configPath)
 	if err != nil {
