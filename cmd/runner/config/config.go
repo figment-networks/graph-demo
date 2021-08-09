@@ -19,9 +19,9 @@ type Config struct {
 
 	Address  string `json:"address" envconfig:"ADDRESS" default:"0.0.0.0"`
 	HTTPPort string `json:"http_port" envconfig:"HTTP_PORT" default:"8098"`
-	// A comma separated list of paths
-	Subgraphs string `json:"subgraphs" envconfig:"SUBGRAPHS"`
 
+	// A comma separated list of paths to subgraph folders
+	Subgraphs  string `json:"subgraphs" envconfig:"SUBGRAPHS"`
 	ManagerURL string `json:"manager_url" envconfig:"MANAGER_URL" default:"ws://0.0.0.0:8085/runner"`
 }
 

@@ -18,14 +18,12 @@ import (
 )
 
 type flags struct {
-	configPath  string
-	showVersion bool
+	configPath string
 }
 
 var configFlags = flags{}
 
 func init() {
-	flag.BoolVar(&configFlags.showVersion, "v", false, "Show application version")
 	flag.StringVar(&configFlags.configPath, "config", "", "Path to config")
 	flag.Parse()
 }

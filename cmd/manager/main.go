@@ -3,11 +3,9 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -15,35 +13,31 @@ import (
 	"syscall"
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
+	"github.com/figment-networks/graph-demo/cmd/manager/config"
 	"github.com/figment-networks/graph-demo/connectivity"
 	connWS "github.com/figment-networks/graph-demo/connectivity/ws"
-	"github.com/gorilla/websocket"
-
-	"github.com/figment-networks/graph-demo/cmd/manager/config"
+	"github.com/figment-networks/graph-demo/manager/api"
+	runnerHTTP "github.com/figment-networks/graph-demo/manager/api/runner/transport/http"
+	runnerWSAPI "github.com/figment-networks/graph-demo/manager/api/runner/transport/ws"
+	workerWSAPI "github.com/figment-networks/graph-demo/manager/api/worker/transport/ws"
 	"github.com/figment-networks/graph-demo/manager/client"
 	"github.com/figment-networks/graph-demo/manager/scheduler"
 	"github.com/figment-networks/graph-demo/manager/store"
 	"github.com/figment-networks/graph-demo/manager/store/postgres"
 	"github.com/figment-networks/graph-demo/manager/subscription"
 
-	"github.com/figment-networks/graph-demo/manager/api"
-	runnerHTTP "github.com/figment-networks/graph-demo/manager/api/runner/transport/http"
-	runnerWSAPI "github.com/figment-networks/graph-demo/manager/api/runner/transport/ws"
-	workerWSAPI "github.com/figment-networks/graph-demo/manager/api/worker/transport/ws"
-
+	"github.com/gorilla/websocket"
 	_ "github.com/lib/pq"
 	"go.uber.org/zap"
 )
 
 type flags struct {
-	configPath  string
-	showVersion bool
+	configPath string
 }
 
 var configFlags = flags{}
 
 func init() {
-	flag.BoolVar(&configFlags.showVersion, "v", false, "Show application version")
 	flag.StringVar(&configFlags.configPath, "config", "", "Path to config")
 	flag.Parse()
 }
@@ -53,12 +47,10 @@ func main() {
 	ctx := context.Background()
 
 	// Initialize configuration
-	cfg, wCfg, err := initConfig(configFlags.configPath)
+	cfg, err := initConfig(configFlags.configPath)
 	if err != nil {
 		log.Fatal(fmt.Errorf("error initializing config [ERR: %+v]", err))
 	}
-
-	log.Println(" wCfg.WorkerAddrs", wCfg.WorkerAddrs)
 
 	if cfg.AppEnv == "development" || cfg.AppEnv == "local" {
 		logger.Init("console", "debug", []string{"stderr"})
@@ -125,43 +117,20 @@ RunLoop:
 	}
 }
 
-func initConfig(path string) (config.Config, config.WorkerConfig, error) {
+func initConfig(path string) (config.Config, error) {
 	cfg := &config.Config{}
 
 	if path != "" {
 		if err := config.FromFile(path, cfg); err != nil {
-			return config.Config{}, config.WorkerConfig{}, err
+			return config.Config{}, err
 		}
 	}
 
 	if err := config.FromEnv(cfg); err != nil {
-		return config.Config{}, config.WorkerConfig{}, err
+		return config.Config{}, err
 	}
 
-	workerConfig, err := getWorkerConfig(cfg.WorkerConfigPath)
-	if err != nil {
-		return config.Config{}, workerConfig, err
-	}
-
-	return *cfg, workerConfig, nil
-}
-
-func getWorkerConfig(path string) (workerConfig config.WorkerConfig, err error) {
-	if path == "" {
-		return config.WorkerConfig{}, errors.New("Missing worker config file")
-	}
-
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return config.WorkerConfig{}, err
-	}
-
-	if err = json.Unmarshal(data, &workerConfig); err != nil {
-		return config.WorkerConfig{}, err
-	}
-
-	return workerConfig, err
-
+	return *cfg, nil
 }
 
 func runHTTP(s *http.Server, address string, logger *zap.Logger, exit chan<- string) {

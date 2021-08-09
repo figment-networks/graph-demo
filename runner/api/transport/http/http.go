@@ -23,7 +23,7 @@ type JSONGraphQLResponse struct {
 }
 
 type errorMessage struct {
-	Message string `json:"message",omitempty`
+	Message string `json:"message,omitempty"`
 }
 
 type Handler struct {
@@ -71,10 +71,9 @@ func (h *Handler) HandleGraphql(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(response)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		resp.Errors = []errorMessage{{Message: fmt.Sprintf("Error while writing response: %w", err)}}
+		resp.Errors = []errorMessage{{Message: fmt.Errorf("error while writing response: %w", err).Error()}}
 		enc.Encode(resp)
 		return
 	}
 
-	return
 }

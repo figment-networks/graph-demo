@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"strconv"
 	"time"
@@ -14,10 +13,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-)
-
-var (
-	errUnknownMessageType = fmt.Errorf("unknown message type")
 )
 
 var curencyRegex = regexp.MustCompile("([0-9\\.\\,\\-\\s]+)([^0-9\\s]+)$")
@@ -44,7 +39,7 @@ func (c *Client) SearchTx(ctx context.Context, block structs.Block) (txs []struc
 		}, grpc.WaitForReady(true))
 		cancel()
 
-		c.log.Debug("[COSMOS-API] Request Time (/tx_search)", zap.Duration("duration", time.Now().Sub(now)))
+		c.log.Debug("[COSMOS-API] Request Time (/tx_search)", zap.Duration("duration", time.Since(now)))
 		if err != nil {
 			return nil, err
 		}

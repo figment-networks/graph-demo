@@ -42,8 +42,6 @@ type Loader struct {
 	rqstr GQLCaller
 	stor  store.Storage
 	log   *zap.Logger
-
-	data map[string]interface{}
 }
 
 func NewLoader(l *zap.Logger, rqstr GQLCaller, stor store.Storage) *Loader {
@@ -167,7 +165,6 @@ func cleanJS(code []byte) string {
 
 type Subgraph struct {
 	Name string
-	body []byte
 
 	callbacks map[string]callback //name - callback
 
@@ -205,18 +202,18 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 
 	mj, err := json.Marshal(args[2])
 	if err != nil {
-		log.Println(fmt.Printf("parameters error %v \n", err))
+		log.Println(fmt.Errorf("parameters error %w", err))
 	}
 
 	a := map[string]interface{}{}
 	err = json.Unmarshal(mj, &a)
 	if err != nil {
-		log.Println(fmt.Errorf("marshal error %w \n", err))
+		log.Println(fmt.Errorf("marshal error %w", err))
 	}
 	resp, err := s.caller.CallGQL(context.Background(), args[0].String(), args[1].String(), a, args[2].String())
 
 	if err != nil {
-		log.Println(fmt.Printf("callGQL error %v \n", err))
+		log.Println(fmt.Errorf("callGQL error %w", err))
 		return jsonError(info.Context(), err)
 	}
 
