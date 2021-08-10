@@ -8,8 +8,6 @@ import (
 	"github.com/figment-networks/graph-demo/manager/structs"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/tendermint/tendermint/libs/bytes"
@@ -39,16 +37,16 @@ func TransactionMapper(ctx context.Context, in *tx.Tx, resp *types.TxResponse, b
 	}
 
 	if txBytes := resp.Tx; txBytes != nil {
+		// txRaw == txBytes.Value
+		// parseMessage checks if we support transaction version
 		txRaw, err := parseMessage(txBytes.Value, txBytes.TypeUrl)
 		if err != nil {
 			return structs.Transaction{}, err
 		}
-		tx.TxRaw = structs.TxRaw{
-			TxRaw: txRaw,
-			Raw: structs.Any{
-				TypeURL: txBytes.TypeUrl,
-				Value:   txBytes.Value,
-			},
+
+		tx.TxRaw = structs.Any{
+			TypeURL: txBytes.TypeUrl,
+			Value:   txRaw,
 		}
 	}
 
@@ -116,29 +114,17 @@ func fee(fee *tx.Fee) *structs.Fee {
 func signers(signerInfos []*tx.SignerInfo) ([]structs.SignerInfo, error) {
 	signers := make([]structs.SignerInfo, len(signerInfos))
 	for i, sInfo := range signerInfos {
-		var pubKey string
-		switch sInfo.PublicKey.TypeUrl {
-		case "/cosmos.crypto.secp256k1.PubKey":
-			pk := secp256k1.PubKey{}
-			if err := pk.Unmarshal(sInfo.PublicKey.Value); err != nil {
-				return nil, err
-			}
-			pubKey = bytes.HexBytes(pk.Key).String()
-		case "/cosmos.crypto.ed25519.PubKey":
-			pk := ed25519.PubKey{}
-			if err := pk.Unmarshal(sInfo.PublicKey.Value); err != nil {
-				return nil, err
-			}
-			pubKey = bytes.HexBytes(pk.Key).String()
+		// pubKey == sInfo.PublicKey.Value
+		// parseMessage checks if we support public key version
+		pubKey, err := parseMessage(sInfo.PublicKey.Value, sInfo.PublicKey.TypeUrl)
+		if err != nil {
+			return nil, err
 		}
 
 		signers[i] = structs.SignerInfo{
-			PublicKey: &structs.PublicKey{
-				Key: pubKey,
-				Raw: structs.Any{
-					TypeURL: sInfo.PublicKey.TypeUrl,
-					Value:   sInfo.PublicKey.Value,
-				},
+			PublicKey: &structs.Any{
+				TypeURL: sInfo.PublicKey.TypeUrl,
+				Value:   pubKey,
 			},
 			ModeInfo: sInfo.ModeInfo.String(),
 			Sequence: sInfo.Sequence,
@@ -148,61 +134,55 @@ func signers(signerInfos []*tx.SignerInfo) ([]structs.SignerInfo, error) {
 	return signers, nil
 }
 
-func extensionOptions(extensionOptions []*codectypes.Any) []structs.ExtensionOptions {
+func extensionOptions(extensionOptions []*codectypes.Any) []structs.Any {
 	if extensionOptions == nil {
 		return nil
 	}
 
-	eos := make([]structs.ExtensionOptions, len(extensionOptions))
+	eos := make([]structs.Any, len(extensionOptions))
 	for i, eo := range extensionOptions {
-		eos[i] = structs.ExtensionOptions{
-			ExtensionOption: nil,
-			Raw: structs.Any{
-				TypeURL: eo.TypeUrl,
-				Value:   eo.Value,
-			},
+		eos[i] = structs.Any{
+			TypeURL: eo.TypeUrl,
+			Value:   eo.Value,
 		}
 	}
 	return eos
 }
 
-func messages(txMsgs []*codectypes.Any) ([]structs.Message, error) {
+func messages(txMsgs []*codectypes.Any) ([]structs.Any, error) {
 	if txMsgs == nil {
 		return nil, nil
 	}
 
-	msgs := make([]structs.Message, len(txMsgs))
+	msgs := make([]structs.Any, len(txMsgs))
 	for i, msg := range txMsgs {
+
+		// byteMsg == msg.Value
+		// parseMessage checks if we support message version
 		byteMsg, err := parseMessage(msg.Value, msg.TypeUrl)
 		if err != nil {
 			return nil, err
 		}
 
-		msgs[i] = structs.Message{
-			Message: byteMsg,
-			Raw: structs.Any{
-				TypeURL: msg.TypeUrl,
-				Value:   msg.Value,
-			},
+		msgs[i] = structs.Any{
+			TypeURL: msg.TypeUrl,
+			Value:   byteMsg,
 		}
 	}
 
 	return msgs, nil
 }
 
-func nonCriticalExtensionOptions(txNceos []*codectypes.Any) []structs.NonCriticalExtensionOptions {
+func nonCriticalExtensionOptions(txNceos []*codectypes.Any) []structs.Any {
 	if txNceos == nil {
 		return nil
 	}
 
-	nceos := make([]structs.NonCriticalExtensionOptions, len(txNceos))
+	nceos := make([]structs.Any, len(txNceos))
 	for i, nceo := range txNceos {
-		nceos[i] = structs.NonCriticalExtensionOptions{
-			NonCriticalExtensionOption: nil,
-			Raw: structs.Any{
-				TypeURL: nceo.TypeUrl,
-				Value:   nceo.Value,
-			},
+		nceos[i] = structs.Any{
+			TypeURL: nceo.TypeUrl,
+			Value:   nceo.Value,
 		}
 	}
 

@@ -141,54 +141,34 @@ type Transaction struct {
 
 	AuthInfo *AuthInfo `json:"auth_info,omitempty"`
 
-	ExtensionOptions []ExtensionOptions `json:"extension_options,omitempty"`
+	ExtensionOptions []Any `json:"extension_options,omitempty"`
 
 	Logs []Log `json:"logs,omitempty"`
 
-	Messages []Message `json:"messages,omitempty"`
+	Messages []Any `json:"messages,omitempty"`
 
-	NonCriticalExtensionOptions []NonCriticalExtensionOptions `json:"non_critical_extension_options,omitempty"`
+	NonCriticalExtensionOptions []Any `json:"non_critical_extension_options,omitempty"`
 
 	// RawLog - RawLog transaction's log bytes
 	RawLog []byte `json:"raw_log,omitempty"`
 	// TxRaw - Raw transaction bytes
-	TxRaw TxRaw `json:"tx_raw,omitempty"`
+	TxRaw Any `json:"tx_raw,omitempty"`
 }
 
 type Log struct {
-	MsgIndex uint64  `json:"msg_index,omitempty"`
-	Log      string  `json:"log,omitempty"`
+	MsgIndex uint64  `json:"msg_index"`
+	Log      string  `json:"log"`
 	Events   []Event `json:"events,omitempty"`
 }
 
-type Message struct {
-	Message []byte `json:"message,omitempty"`
-	Raw     Any    `json:"raw,omitempty"`
-}
-
 type Event struct {
-	Type       string            `json:"type,omitempty"`
+	Type       string            `json:"type"`
 	Attributes map[string]string `json:"attributes,omitempty"`
 }
 
-type TxRaw struct {
-	TxRaw []byte `json:"message,omietmpty"`
-	Raw   Any    `json:"raw,omitempty"`
-}
-
-type ExtensionOptions struct {
-	ExtensionOption []byte `json:"extension_option,omitempty"`
-	Raw             Any    `json:"raw,omitempty"`
-}
-
-type NonCriticalExtensionOptions struct {
-	NonCriticalExtensionOption []byte `json:"non_critical_extension_option,omitempty"`
-	Raw                        Any    `json:"raw,omitempty"`
-}
-
 type Any struct {
-	TypeURL string `json:"type_url,omitempty"`
-	Value   []byte `json:"value,omitempty"`
+	TypeURL string `json:"type_url"`
+	Value   []byte `json:"value"`
 }
 
 type AuthInfo struct {
@@ -197,20 +177,15 @@ type AuthInfo struct {
 }
 
 type SignerInfo struct {
-	PublicKey *PublicKey `json:"public_key,omitempty"`
-	ModeInfo  string     `json:"mode_info,omitempty"`
-	Sequence  uint64
-}
-
-type PublicKey struct {
-	Key string `json:"key,omitempty"`
-	Raw Any    `json:"raw,omitempty"`
+	PublicKey *Any   `json:"public_key,omitempty"`
+	ModeInfo  string `json:"mode_info"`
+	Sequence  uint64 `json:"sequence"`
 }
 
 type Fee struct {
 	Amount    *big.Int `json:"amount,omitempty"`
-	Currency  string   `json:"currency,omitempty"`
-	GasLimit  uint64   `json:"gas_limit,omitempty"`
-	Sender    string   `json:"payer,omitempty"`
-	Recipient string   `json:"grater,omitempty"`
+	Currency  string   `json:"currency"`
+	GasLimit  uint64   `json:"gas_limit"`
+	Sender    string   `json:"payer"`
+	Recipient string   `json:"grater"`
 }

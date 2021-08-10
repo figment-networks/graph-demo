@@ -35,7 +35,7 @@ var (
 		}
 	  }`)
 
-	t2 = []byte(`query GetBlock2($height: Int = 6000000) {
+	t2 = []byte(`query GetBlock2($height: Int = 6000000, $id: ID, $id2: String) {
 		block(height: 7000000) {
 		  hash
 		  time
