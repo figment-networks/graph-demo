@@ -7,7 +7,7 @@ require (
 	github.com/gogo/protobuf v1.3.3
 	github.com/golang-migrate/migrate/v4 v4.14.1
 	github.com/golang/mock v1.5.0 // indirect
-	github.com/google/uuid v1.2.0
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/graphql-go/graphql v0.7.9
 	github.com/kelseyhightower/envconfig v1.4.0

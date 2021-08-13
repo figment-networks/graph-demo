@@ -67,7 +67,8 @@ func ParseSchema(name string, schema []byte) (s *Subgraph, err error) {
 			default:
 			}
 
-			ent.Fields[strings.ToLower(f.Name.Value)] = nf
+			// ent.Fields[strings.ToLower(f.Name.Value)] = nf
+			ent.Fields[f.Name.Value] = nf
 
 		}
 

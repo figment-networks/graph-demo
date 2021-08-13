@@ -18,7 +18,7 @@ import { graphql, BlockEvent, store, log, TransactionEvent, Network } from "../.
    myNote: string;
    transactions: TransactionEntity[];
 
-   constructor(...args: any[]) {
+  constructor(args) {
     Object.assign(this, args);
   }
 
@@ -71,15 +71,17 @@ function handleBlock(newBlockEvent: BlockEvent) {
 
   log.debug('GQL call data: ' + JSON.stringify(data));
 
-  const { height, id, time } = data;
-  const entity = new BlockEntity(height, id, time, "ok");
+  const { hash, height, time } = data;
+  const entity = new BlockEntity({hash, height, myNote: "ok", time });
 
   log.debug('Entity: ' + JSON.stringify(entity));
 
   const {storeErr} = entity.save();
-  if (storeErr) {
+  if (storeErr != undefined) {
     log.debug('Error storing entity: ' + JSON.stringify(storeErr));
-  }
+  } else {
+    log.debug('Block stored: ' + JSON.stringify(newBlockEvent));
+}
 }
 
 function handleTransaction(newTxnEvent: TransactionEvent) {

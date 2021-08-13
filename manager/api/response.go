@@ -1,8 +1,6 @@
 package api
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -11,16 +9,17 @@ import (
 	"time"
 
 	"github.com/figment-networks/graph-demo/graphcall"
+	qStructs "github.com/figment-networks/graph-demo/graphcall/response"
 	"github.com/figment-networks/graph-demo/manager/structs"
 
 	"github.com/google/uuid"
 )
 
 func mapBlocksToResponse(queries []graphcall.Query, qResp structs.QueriesResp) ([]byte, error) {
-	var resp mapSlice
+	var resp qStructs.MapSlice
 	var err error
 
-	resp = make([]mapItem, len(queries))
+	resp = make([]qStructs.MapItem, len(queries))
 	for _, query := range queries {
 
 		blocks, ok := qResp[query.Name]
@@ -45,13 +44,13 @@ func mapBlocksToResponse(queries []graphcall.Query, qResp structs.QueriesResp) (
 			response = responses
 		}
 
-		resp[query.Order] = mapItem{
+		resp[query.Order] = qStructs.MapItem{
 			Key:   query.Name,
 			Value: response,
 		}
 	}
 
-	return resp.marshalJSON()
+	return resp.MarshalJSON()
 }
 
 func fieldsResp(q *graphcall.Query, blockAndTx structs.BlockAndTx) (resp interface{}, err error) {
@@ -62,7 +61,7 @@ func fieldsResp(q *graphcall.Query, blockAndTx structs.BlockAndTx) (resp interfa
 	if parseBlock && !parseTransaction {
 		resp = mapStructToFields(q.Fields, blockAndTx.Block)
 	} else if !parseBlock && parseTransaction {
-		resp = mapSliceToFields(q.Fields, blockAndTx.Transactions)
+		resp = MapSliceToFields(q.Fields, blockAndTx.Transactions)
 	} else {
 		resp = mapStructToFields(q.Fields, blockAndTx)
 
@@ -71,10 +70,10 @@ func fieldsResp(q *graphcall.Query, blockAndTx structs.BlockAndTx) (resp interfa
 	return resp, err
 }
 
-func mapStructToFields(fields map[string]graphcall.Field, s interface{}) mapSlice {
+func mapStructToFields(fields map[string]graphcall.Field, s interface{}) qStructs.MapSlice {
 	var value interface{}
 	v := reflect.Indirect(reflect.ValueOf(s))
-	respMap := make(map[int]mapItem)
+	respMap := make(map[int]qStructs.MapItem)
 	maxOrder := 0
 
 	for i := 0; i < v.NumField(); i++ {
@@ -105,7 +104,7 @@ func mapStructToFields(fields map[string]graphcall.Field, s interface{}) mapSlic
 				}
 			case reflect.Slice:
 				if reflect.TypeOf(filedValue).Elem().Kind() == reflect.Struct {
-					value = mapSliceToFields(field.Fields, filedValue)
+					value = MapSliceToFields(field.Fields, filedValue)
 				} else {
 					value = formatValue(fieldName, filedValue)
 				}
@@ -119,7 +118,7 @@ func mapStructToFields(fields map[string]graphcall.Field, s interface{}) mapSlic
 
 		order := field.Order
 
-		respMap[order] = mapItem{
+		respMap[order] = qStructs.MapItem{
 			Key:   field.Name,
 			Value: value,
 		}
@@ -131,7 +130,7 @@ func mapStructToFields(fields map[string]graphcall.Field, s interface{}) mapSlic
 	}
 
 	respLen := len(respMap)
-	ms := make([]mapItem, respLen)
+	ms := make([]qStructs.MapItem, respLen)
 
 	i := 0
 	for order := 0; order <= maxOrder; order++ {
@@ -187,70 +186,14 @@ func isJsonField(fieldName string) bool {
 		fieldName == "noncriticalextensionoptions" || fieldName == "rawlog"
 }
 
-func mapSliceToFields(fields map[string]graphcall.Field, s interface{}) []mapSlice {
+func MapSliceToFields(fields map[string]graphcall.Field, s interface{}) []qStructs.MapSlice {
 	v := reflect.Indirect(reflect.ValueOf(s))
 	len := v.Len()
-	sliceResp := make([]mapSlice, len)
+	sliceResp := make([]qStructs.MapSlice, len)
 
 	for i := 0; i < len; i++ {
 		sliceResp[i] = mapStructToFields(fields, v.Index(i).Interface())
 	}
 
 	return sliceResp
-}
-
-type mapItem struct {
-	Key, Value interface{}
-}
-
-type mapSlice []mapItem
-
-func (ms mapSlice) marshalJSON() ([]byte, error) {
-	var b []byte
-	var err error
-	buf := &bytes.Buffer{}
-
-	buf.Write([]byte{'{'})
-
-	for i, mi := range ms {
-
-		switch reflect.ValueOf(mi.Value).Type().String() {
-		case reflect.ValueOf([]mapSlice{}).Type().String():
-			sliceValue := mi.Value.([]mapSlice)
-			sliceLen := len(sliceValue)
-			sliceBytes := []byte{'['}
-			for i, ms := range sliceValue {
-				valueBytes, err := ms.marshalJSON()
-				if err != nil {
-					return nil, err
-				}
-				sliceBytes = append(sliceBytes, valueBytes...)
-				if i < sliceLen-1 {
-					sliceBytes = append(sliceBytes, ',')
-				}
-			}
-			b = append(sliceBytes, ']')
-
-		case reflect.ValueOf(mapSlice{}).Type().String():
-			b, err = mi.Value.(mapSlice).marshalJSON()
-		default:
-			b, err = json.Marshal(&mi.Value)
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		buf.WriteString(fmt.Sprintf("%q:", fmt.Sprintf("%v", mi.Key)))
-		buf.Write(b)
-
-		if i < len(ms)-1 {
-			buf.Write([]byte{','})
-		}
-
-	}
-
-	buf.Write([]byte{'}'})
-
-	return buf.Bytes(), nil
 }

@@ -12,7 +12,9 @@ import (
 	"sync"
 
 	"github.com/figment-networks/graph-demo/runner/store"
+	"github.com/figment-networks/graph-demo/runner/store/memap"
 	"github.com/figment-networks/graph-demo/runner/structs"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"rogchap.com/v8go"
@@ -57,12 +59,12 @@ func NewLoader(l *zap.Logger, rqstr GQLCaller, stor store.Storage) *Loader {
 func (l *Loader) CallSubgraphHandler(subgraph string, handler *SubgraphHandler) error {
 
 	l.log.Debug("Calling SubgraphHandler ", zap.String("subgraph", subgraph))
-	//	l.lock.RLock()
+	// l.lock.RLock()
 	s, ok := l.subgraphs[subgraph]
-	//	l.lock.RUnlock()
+	// l.lock.RUnlock()
 
 	if !ok {
-		return errors.New("subgraph not found")
+		return memap.ErrSubgraphNotFound
 	}
 
 	e, err := handler.EncodeString()
@@ -184,17 +186,39 @@ func NewSubgraph(name string, caller GQLCaller, stor store.Storage) *Subgraph {
 
 func (s *Subgraph) storeRecord(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	args := info.Args()
+	if len(args) < 2 {
+		return jsonError(info.Context(), errors.New("arguments len too short"))
+	}
 
-	mj, _ := args[1].MarshalJSON()
-	a := map[string]interface{}{}
-	_ = json.Unmarshal(mj, &a)
-
-	if err := s.stor.Store(context.Background(), s.Name, `"`+args[0].String()+`"`, a); err != nil {
+	recordBytes, err := args[1].MarshalJSON()
+	if err != nil {
 		return jsonError(info.Context(), err)
+	}
+
+	record := map[string]interface{}{}
+	if err := json.Unmarshal(recordBytes, &record); err != nil {
+		return jsonError(info.Context(), err)
+	}
+
+	// record["ID"] = uuid.New()
+	for _, value := range record {
+		if err := s.storeOneRecord(value.(map[string]interface{}), args[0].String()); err != nil {
+			return jsonError(info.Context(), err)
+		}
 	}
 
 	return nil
 
+}
+
+func (s *Subgraph) storeOneRecord(record map[string]interface{}, structure string) (err error) {
+	record["id"] = uuid.New().String()
+	// record["time"]
+	if err = s.stor.Store(context.Background(), record, s.Name, structure); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
@@ -217,7 +241,11 @@ func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		return jsonError(info.Context(), err)
 	}
 
-	p, _ := v8go.JSONParse(info.Context(), string(resp))
+	p, err := v8go.JSONParse(info.Context(), string(resp))
+	if err != nil {
+		return jsonError(info.Context(), err)
+	}
+
 	return p
 }
 

@@ -23,6 +23,13 @@ type BlockAndTx struct {
 
 // Block contains the block details
 type Block struct {
+	// ID of transaction assigned on database write
+	ID uuid.UUID `json:"id,omitempty"`
+	// Created at
+	CreatedAt *time.Time `json:"created_at,omitempty"`
+	// Updated at
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+
 	// Hash of the Block
 	Hash string `json:"hash,omitempty"`
 	// Height of the Block

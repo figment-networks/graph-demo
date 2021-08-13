@@ -4,9 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
+	"strconv"
 
 	"github.com/figment-networks/graph-demo/runner/store"
 )
+
+var ErrSubgraphNotFound = fmt.Errorf("subgraph not found")
 
 type Stor struct {
 	ID              string
@@ -62,6 +66,9 @@ func (ss *SubgraphStore) NewStore(name, structure string, indexed []store.NT) {
 		case "String":
 			s.IndexedFields = append(s.IndexedFields, nt.Name)
 			s.Indexes[nt.Name] = make(map[string][]*Record)
+		case "Int":
+			s.IndexedFields = append(s.IndexedFields, nt.Name)
+			s.Indexes[nt.Name] = make(map[string][]*Record)
 		}
 	}
 
@@ -74,26 +81,27 @@ func (ss *SubgraphStore) NewStore(name, structure string, indexed []store.NT) {
 	ss.s[name] = mms
 }
 
-func (ss *SubgraphStore) Store(ctx context.Context, name, structure string, data map[string]interface{}) error {
+func (ss *SubgraphStore) Store(ctx context.Context, data map[string]interface{}, name, structure string) error {
 	subgraph, ok := ss.s[name]
 	if !ok {
-		return fmt.Errorf("subgraph not found")
+		return ErrSubgraphNotFound
 	}
-	return subgraph.Store(ctx, structure, data)
+	return subgraph.Store(ctx, data, structure)
 }
 
-func (ss *SubgraphStore) Get(ctx context.Context, name, kind, key, value string) (records []map[string]interface{}, err error) {
+func (ss *SubgraphStore) Get(ctx context.Context, name, structure, key, value string) (records []map[string]interface{}, err error) {
 	subgraph, ok := ss.s[name]
 	if !ok {
-		return nil, fmt.Errorf("subgraph not found")
+		return nil, ErrSubgraphNotFound
 	}
-	return subgraph.Get(ctx, kind, key, value)
+	return subgraph.Get(ctx, structure, key, value)
 }
 
-func (mm *MemoryMapStore) Store(ctx context.Context, name string, data map[string]interface{}) error {
-	s, ok := mm.storages[name]
+// map[height]map[Block/Transaction][]*Records
+func (mm *MemoryMapStore) Store(ctx context.Context, data map[string]interface{}, structure string) error {
+	s, ok := mm.storages[structure]
 	if !ok {
-		return errors.New("storage does not exists")
+		return fmt.Errorf("storage does not exists for structure %q", structure)
 	}
 
 	r := &Record{Data: data}
@@ -113,9 +121,21 @@ func (mm *MemoryMapStore) Store(ctx context.Context, name string, data map[strin
 			return fmt.Errorf("expected field %s not present", in)
 		}
 
-		sval, ok := val.(string)
+		var stringValue string
+		fieldType := reflect.ValueOf(val).Kind()
+		switch fieldType {
+		case reflect.Float64:
+			var fVal float64
+			fVal, ok = val.(float64)
+			stringValue = strconv.Itoa(int(fVal))
+		case reflect.String:
+			stringValue, ok = val.(string)
+		default:
+			return fmt.Errorf("unexpected field type %s %s: %+v", fieldType, in, val)
+		}
+
 		if !ok {
-			return fmt.Errorf("expected field %s is not a string: %+v", in, val)
+			return fmt.Errorf("could not read field value as %s: %s: %+v", fieldType, in, val)
 		}
 
 		k, ok := s.Indexes[in]
@@ -123,20 +143,20 @@ func (mm *MemoryMapStore) Store(ctx context.Context, name string, data map[strin
 			return fmt.Errorf("index not found")
 		}
 
-		keys, ok := k[sval]
+		keys, ok := k[stringValue]
 		if !ok {
 			keys = []*Record{}
 		}
 		keys = append(keys, r)
-		k[sval] = keys
+		k[stringValue] = keys
 		s.Indexes[in] = k
 	}
 
 	return nil
 }
 
-func (mm *MemoryMapStore) Get(ctx context.Context, kind, key, value string) (records []map[string]interface{}, err error) {
-	k := mm.storages[kind]
+func (mm *MemoryMapStore) Get(ctx context.Context, structure, key, value string) (records []map[string]interface{}, err error) {
+	k := mm.storages[structure]
 	record, ok := k.Indexes[key]
 	if !ok {
 		return nil, fmt.Errorf(" (%s) is not an indexed field", key)

@@ -47,6 +47,5 @@ func (ng *NetworkGraphHTTPTransport) CallGQL(ctx context.Context, name string, q
 		return nil, err
 	}
 
-	respD, err := ioutil.ReadAll(resp.Body)
-	return respD, err
+	return ioutil.ReadAll(resp.Body)
 }

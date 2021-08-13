@@ -10,6 +10,6 @@ type NT struct {
 
 type Storage interface {
 	NewStore(name, structure string, indexed []NT)
-	Store(ctx context.Context, name, structure string, data map[string]interface{}) error
+	Store(ctx context.Context, data map[string]interface{}, name, structure string) error
 	Get(ctx context.Context, name, structure, key, value string) (records []map[string]interface{}, err error)
 }
