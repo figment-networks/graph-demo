@@ -21,15 +21,15 @@ func NewService(store store.Storager) *Service {
 	}
 }
 
-func (s *Service) StoreBlock(ctx context.Context, block structs.Block) error {
+func (s *Service) StoreBlock(ctx context.Context, block structs.Block) (string, error) {
 	return s.store.StoreBlock(ctx, block)
 }
 
-func (s *Service) StoreTransactions(ctx context.Context, txs []structs.Transaction) error {
+func (s *Service) StoreTransactions(ctx context.Context, txs []structs.Transaction) ([]string, error) {
 	if len(txs) > 0 {
 		return s.store.StoreTransactions(ctx, txs)
 	}
-	return nil
+	return nil, nil
 }
 
 func (s *Service) GetByHeight(ctx context.Context, height uint64, chainID string) (bTx structs.BlockAndTx, err error) {

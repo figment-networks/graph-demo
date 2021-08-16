@@ -21,7 +21,6 @@ func (ms MapSlice) MarshalJSON() ([]byte, error) {
 	buf.Write([]byte{'{'})
 
 	for i, mi := range ms {
-
 		switch reflect.ValueOf(mi.Value).Type().String() {
 		case reflect.ValueOf([]MapSlice{}).Type().String():
 			sliceValue := mi.Value.([]MapSlice)

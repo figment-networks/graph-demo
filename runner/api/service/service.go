@@ -169,20 +169,21 @@ func fieldsStructResponse(fields map[string]graphcall.Field, record, nested map[
 	maxOrder := 0
 
 	for _, field := range fields {
+		var value interface{}
 		if field.Name == "transactions" {
 			ms, err := fieldsStructResponse(field.Fields, nested, nil)
 			if err != nil {
 				return nil, err
 			}
-			response[field.Order] = qStructs.MapItem{
-				Key:   field.Name,
-				Value: ms,
-			}
-		}
 
-		record, ok := record[field.Name]
-		if !ok {
-			return nil, errors.New("unknown field name")
+			value = ms
+		} else {
+			record, ok := record[field.Name]
+			if !ok {
+				return nil, errors.New("unknown field name")
+			}
+
+			value = record
 		}
 
 		if maxOrder < field.Order {
@@ -191,7 +192,7 @@ func fieldsStructResponse(fields map[string]graphcall.Field, record, nested map[
 
 		response[field.Order] = qStructs.MapItem{
 			Key:   field.Name,
-			Value: record,
+			Value: value,
 		}
 	}
 

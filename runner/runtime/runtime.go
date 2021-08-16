@@ -8,15 +8,12 @@ import (
 	"io/ioutil"
 	"log"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/figment-networks/graph-demo/runner/store"
 	"github.com/figment-networks/graph-demo/runner/store/memap"
 	"github.com/figment-networks/graph-demo/runner/structs"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 
 	"rogchap.com/v8go"
@@ -203,49 +200,14 @@ func (s *Subgraph) storeRecord(info *v8go.FunctionCallbackInfo) *v8go.Value {
 	}
 
 	for _, value := range record {
-		if err := s.storeOneRecord(value.(map[string]interface{}), args[0].String()); err != nil {
+		structure := args[0].String()
+		if err = s.stor.Store(context.Background(), value.(map[string]interface{}), s.Name, structure); err != nil {
 			return jsonError(info.Context(), err)
 		}
 	}
 
 	return nil
 
-}
-
-func (s *Subgraph) storeOneRecord(record map[string]interface{}, structure string) (err error) {
-	// generating a new unique id for record
-	record["id"] = uuid.New().String()
-	if structure == "Transaction" {
-		// linking Block id with Transaction
-		height, ok := record["height"]
-		if !ok {
-			return errors.New("Height field is missing")
-		}
-
-		// waiting for a Block to be saved
-		for i := 0; i < 10; i++ {
-			time.Sleep(3 * time.Second)
-
-			records, err := s.stor.Get(context.Background(), s.Name, "Block", "height", string(strconv.Itoa(int(height.(float64)))))
-			if err != nil {
-				if i == 9 {
-					return err
-				}
-				continue
-			}
-			if len(records) != 1 {
-				return errors.New("Expected one block for height")
-			}
-			record["blockID"] = records[0]["id"]
-			break
-		}
-
-	}
-	if err = s.stor.Store(context.Background(), record, s.Name, structure); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (s *Subgraph) callGQL(info *v8go.FunctionCallbackInfo) *v8go.Value {

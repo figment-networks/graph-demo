@@ -5,6 +5,18 @@ import (
 	"encoding/json"
 )
 
+type BlockID struct {
+	ID string `json:"id"`
+}
+
+type TransactionIDs struct {
+	IDs []string `json:"ids"`
+}
+
+type BlockAndTransactionIDs struct {
+	BlockID string   `json:"block_id"`
+	TxsIDs  []string `json:"txs_ids"`
+}
 type Response interface {
 	Send(result json.RawMessage, er error) error
 }

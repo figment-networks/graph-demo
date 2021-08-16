@@ -10,7 +10,7 @@ import (
 )
 
 type NetworkClient interface {
-	GetAll(ctx context.Context, height uint64) error
+	GetAll(ctx context.Context, height uint64) (string, []string, error)
 	GetLatest(ctx context.Context) (uint64, error)
 }
 
@@ -32,17 +32,33 @@ func NewClient(l *zap.Logger, st store.Storager, sc SubscriptionClient) *Client 
 	}
 }
 
-func (c *Client) ProcessHeight(ctx context.Context, nc NetworkClient, height uint64) (err error) {
-	if err = c.getByHeight(ctx, nc, height); err != nil {
+func (c *Client) ProcessHeight(ctx context.Context, nc NetworkClient, height uint64) error {
+	blockID, txIDs, err := c.getByHeight(ctx, nc, height)
+	if err != nil {
 		return err
+	}
+
+	newEventBlock := structs.EventNewBlock{
+		ID:     blockID,
+		Height: height,
 	}
 
 	// We can populate some errors from here
-	if err := c.PopulateEvent(ctx, structs.EVENT_NEW_BLOCK, height, structs.EventNewBlock{Height: height}); err != nil {
+	if err := c.PopulateEvent(ctx, structs.EVENT_NEW_BLOCK, height, newEventBlock); err != nil {
 		return err
 	}
 
-	if err := c.PopulateEvent(ctx, structs.EVENT_NEW_TRANSACTION, height, structs.EventNewTransaction{Height: height}); err != nil {
+	if len(txIDs) == 0 {
+		return nil
+	}
+
+	newEventTransactions := structs.EventNewTransaction{
+		BlockID: blockID,
+		TxIDs:   txIDs,
+		Height:  height,
+	}
+
+	if err := c.PopulateEvent(ctx, structs.EVENT_NEW_TRANSACTION, height, newEventTransactions); err != nil {
 		return err
 	}
 
@@ -56,7 +72,7 @@ func (c *Client) PopulateEvent(ctx context.Context, event string, height uint64,
 	return c.sc.PopulateEvent(ctx, event, height, data)
 }
 
-func (c *Client) getByHeight(ctx context.Context, nc NetworkClient, height uint64) (err error) {
+func (c *Client) getByHeight(ctx context.Context, nc NetworkClient, height uint64) (string, []string, error) {
 	return nc.GetAll(ctx, height)
 }
 

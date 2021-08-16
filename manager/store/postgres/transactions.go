@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 
 	"github.com/figment-networks/graph-demo/manager/structs"
 	"github.com/lib/pq"
@@ -34,7 +35,8 @@ const (
 	gas_wanted = EXCLUDED.gas_wanted,
 	gas_used = EXCLUDED.gas_used,
 	memo = EXCLUDED.memo,
-	raw_log = EXCLUDED.raw_log`
+	raw_log = EXCLUDED.raw_log
+	RETURNING id`
 
 	txSelect = `SELECT hash, block_hash, time, code_space, code, result, logs, info, tx_raw, messages, extension_options, 
 	non_critical_extension_options, auth_info, signatures, gas_wanted, gas_used, memo, raw_log
@@ -43,26 +45,28 @@ const (
 )
 
 // StoreTransactions adds transactions to storage buffer
-func (d *Driver) StoreTransactions(ctx context.Context, txs []structs.Transaction) error {
+func (d *Driver) StoreTransactions(ctx context.Context, txs []structs.Transaction) (ids []string, err error) {
 	tx, err := d.db.Begin()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	for _, t := range txs {
+	ids = make([]string, len(txs))
+
+	for i, t := range txs {
 
 		mf, err := getMarshaledFields(t)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		if err := d.storeTx(ctx, t, mf); err != nil {
-			return err
+		if ids[i], err = d.storeTx(ctx, t, mf); err != nil {
+			return nil, err
 		}
 
 	}
 
-	return tx.Commit()
+	return ids, tx.Commit()
 }
 
 type marshaledFields struct {
@@ -101,38 +105,21 @@ func getMarshaledFields(tx structs.Transaction) (mf marshaledFields, err error) 
 		return mf, err
 	}
 
-	// mf.extensionOptions = make([][]byte, len(tx.ExtensionOptions))
-	// for i, extensionOption := range tx.ExtensionOptions {
-	// 	if mf.extensionOptions[i], err = json.Marshal(extensionOption); err != nil {
-	// 		return mf, err
-	// 	}
-	// }
-
-	// mf.nonCriticalExtensionOptions = make([][]byte, len(tx.NonCriticalExtensionOptions))
-	// for i, nonCriticalExtensionOption := range tx.NonCriticalExtensionOptions {
-	// 	if mf.nonCriticalExtensionOptions[i], err = json.Marshal(nonCriticalExtensionOption); err != nil {
-	// 		return mf, err
-	// 	}
-	// }
-
-	// mf.messages = make([][]byte, len(tx.Messages))
-	// for i, message := range tx.Messages {
-	// 	if mf.messages[i], err = json.Marshal(message); err != nil {
-	// 		return mf, err
-	// 	}
-	// }
-
 	return
 }
 
-func (d *Driver) storeTx(ctx context.Context, t structs.Transaction, mf marshaledFields) (err error) {
+func (d *Driver) storeTx(ctx context.Context, t structs.Transaction, mf marshaledFields) (id string, err error) {
 
 	// TODO(lukanus): store  REAL transation
-	_, err = d.db.ExecContext(ctx, txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, t.CodeSpace, t.Code, t.Result, mf.logs,
+	row := d.db.QueryRow(txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, t.CodeSpace, t.Code, t.Result, mf.logs,
 		t.Info, mf.txRaw, mf.messages, mf.extensionOptions, mf.nonCriticalExtensionOptions, mf.authInfo, pq.Array(t.Signatures),
-		t.GasWanted, t.GasUsed, t.Memo, t.RawLog)
+		t.GasWanted, t.GasUsed, t.Memo, t.RawLog).Scan(&id)
 
-	return
+	if row != nil {
+		return "", errors.New(row.Error())
+	}
+
+	return id, nil
 }
 
 // Removes ASCII hex 0-7 causing utf-8 error in db
