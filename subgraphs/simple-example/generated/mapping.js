@@ -7,6 +7,7 @@ var graph_1 = require("../../graph");
  */
 var TransactionEntity = /** @class */ (function () {
     function TransactionEntity() {
+        Object.assign(this, arguments);
     }
     TransactionEntity.prototype.save = function () {
         return graph_1.store.save("Transaction", this);
@@ -30,7 +31,13 @@ var BlockEntity = /** @class */ (function () {
 /**
  * Mapping
  */
-var GET_BLOCK = "query GetBlock($height: Int = 0, $chain_id: String = \"mainnet\") {\n  block( height: $height, chain_id: $chain_id) {\n    hash\n  height\n    time\n    id\n  }\n}";
+const GET_BLOCK = `query GetBlock($height: Int = 0, $chain_id: String = "mainnet") {
+    block( height: $height, chain_id: $chain_id) {
+      hash
+      height
+      time
+    }
+  }`;
 /**
  * This function is defined in the subgraph.yaml.
  *
@@ -64,12 +71,42 @@ function handleBlock(newBlockEvent) {
     var entity = new BlockEntity({ hash, height,  myNote: "ok", time })
     graph_1.log.debug('Entity: ', JSON.stringify(entity));
     var storeErr = entity.save().storeErr;
-    if (storeErr != undefined) {
-        graph_1.log.debug('Error storing entity: ', JSON.stringify(storeErr));
+    if (storeErr !== undefined) {
+        graph_1.log.debug('Error storing block: ', JSON.stringify(storeErr));
     } else {
         graph_1.log.debug('Block stored: ', JSON.stringify(newBlockEvent));
     }
 }
+
+var GET_TRANSACTIONS = `query GetTransactions($height: Int = 0, $chain_id: String = "mainnet") {
+    transactions(height: $height, chain_id: $chain_id) {
+      hash
+      height
+      time
+    }
+  }`;
+
 function handleTransaction(newTxnEvent) {
     graph_1.log.debug('newTxnEvent: ', JSON.stringify(newTxnEvent));
+    var _a = graph_1.graphql.call("cosmos", GET_TRANSACTIONS, { height: newTxnEvent.height, chain_id: "cosmoshub-4" }, "0.0.1"), error = _a.error, data = _a.data;
+    if (error) {
+        graph_1.log.debug('GQL call error: ', JSON.stringify(error));
+        return;
+    }
+    if (!data) {
+        graph_1.log.debug('GQL call returned no data');
+        return;
+    }
+    graph_1.log.debug('GQL call data: ', JSON.stringify(data));
+    data.transactions.forEach(tx => {
+        var hash = tx.hash, height = tx.height, time = tx.time;
+        var entity = new TransactionEntity({ hash, height,  myNote: "ok", time })
+        graph_1.log.debug('Entity: ', JSON.stringify(entity));
+        var storeErr = entity.save().storeErr;
+        if (storeErr !== undefined) {
+            graph_1.log.debug('Error storing transaction: ', JSON.stringify(storeErr));
+        } else {
+            graph_1.log.debug('Transaction stored: ', JSON.stringify(newTxnEvent));
+        }
+    });
 }
