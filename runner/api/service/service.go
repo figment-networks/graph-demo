@@ -41,23 +41,14 @@ func (s *Service) ProcessGraphqlQuery(ctx context.Context, subgraph string, q []
 			return nil, err
 		}
 
-		var queryTransactions bool
-		blockField, queryBlock := query.Fields["block"]
-		if queryBlock {
-
-			records, err := s.store.Get(ctx, subgraph, "Block", "height", heightStr)
-			if err != nil && err != memap.ErrRecordsNotFound {
-				return nil, err
-			}
-			recordsMap[query.Order] = records
-
-			_, queryTransactions = blockField.Fields["transactions"]
-
-		} else {
-			if _, queryTransactions = query.Fields["transactions"]; !queryTransactions {
-				return nil, errors.New("query has no fields to map")
-			}
+		recordsMap[query.Order], err = s.store.Get(ctx, subgraph, "Block", "height", heightStr)
+		if err != nil && err != memap.ErrRecordsNotFound {
+			continue
+		} else if err != nil {
+			return nil, err
 		}
+
+		_, queryTransactions := query.Fields["transactions"]
 
 		if queryTransactions {
 			records, err := s.store.Get(ctx, subgraph, "Transaction", "height", heightStr)
@@ -65,20 +56,16 @@ func (s *Service) ProcessGraphqlQuery(ctx context.Context, subgraph string, q []
 				return nil, err
 			}
 
-			if queryBlock {
-				for i, blockRecords := range recordsMap[query.Order] {
-					heightRecord, ok := blockRecords["height"]
-					if ok && heightRecord == hFloat {
-						recordsMap[query.Order][i]["transactions"] = records
-					}
+			for i, blockRecords := range recordsMap[query.Order] {
+				heightRecord, ok := blockRecords["height"]
+				if ok && heightRecord == hFloat {
+					recordsMap[query.Order][i]["transactions"] = records
 				}
-			} else {
-				recordsMap[query.Order] = records
 			}
 		}
 	}
 
-	return mapRecordsToResponse(queries.Queries, recordsMap) // s.client.ProcessGraphqlQuery(ctx, q, v)
+	return mapRecordsToResponse(queries.Queries, recordsMap)
 }
 
 func getHeight(params map[string]graphcall.Part) (hFloat float64, heightStr string, err error) {
@@ -119,20 +106,15 @@ func mapRecordsToResponse(queries []graphcall.Query, recordsMap qRecordsMap) ([]
 	resp = make([]qStructs.MapItem, len(queries))
 	for _, query := range queries {
 
-		for name, fields := range query.Fields {
-			records, _ := recordsMap[query.Order]
-			response, err = mapBlockAndTxsToResponse(records, fields.Fields)
-			if err != nil {
-				return nil, err
-			}
+		records, _ := recordsMap[query.Order]
+		response, err = mapBlockAndTxsToResponse(records, query.Fields)
+		if err != nil {
+			return nil, err
+		}
 
-			resp[query.Order] = qStructs.MapItem{
-				Key: query.Name,
-				Value: qStructs.MapSlice{qStructs.MapItem{
-					Key:   name,
-					Value: response,
-				}},
-			}
+		resp[query.Order] = qStructs.MapItem{
+			Key:   query.Name,
+			Value: response,
 		}
 
 	}
@@ -145,10 +127,6 @@ func mapBlockAndTxsToResponse(records []map[string]interface{}, fields map[strin
 	var err error
 	rLen := len(records)
 	responses := make([]interface{}, rLen)
-
-	// if records == nil {
-	// 	return nil, nil
-	// }
 
 	for i, record := range records {
 		if response, err = fieldsStructResponse(fields, record); err != nil {

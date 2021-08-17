@@ -82,7 +82,7 @@ function handleBlock(newBlockEvent: BlockEvent) {
 
   log.debug('GQL call data: ' + JSON.stringify(data));
 
-  const { hash, height, time } = data;
+  const { hash, height, time } = data.block;
   const { id } = newBlockEvent;
   const entity = new BlockEntity({id, hash, height, myNote: "some additional data", time });
 
