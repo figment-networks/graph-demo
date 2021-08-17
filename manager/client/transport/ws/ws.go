@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/figment-networks/graph-demo/connectivity"
@@ -42,9 +43,24 @@ func (ng *CosmosWSTransport) GetLatest(ctx context.Context) (h uint64, err error
 	}
 
 	if err = json.Unmarshal(resp.Result, &h); err != nil {
+		var response errResponse
+		if err2 := json.Unmarshal(resp.Result, &response); err2 == nil {
+			err = errors.New("Unexpected response")
+			for _, errStr := range response.Errors {
+				err = fmt.Errorf("%s: %s", err.Error(), errStr)
+			}
+		}
 		return h, err
 	}
 
 	return h, nil
 
+}
+
+type errResponse struct {
+	Errors []errMsg `json:"errors"`
+}
+
+type errMsg struct {
+	Message string `json:"message"`
 }

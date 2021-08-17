@@ -24,49 +24,32 @@ func New(store *memap.SubgraphStore) *Service {
 	}
 }
 
+type qRecordsMap map[int][]map[string]interface{}
+
 func (s *Service) ProcessGraphqlQuery(ctx context.Context, q []byte, v map[string]interface{}) ([]byte, error) {
 	queries, err := graphcall.ParseQuery(q, v)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing graphql query: %w", err)
 	}
 
-	recordsMap := make(map[int]map[string][]map[string]interface{})
+	recordsMap := make(qRecordsMap)
 
 	for _, query := range queries.Queries {
 
-		heightPart, ok := query.Params["height"]
-		if !ok {
-			return nil, errors.New("missing required part: height")
-		}
-
-		heightParam, ok := heightPart.Params["height"]
-		if !ok {
-			return nil, errors.New("missing required parameter: height")
-		}
-
-		var heightValue string
-		switch heightParam.Variable {
-		case "string":
-			heightValue = heightParam.Value.(string)
-		case "uint64":
-			heightValue = strconv.Itoa(int(heightParam.Value.(uint64)))
-		default:
-			return nil, fmt.Errorf("unexpected parameter variable %q", heightParam.Variable)
+		hFloat, heightStr, err := getHeight(query.Params)
+		if err != nil {
+			return nil, err
 		}
 
 		var queryTransactions bool
 		blockField, queryBlock := query.Fields["block"]
 		if queryBlock {
 
-			records, err := s.store.Get(ctx, "simple-example", "Block", "height", heightValue)
-			if err != nil {
+			records, err := s.store.Get(ctx, "simple-example", "Block", "height", heightStr)
+			if err != nil && err != memap.ErrRecordsNotFound {
 				return nil, err
 			}
-
-			if _, ok := recordsMap[query.Order]; !ok {
-				recordsMap[query.Order] = make(map[string][]map[string]interface{})
-			}
-			recordsMap[query.Order]["block"] = records
+			recordsMap[query.Order] = records
 
 			_, queryTransactions = blockField.Fields["transactions"]
 
@@ -77,23 +60,58 @@ func (s *Service) ProcessGraphqlQuery(ctx context.Context, q []byte, v map[strin
 		}
 
 		if queryTransactions {
-			records, err := s.store.Get(ctx, "simple-example", "Transaction", "height", heightValue)
-			if err != nil {
+			records, err := s.store.Get(ctx, "simple-example", "Transaction", "height", heightStr)
+			if err != nil && err != memap.ErrRecordsNotFound {
 				return nil, err
 			}
 
-			if _, ok := recordsMap[query.Order]; !ok {
-				recordsMap[query.Order] = make(map[string][]map[string]interface{})
+			if queryBlock {
+				for i, blockRecords := range recordsMap[query.Order] {
+					heightRecord, ok := blockRecords["height"]
+					if ok && heightRecord == hFloat {
+						recordsMap[query.Order][i]["transactions"] = records
+					}
+				}
+			} else {
+				recordsMap[query.Order] = records
 			}
-			recordsMap[query.Order]["transactions"] = records
 		}
-
 	}
 
 	return mapRecordsToResponse(queries.Queries, recordsMap) // s.client.ProcessGraphqlQuery(ctx, q, v)
 }
 
-func mapRecordsToResponse(queries []graphcall.Query, recordsMap map[int]map[string][]map[string]interface{}) ([]byte, error) {
+func getHeight(params map[string]graphcall.Part) (hFloat float64, heightStr string, err error) {
+	heightPart, ok := params["height"]
+	if !ok {
+		return 0, "", errors.New("missing required part: height")
+	}
+
+	heightParam, ok := heightPart.Params["height"]
+	if !ok {
+		return 0, "", errors.New("missing required parameter: height")
+	}
+
+	switch heightParam.Variable {
+	case "string":
+		heightStr = heightParam.Value.(string)
+		hInt, err := strconv.Atoi(heightStr)
+		if err != nil {
+			return 0, "", err
+		}
+		hFloat = float64(hInt)
+	case "uint64":
+		hUint64 := heightParam.Value.(uint64)
+		heightStr = strconv.Itoa(int(hUint64))
+		hFloat = float64(hUint64)
+	default:
+		return 0, "", fmt.Errorf("unexpected parameter variable %q", heightParam.Variable)
+	}
+
+	return hFloat, heightStr, nil
+}
+
+func mapRecordsToResponse(queries []graphcall.Query, recordsMap qRecordsMap) ([]byte, error) {
 	var response interface{}
 	var resp qStructs.MapSlice
 	var err error
@@ -102,24 +120,8 @@ func mapRecordsToResponse(queries []graphcall.Query, recordsMap map[int]map[stri
 	for _, query := range queries {
 
 		for name, fields := range query.Fields {
-			txsRecords, txsOk := recordsMap[query.Order]["transactions"]
-
-			switch fields.Name {
-			case "block":
-				blockRecords, ok := recordsMap[query.Order]["block"]
-				if !ok {
-					continue
-				}
-				response, err = mapBlocksToResponse(blockRecords, txsRecords, fields.Fields)
-			case "transactions":
-				if !txsOk {
-					continue
-				}
-				response, err = mapBlocksToResponse(txsRecords, nil, fields.Fields)
-			default:
-				return nil, fmt.Errorf("unknown field value to map %q", fields.Name)
-			}
-
+			records, _ := recordsMap[query.Order]
+			response, err = mapBlockAndTxsToResponse(records, fields.Fields)
 			if err != nil {
 				return nil, err
 			}
@@ -138,19 +140,18 @@ func mapRecordsToResponse(queries []graphcall.Query, recordsMap map[int]map[stri
 	return resp.MarshalJSON()
 }
 
-func mapBlocksToResponse(records, nested []map[string]interface{}, fields map[string]graphcall.Field) (interface{}, error) {
+func mapBlockAndTxsToResponse(records []map[string]interface{}, fields map[string]graphcall.Field) (interface{}, error) {
 	var response interface{}
 	var err error
-	nLen := len(nested)
 	rLen := len(records)
 	responses := make([]interface{}, rLen)
 
+	// if records == nil {
+	// 	return nil, nil
+	// }
+
 	for i, record := range records {
-		var nMap map[string]interface{}
-		if i < nLen {
-			nMap = nested[i]
-		}
-		if response, err = fieldsStructResponse(fields, record, nMap); err != nil {
+		if response, err = fieldsStructResponse(fields, record); err != nil {
 			return nil, err
 		}
 
@@ -164,26 +165,30 @@ func mapBlocksToResponse(records, nested []map[string]interface{}, fields map[st
 	return response, nil
 }
 
-func fieldsStructResponse(fields map[string]graphcall.Field, record, nested map[string]interface{}) (qStructs.MapSlice, error) {
+func fieldsStructResponse(fields map[string]graphcall.Field, record map[string]interface{}) (qStructs.MapSlice, error) {
+	var err error
 	response := make(map[int]qStructs.MapItem, len(fields))
 	maxOrder := 0
 
 	for _, field := range fields {
+		recordValue, ok := record[field.Name]
+		if !ok {
+			return nil, fmt.Errorf("unknown field name %q", field.Name)
+		}
+
 		var value interface{}
-		if field.Name == "transactions" {
-			ms, err := fieldsStructResponse(field.Fields, nested, nil)
-			if err != nil {
-				return nil, err
+		if field.Fields != nil {
+			txs := recordValue.(interface{}).([]map[string]interface{})
+			txsMs := make([]qStructs.MapSlice, len(txs))
+			for i, tx := range txs {
+				txsMs[i], err = fieldsStructResponse(field.Fields, tx)
+				if err != nil {
+					return nil, err
+				}
 			}
-
-			value = ms
+			value = txsMs
 		} else {
-			record, ok := record[field.Name]
-			if !ok {
-				return nil, errors.New("unknown field name")
-			}
-
-			value = record
+			value = recordValue
 		}
 
 		if maxOrder < field.Order {

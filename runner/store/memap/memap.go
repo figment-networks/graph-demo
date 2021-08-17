@@ -10,7 +10,10 @@ import (
 	"github.com/figment-networks/graph-demo/runner/store"
 )
 
-var ErrSubgraphNotFound = fmt.Errorf("subgraph not found")
+var (
+	ErrRecordsNotFound  = fmt.Errorf("not found")
+	ErrSubgraphNotFound = fmt.Errorf("subgraph not found")
+)
 
 type Stor struct {
 	ID              string
@@ -164,7 +167,7 @@ func (mm *MemoryMapStore) Get(ctx context.Context, structure, key, value string)
 
 	found, ok := record[value]
 	if !ok {
-		return nil, fmt.Errorf("not found")
+		return nil, ErrRecordsNotFound
 	}
 
 	for _, f := range found {

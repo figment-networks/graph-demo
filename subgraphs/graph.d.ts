@@ -30,9 +30,12 @@ export interface BlockResponse {
 }
 
 export interface BlockEvent {
+    id: string,
     height: number;
 }
 
 export interface TransactionEvent {
+    block_id: string,
+    tx_ids: string[],
     height: number;
 }
