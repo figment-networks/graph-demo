@@ -61,7 +61,7 @@ services:
       - internal
     environment:
       CHAIN_ID: cosmoshub-4
-      COSMOS_GRPC_ADDR: 0.0.0.0:9090
+      COSMOS_GRPC_ADDR: host.docker.internal:9090
       MANAGER_URL: ws://graph-demo_manager_1:8075/work
     depends_on:
       - manager

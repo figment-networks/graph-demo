@@ -24,7 +24,7 @@ func New(store *memap.SubgraphStore) *Service {
 	}
 }
 
-func (s *Service) ProcessGraphqlQuery(ctx context.Context, q []byte, v map[string]interface{}) ([]byte, error) {
+func (s *Service) ProcessGraphqlQuery(ctx context.Context, subgraph string, q []byte, v map[string]interface{}) ([]byte, error) {
 	queries, err := graphcall.ParseQuery(q, v)
 	if err != nil {
 		return nil, fmt.Errorf("error while parsing graphql query: %w", err)
@@ -57,8 +57,7 @@ func (s *Service) ProcessGraphqlQuery(ctx context.Context, q []byte, v map[strin
 		var queryTransactions bool
 		blockField, queryBlock := query.Fields["block"]
 		if queryBlock {
-
-			records, err := s.store.Get(ctx, "simple-example", "Block", "height", heightValue)
+			records, err := s.store.Get(ctx, subgraph, "Block", "height", heightValue)
 			if err != nil {
 				return nil, err
 			}
@@ -77,7 +76,7 @@ func (s *Service) ProcessGraphqlQuery(ctx context.Context, q []byte, v map[strin
 		}
 
 		if queryTransactions {
-			records, err := s.store.Get(ctx, "simple-example", "Transaction", "height", heightValue)
+			records, err := s.store.Get(ctx, subgraph, "Transaction", "height", heightValue)
 			if err != nil {
 				return nil, err
 			}
