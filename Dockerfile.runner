@@ -1,0 +1,36 @@
+# ------------------------------------------------------------------------------
+# Builder Image
+# ------------------------------------------------------------------------------
+FROM golang AS build
+
+WORKDIR /build
+
+COPY ./go.mod .
+COPY ./go.sum .
+
+RUN go mod download
+COPY ./Makefile ./Makefile
+
+COPY ./connectivity ./connectivity
+COPY ./graphcall ./graphcall
+COPY ./cmd/common ./cmd/common
+COPY ./cmd/runner ./cmd/runner
+COPY ./runner ./runner
+
+ENV GOARCH=amd64
+ENV GOOS=linux
+
+RUN make build-runner
+
+# ------------------------------------------------------------------------------
+# Target Image
+# ------------------------------------------------------------------------------
+FROM ubuntu AS release
+
+RUN addgroup --gid 1234 figment
+RUN adduser --system --uid 1234 figment
+USER 1234
+WORKDIR /app
+
+COPY --from=build  /build/runner_bin /app/runner
+CMD ["/app/runner"]

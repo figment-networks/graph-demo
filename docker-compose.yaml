@@ -7,11 +7,7 @@ networks:
     attachable: true
 
 volumes:
-#   cosmosworker: {}
   postgresdatabase: {}
-#   runner: {}
-#   manager: {}
-#   managermigration: {}
 
 
 services:
@@ -39,3 +35,51 @@ services:
       DATABASE_URL: postgres://manager:manager@graph-demo_postgresdatabase_1/manager?sslmode=disable
     depends_on:
       - postgresdatabase
+
+  manager:
+    command: /app/manager
+    ports:
+      - "8075:8075"
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    networks:
+      - internal
+    environment:
+      ADDRESS: 0.0.0.0:8075
+      LOWEST_HEIGHTS: cosmoshub-4:5200791
+      DATABASE_URL: postgres://manager:manager@graph-demo_postgresdatabase_1/manager?sslmode=disable
+    depends_on:
+      - managermigrate
+
+  cosmosworker:
+    command: /app/worker
+    build:
+      context: .
+      dockerfile: ./Dockerfile.worker
+    networks:
+      - internal
+    environment:
+      CHAIN_ID: cosmoshub-4
+      COSMOS_GRPC_ADDR: host.docker.internal:9090
+      MANAGER_URL: ws://graph-demo_manager_1:8075/work
+    depends_on:
+      - manager
+
+  runner:
+    command: /app/runner
+    ports:
+      - "8098:8098"
+    build:
+      context: .
+      dockerfile: ./Dockerfile.runner
+    volumes:
+      - $PWD/subgraphs:/subgraphs
+    networks:
+      - internal
+    environment:
+      SUBGRAPHS: /subgraphs/simple-example
+      HTTP_PORT: "8098"
+      MANAGER_URL: ws://graph-demo_manager_1:8075/runner
+    depends_on:
+      - manager

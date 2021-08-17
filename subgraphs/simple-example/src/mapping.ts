@@ -7,7 +7,6 @@ import { graphql, BlockEvent, store, log, TransactionEvent, Network } from "../.
  */
  class TransactionEntity {
   id: string;
-  blockID: string;
   height: number;
   hash: string;
   time: Date;
@@ -85,7 +84,7 @@ function handleBlock(newBlockEvent: BlockEvent) {
 
   const { hash, height, time } = data;
   const { id } = newBlockEvent;
-  const entity = new BlockEntity({id, hash, height, myNote: "ok", time });
+  const entity = new BlockEntity({id, hash, height, myNote: "some additional data", time });
 
   log.debug('Entity: ' + JSON.stringify(entity));
 
@@ -131,8 +130,8 @@ function handleTransaction(newTxnEvent: TransactionEvent) {
       return;
     }
 
-    const { hash, height, time } = tx;
-    const entity = new TransactionEntity({id: tx_ids[idx], blockID, hash, height, myNote: "ok", time });
+    const hash = tx.hash , height = tx.height, time = tx.time;
+    const entity = new TransactionEntity({id: tx_ids[idx], blockID, hash, height, myNote: "some additional data", time });
 
     log.debug('Entity: ' + JSON.stringify(entity));
 

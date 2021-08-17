@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/figment-networks/graph-demo/cmd/common/logger"
@@ -66,8 +68,8 @@ func main() {
 
 	dbDriver, err := postgres.NewDriver(ctx, log, cfg.DatabaseURL)
 	if err != nil {
-		log.Error("Error while creating database driver", zap.Error(err))
-		os.Exit(1)
+		log.Fatal("Error while creating database driver", zap.Error(err))
+
 	}
 
 	st := store.NewStore(dbDriver)
@@ -75,9 +77,21 @@ func main() {
 	sc := subscription.NewSubscriptions()
 
 	reg := connWS.NewRegistry()
-
 	client := client.NewClient(log, st, sc)
-	sched := scheduler.NewScheduler(log, client)
+
+	lhs := strings.Split(cfg.LowestHeights, ",")
+	lheights := make(map[string]uint64)
+	for _, l := range lhs {
+		ls := strings.Split(l, ":")
+		if len(ls) > 1 {
+			lheights[ls[0]], err = strconv.ParseUint(ls[1], 10, 64)
+			if err != nil {
+				log.Fatal("Error while creating database driver", zap.Error(err))
+			}
+		}
+	}
+
+	sched := scheduler.NewScheduler(log, client, lheights)
 
 	serv := api.NewService(st)
 	wProc := workerWSAPI.NewProcessHandler(log, serv, sched, reg)

@@ -10,7 +10,7 @@ import (
 )
 
 type API interface {
-	ProcessGraphqlQuery(ctx context.Context, q []byte, v map[string]interface{}) ([]byte, error)
+	ProcessGraphqlQuery(ctx context.Context, subgraph string, q []byte, v map[string]interface{}) ([]byte, error)
 }
 type JSONGraphQLRequest struct {
 	Query     string                 `json:"query"`
@@ -37,7 +37,7 @@ func NewHandler(api API) *Handler {
 }
 
 func (h *Handler) AttachMux(mux *http.ServeMux) {
-	mux.HandleFunc("/subgraph", h.HandleGraphql)
+	mux.HandleFunc("/subgraph/", h.HandleGraphql)
 }
 
 func (h *Handler) HandleGraphql(w http.ResponseWriter, r *http.Request) {
@@ -54,12 +54,24 @@ func (h *Handler) HandleGraphql(w http.ResponseWriter, r *http.Request) {
 
 	dec := json.NewDecoder(r.Body)
 	req := &JSONGraphQLRequest{}
-	dec.Decode(req)
+
+	if err := dec.Decode(req); err != nil {
+		w.WriteHeader(http.StatusNotAcceptable)
+		resp.Errors = []errorMessage{{Message: "query structure"}}
+		enc.Encode(resp)
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	response, err := h.api.ProcessGraphqlQuery(ctx, []byte(req.Query), req.Variables)
+	i := strings.Index(r.URL.Path, "/subgraph/")
+	part := ""
+	if i > -1 {
+		part = r.URL.Path[i+10:]
+	}
+
+	response, err := h.api.ProcessGraphqlQuery(ctx, part, []byte(req.Query), req.Variables)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		resp.Errors = []errorMessage{{Message: err.Error()}}
