@@ -68,6 +68,8 @@ services:
 
   runner:
     command: /app/runner
+    ports:
+      - "8098:8098"
     build:
       context: .
       dockerfile: ./Dockerfile.runner
@@ -77,6 +79,7 @@ services:
       - internal
     environment:
       SUBGRAPHS: /subgraphs/simple-example
+      HTTP_PORT: "8098"
       MANAGER_URL: ws://graph-demo_manager_1:8075/runner
     depends_on:
       - manager

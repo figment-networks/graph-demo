@@ -9,7 +9,6 @@ type Block @entity {
 
 type Transaction @entity {
   id: ID!
-  blockID: Int!
   hash: String!
   height: Int!
   time: String!

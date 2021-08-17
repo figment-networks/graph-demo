@@ -7,7 +7,6 @@ import { graphql, BlockEvent, store, log, TransactionEvent, Network } from "../.
  */
  class TransactionEntity {
   id: string;
-  blockID: string;
   height: number;
   hash: string;
   time: Date;
@@ -83,12 +82,12 @@ function handleBlock(newBlockEvent: BlockEvent) {
 
   log.debug('GQL call data: ' + JSON.stringify(data));
 
-  const { hash, height, time } = data;
-  const entity = new BlockEntity({hash, height, myNote: "ok", time });
+  const { hash, height, time } = data.block;
+  const entity = new BlockEntity({id: height + "", hash, height, myNote: "some additional data", time });
 
   log.debug('Entity: ' + JSON.stringify(entity));
 
-  const {storeErr} = entity.save();
+  const storeErr = entity.save();
   if (storeErr !== undefined) {
     log.debug('Error storing block: ' + JSON.stringify(storeErr));
   } else {
@@ -122,12 +121,12 @@ function handleTransaction(newTxnEvent: TransactionEvent) {
   log.debug('GQL call data: ' + JSON.stringify(data));
 
   data.transactions.forEach(tx => {
-    const { hash, height, time } = tx;
-    const entity = new TransactionEntity({hash, height, myNote: "ok", time });
+    const hash = tx.hash , height = tx.height, time = tx.time;
+    const entity = new TransactionEntity({id: hash, hash, height, myNote: "some additional data", time });
 
     log.debug('Entity: ' + JSON.stringify(entity));
 
-    const {storeErr} = entity.save();
+    const storeErr = entity.save();
     if (storeErr !== undefined) {
       log.debug('Error storing transaction: ' + JSON.stringify(storeErr));
     } else {

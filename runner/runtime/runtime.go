@@ -199,13 +199,10 @@ func (s *Subgraph) storeRecord(info *v8go.FunctionCallbackInfo) *v8go.Value {
 		return jsonError(info.Context(), err)
 	}
 
-	for _, value := range record {
-		structure := args[0].String()
-		if err = s.stor.Store(context.Background(), value.(map[string]interface{}), s.Name, structure); err != nil {
-			return jsonError(info.Context(), err)
-		}
+	structure := args[0].String()
+	if err = s.stor.Store(context.Background(), record, s.Name, structure); err != nil {
+		return jsonError(info.Context(), err)
 	}
-
 	return nil
 
 }
