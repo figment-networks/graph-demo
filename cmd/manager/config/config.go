@@ -21,9 +21,10 @@ const (
 
 // Config holds the configuration data
 type Config struct {
-	AppEnv      string `json:"app_env" envconfig:"APP_ENV" default:"development"`
-	Address     string `json:"address" envconfig:"ADDRESS" default:"127.0.0.1:8085"`
-	DatabaseURL string `json:"database_url" envconfig:"DATABASE_URL"`
+	AppEnv        string `json:"app_env" envconfig:"APP_ENV" default:"development"`
+	Address       string `json:"address" envconfig:"ADDRESS" default:"127.0.0.1:8085"`
+	DatabaseURL   string `json:"database_url" envconfig:"DATABASE_URL"`
+	LowestHeights string `json:"lowest_heights" envconfig:"LOWEST_HEIGHTS"`
 }
 
 // FromFile reads the config from a file

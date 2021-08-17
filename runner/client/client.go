@@ -41,7 +41,7 @@ func (ng *NetworkGraphClient) EventHandler(ctx context.Context, req connectivity
 	}
 
 	if err := ng.ec.NewEvent(strings.Replace(string(args[0]), `"`, "", -1), data); err != nil {
-		ng.l.Error("unmarshal error", zap.Error(err))
+		ng.l.Error("new event error", zap.Error(err))
 	}
 
 	resp.Send(json.RawMessage([]byte(`"ACK"`)), nil)

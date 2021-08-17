@@ -17,12 +17,13 @@ type Clienter interface {
 }
 
 type Scheduler struct {
-	log *zap.Logger
-	c   Clienter
+	log           *zap.Logger
+	c             Clienter
+	lowestHeights map[string]uint64
 }
 
-func NewScheduler(log *zap.Logger, c Clienter) *Scheduler {
-	return &Scheduler{log: log, c: c}
+func NewScheduler(log *zap.Logger, c Clienter, lowestHeights map[string]uint64) *Scheduler {
+	return &Scheduler{log: log, c: c, lowestHeights: lowestHeights}
 }
 
 func (s *Scheduler) Start(ctx context.Context, nc client.NetworkClient, connID, chainID string) {
@@ -31,7 +32,12 @@ func (s *Scheduler) Start(ctx context.Context, nc client.NetworkClient, connID, 
 	if err != nil {
 		s.log.Error("error getting height", zap.Uint64("height", h), zap.Error(err))
 	}
-	h++
+
+	if lh, ok := s.lowestHeights[chainID]; ok && h < lh {
+		h = lh
+	} else {
+		h++
+	}
 
 	tckr := time.NewTicker(10 * time.Second)
 	defer tckr.Stop()
