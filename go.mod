@@ -3,21 +3,22 @@ module github.com/figment-networks/graph-demo
 go 1.16
 
 require (
-	github.com/cosmos/cosmos-sdk v0.42.4
-	github.com/figment-networks/indexer-manager v0.4.1
-	github.com/figment-networks/indexing-engine v0.4.4
+	github.com/cosmos/cosmos-sdk v0.42.8
 	github.com/gogo/protobuf v1.3.3
-	github.com/golang/snappy v0.0.3 // indirect
+	github.com/golang-migrate/migrate/v4 v4.14.1
+	github.com/golang/mock v1.5.0 // indirect
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/graphql-go/graphql v0.7.9
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/lib/pq v1.10.2
+	github.com/onsi/ginkgo v1.15.0 // indirect
+	github.com/onsi/gomega v1.10.5 // indirect
 	github.com/stretchr/testify v1.7.0
-	github.com/tendermint/tendermint v0.34.9
+	github.com/tendermint/tendermint v0.34.11
 	go.uber.org/zap v1.18.1
-	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
-	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
-	google.golang.org/grpc v1.36.0
+	google.golang.org/grpc v1.37.0
+	gopkg.in/yaml.v2 v2.4.0
 	rogchap.com/v8go v0.6.0
 )
 

@@ -1,0 +1,37 @@
+# ------------------------------------------------------------------------------
+# Builder Image
+# ------------------------------------------------------------------------------
+FROM golang AS build
+
+WORKDIR /build
+
+COPY ./go.mod .
+COPY ./go.sum .
+
+RUN go mod download
+COPY ./Makefile ./Makefile
+
+COPY ./connectivity ./connectivity
+COPY ./graphcall ./graphcall
+COPY ./cmd/common ./cmd/common
+COPY ./manager/structs ./manager/structs
+COPY ./cmd/cosmos-worker ./cmd/cosmos-worker
+COPY ./cosmos-worker ./cosmos-worker
+
+ENV GOARCH=amd64
+ENV GOOS=linux
+
+RUN make build-worker
+
+# ------------------------------------------------------------------------------
+# Target Image
+# ------------------------------------------------------------------------------
+FROM ubuntu AS release
+
+RUN addgroup --gid 1234 figment
+RUN adduser --system --uid 1234 figment
+USER 1234
+WORKDIR /app
+
+COPY --from=build  /build/worker_bin /app/worker
+CMD ["/app/worker"]

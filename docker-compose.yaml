@@ -1,0 +1,85 @@
+version: "3.7"
+
+networks:
+  internal:
+    name: internal
+    driver: overlay
+    attachable: true
+
+volumes:
+  postgresdatabase: {}
+
+
+services:
+  postgresdatabase:
+    image: postgres:12
+    networks:
+      - internal
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: manager
+      POSTGRES_PASSWORD: manager
+      POSTGRES_DB: manager
+    volumes:
+      - postgresdatabase:/var/lib/postgresql/data/
+
+  managermigrate:
+    command: /app/migration
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    networks:
+      - internal
+    environment:
+      DATABASE_URL: postgres://manager:manager@graph-demo_postgresdatabase_1/manager?sslmode=disable
+    depends_on:
+      - postgresdatabase
+
+  manager:
+    command: /app/manager
+    ports:
+      - "8075:8075"
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    networks:
+      - internal
+    environment:
+      ADDRESS: 0.0.0.0:8075
+      LOWEST_HEIGHTS: cosmoshub-4:5200791
+      DATABASE_URL: postgres://manager:manager@graph-demo_postgresdatabase_1/manager?sslmode=disable
+    depends_on:
+      - managermigrate
+
+  cosmosworker:
+    command: /app/worker
+    build:
+      context: .
+      dockerfile: ./Dockerfile.worker
+    networks:
+      - internal
+    environment:
+      CHAIN_ID: cosmoshub-4
+      COSMOS_GRPC_ADDR: host.docker.internal:9090
+      MANAGER_URL: ws://graph-demo_manager_1:8075/work
+    depends_on:
+      - manager
+
+  runner:
+    command: /app/runner
+    ports:
+      - "8098:8098"
+    build:
+      context: .
+      dockerfile: ./Dockerfile.runner
+    volumes:
+      - $PWD/subgraphs:/subgraphs
+    networks:
+      - internal
+    environment:
+      SUBGRAPHS: /subgraphs/simple-example
+      HTTP_PORT: "8098"
+      MANAGER_URL: ws://graph-demo_manager_1:8075/runner
+    depends_on:
+      - manager

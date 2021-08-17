@@ -1,49 +1,35 @@
 package requester
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
-	"io/ioutil"
-	"net/http"
 	"sync"
+
+	"github.com/figment-networks/graph-demo/runner/structs"
 )
 
-type Rqstr struct {
-	c *http.Client
+type Caller interface {
+	CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}, version string) ([]byte, error)
 
-	list  map[string]Destination
+	Subscribe(ctx context.Context, events []structs.Subs) error
+	Unsubscribe(ctx context.Context, events []string) error
+}
+
+type Rqstr struct {
+	list  map[string]Caller
 	llock sync.RWMutex
 }
 
-type Destination struct {
-	Name    string
-	Kind    string // http, ws etc
-	Address string
-}
-
-func NewRqstr(c *http.Client) *Rqstr {
+func NewRqstr() *Rqstr {
 	return &Rqstr{
-		c:    c,
-		list: make(map[string]Destination),
+		list: make(map[string]Caller),
 	}
 }
-func (r *Rqstr) AddDestination(dest Destination) {
+
+func (r *Rqstr) AddDestination(name string, dest Caller) {
 	r.llock.Lock()
-	r.list[dest.Name] = dest
+	r.list[name] = dest
 	r.llock.Unlock()
-}
-
-type GQLPayload struct {
-	Query     string                 `json:"query"`
-	Variables map[string]interface{} `json:"variables"`
-	//	OperationName string                 `json:"operationName"`
-}
-
-type GQLResponse struct {
-	Data   interface{}   `json:"data"`
-	Errors []interface{} `json:"errors"`
 }
 
 func (r *Rqstr) CallGQL(ctx context.Context, name string, query string, variables map[string]interface{}, version string) ([]byte, error) {
@@ -54,22 +40,27 @@ func (r *Rqstr) CallGQL(ctx context.Context, name string, query string, variable
 		return nil, errors.New("graph not found: " + name)
 	}
 
-	buff := new(bytes.Buffer)
-	defer buff.Reset()
-	enc := json.NewEncoder(buff)
-	if err := enc.Encode(GQLPayload{query, variables}); err != nil {
-		return nil, err
+	return d.CallGQL(ctx, name, query, variables, version)
+}
+
+func (r *Rqstr) Subscribe(ctx context.Context, name string, events []structs.Subs) error {
+	r.llock.RLock()
+	d, ok := r.list[name]
+	r.llock.RUnlock()
+	if !ok {
+		return errors.New("graph not found: " + name)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, d.Address, buff)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := r.c.Do(req)
-	if err != nil {
-		return nil, err
+	return d.Subscribe(ctx, events)
+}
+
+func (r *Rqstr) Unsubscribe(ctx context.Context, name string, events []string) error {
+	r.llock.RLock()
+	d, ok := r.list[name]
+	r.llock.RUnlock()
+	if !ok {
+		return errors.New("graph not found: " + name)
 	}
 
-	respD, err := ioutil.ReadAll(resp.Body)
-	return respD, err
+	return d.Unsubscribe(ctx, events)
 }

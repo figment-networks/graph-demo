@@ -1,8 +1,17 @@
 package schema
 
 import (
+	"context"
 	"io/ioutil"
+	"path"
 	"regexp"
+	"strings"
+
+	"github.com/figment-networks/graph-demo/graphcall"
+	"github.com/figment-networks/graph-demo/runner/store"
+	"github.com/figment-networks/graph-demo/runner/structs"
+
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -10,67 +19,119 @@ var (
 	kvRegxp     = regexp.MustCompile("\\s+([a-zA-Z0-9]+):\\s+([\\[\\]a-zA-Z0-9]+)!?")
 )
 
-type Subgraph struct {
-	Name     string
-	Entities map[string]*Entity
+type GQLCaller interface {
+	Subscribe(ctx context.Context, name string, events []structs.Subs) error
 }
 
-func NewSubgraph(name string) *Subgraph {
-	return &Subgraph{Name: name, Entities: make(map[string]*Entity)}
+type JSLoader interface {
+	LoadJS(name string, path string, ehs map[string]string) error
 }
 
-type Entity struct {
-	Name   string
-	Params map[string]Param
+type Manifest struct {
+	Description string         `yaml:"description"`
+	Schema      ManifestSchema `yaml:"schema"`
+	Sources     []DataSources  `yaml:"dataSources"`
 }
 
-type Param struct {
-	Type    string
-	IsArray bool
+type ManifestSchema struct {
+	File string `yaml:"file"`
 }
 
-func NewEntity(name string) *Entity {
-	return &Entity{Name: name, Params: make(map[string]Param)}
+type DataSources struct {
+	Kind    string             `yaml:"kind"`
+	Name    string             `yaml:"name"`
+	File    string             `yaml:"file"`
+	Network string             `yaml:"network"`
+	Mapping DataSourcesMapping `yaml:"mapping"`
+	Source  DataSourcesSource  `yaml:"source"`
+}
+
+type DataSourcesMapping struct {
+	Kind          string          `yaml:"kind"`
+	EventHandlers []EventHandlers `yaml:"eventHandlers"`
+}
+
+type DataSourcesSource struct {
+	StartBlock uint64 `yaml:"startBlock"`
+}
+
+type EventHandlers struct {
+	Event   string `yaml:"event"`
+	Handler string `yaml:"handler"`
 }
 
 type Schemas struct {
-	Subgraphs map[string]*Subgraph
+	ss     store.Storage
+	rqstr  GQLCaller
+	loader JSLoader
 }
 
-func NewSchemas() *Schemas {
-	return &Schemas{make(map[string]*Subgraph)}
+func NewSchemas(ss store.Storage, loader JSLoader, rqstr GQLCaller) *Schemas {
+	return &Schemas{
+		ss:     ss,
+		loader: loader,
+		rqstr:  rqstr,
+	}
 }
 
-func (s *Schemas) LoadFromFile(name, path string) error {
-	f, err := ioutil.ReadFile(path)
+func (s *Schemas) LoadFromSubgraphYaml(fpath string) error {
+
+	f, err := ioutil.ReadFile(path.Join(fpath, "subgraph.yaml"))
 	if err != nil {
 		return err
 	}
 
-	sg := NewSubgraph(name)
-
-	declarations := entityRegxp.FindAllSubmatch(f, -1)
-
-	for _, v := range declarations {
-		if len(v) == 3 {
-			ent := NewEntity(string(v[1]))
-			params := kvRegxp.FindAllSubmatch(v[2], -1)
-			for _, p := range params {
-				if len(p) == 3 {
-					typeS := string(p[2])
-					if typeS[0] == '[' { // set
-						ent.Params[string(p[1])] = Param{Type: string(typeS[1 : len(typeS)-1])}
-					} else {
-						ent.Params[string(p[1])] = Param{Type: string(typeS)}
-					}
-
-				}
-			}
-			sg.Entities[ent.Name] = ent
-		}
+	m := &Manifest{}
+	if err = yaml.Unmarshal(f, &m); err != nil {
+		return err
 	}
 
-	s.Subgraphs[name] = sg
-	return nil
+	paths := strings.Split(fpath, "/")
+	name := paths[len(paths)-1]
+	subg, err := processSchema(path.Join(fpath, m.Schema.File), name)
+	if err != nil {
+		return err
+	}
 
+	for _, ent := range subg.Entities {
+		indexed := []store.NT{}
+		for k, v := range ent.Fields {
+			indexed = append(indexed, store.NT{Name: k, Type: v.Type})
+		}
+		s.ss.NewStore(name, ent.Name, indexed)
+	}
+
+	for _, sourc := range m.Sources {
+		subs := []structs.Subs{}
+		ms := make(map[string]string)
+
+		for _, evh := range sourc.Mapping.EventHandlers {
+			subs = append(subs, structs.Subs{Name: evh.Event, StartingHeight: sourc.Source.StartBlock})
+			ms[evh.Event] = evh.Handler
+		}
+
+		if err := s.rqstr.Subscribe(context.Background(), sourc.Network, subs); err != nil {
+			return err
+		}
+
+		if err := s.loader.LoadJS(name, path.Join(fpath, sourc.File), ms); err != nil {
+			return err
+		}
+
+	}
+
+	return nil
+}
+
+func processSchema(filepath, name string) (*graphcall.Subgraph, error) {
+	f, err := ioutil.ReadFile(filepath)
+	if err != nil {
+		return nil, err
+	}
+
+	sg, err := graphcall.ParseSchema(name, f)
+	if err != nil {
+		return nil, err
+	}
+	return sg, nil
 }

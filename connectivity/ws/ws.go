@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/figment-networks/graph-demo/connectivity"
+
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 )
@@ -19,19 +20,24 @@ var ErrConnectionClosed = errors.New("connection closed")
 
 type Conn struct {
 	RH connectivity.FunctionCallHandler
-	l  *zap.Logger
+
+	l *zap.Logger
+}
+
+func NewConn(l *zap.Logger, RH connectivity.FunctionCallHandler) *Conn {
+	return &Conn{l: l, RH: RH}
 }
 
 func (c *Conn) AttachToMux(ctx context.Context, mux *http.ServeMux) {
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		uConn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			//conn.l.Warn("Error upgrading connection", zap.Error(err))
+			c.l.Warn("Error upgrading connection", zap.Error(err))
 			return
 		}
 
 		sess := NewSession(ctx, uConn, c.l, c.RH)
 		go sess.Recv()
-		go sess.Resp()
+		go sess.Req()
 	})
 }

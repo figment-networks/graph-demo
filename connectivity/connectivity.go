@@ -3,15 +3,26 @@ package connectivity
 import (
 	"context"
 	"encoding/json"
-	"io"
 )
 
+type BlockID struct {
+	ID string `json:"id"`
+}
+
+type TransactionIDs struct {
+	IDs []string `json:"ids"`
+}
+
+type BlockAndTransactionIDs struct {
+	BlockID string   `json:"block_id"`
+	TxsIDs  []string `json:"txs_ids"`
+}
 type Response interface {
-	Send(io.ReadCloser, error) error
-	Write(p []byte) (n int, err error)
+	Send(result json.RawMessage, er error) error
 }
 
 type Request interface {
+	ConnID() string
 	Arguments() []json.RawMessage
 }
 
