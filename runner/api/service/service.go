@@ -35,67 +35,88 @@ func (s *Service) ProcessGraphqlQuery(ctx context.Context, subgraph string, q []
 	recordsMap := make(qRecordsMap)
 
 	for _, query := range queries.Queries {
-
-		hFloat, heightStr, err := getHeight(query.Params)
-		if err != nil {
-			return nil, err
-		}
-
-		recordsMap[query.Order], err = s.store.Get(ctx, subgraph, "Block", "height", heightStr)
-		if err != nil && err != memap.ErrRecordsNotFound {
-			continue
-		} else if err != nil {
-			return nil, err
-		}
-
-		_, queryTransactions := query.Fields["transactions"]
-
-		if queryTransactions {
-			records, err := s.store.Get(ctx, subgraph, "Transaction", "height", heightStr)
-			if err != nil && err != memap.ErrRecordsNotFound {
-				return nil, err
+		for n, f := range query.Fields {
+			for _, p := range f.Params {
+				sVal, err := getStringParam(p.Name, query.Params)
+				if err != nil {
+					return nil, err
+				}
+				records, err := s.store.Get(ctx, subgraph, n, p.Name, sVal)
+				if err != nil && err != memap.ErrRecordsNotFound {
+					return nil, err
+				}
+				recordsMap[query.Order] = records
+				break
 			}
+			//	_, queryTransactions = blockField.Fields["transactions"]
+		}
+		/*
+			var queryTransactions bool
+			blockField, queryBlock := query.Fields["block"]
+			if queryBlock {
 
-			for i, blockRecords := range recordsMap[query.Order] {
-				heightRecord, ok := blockRecords["height"]
-				if ok && heightRecord == hFloat {
-					recordsMap[query.Order][i]["transactions"] = records
+				records, err := s.store.Get(ctx, subgraph, "Block", "height", heightStr)
+				if err != nil && err != memap.ErrRecordsNotFound {
+					return nil, err
+				}
+				recordsMap[query.Order] = records
+
+				_, queryTransactions = blockField.Fields["transactions"]
+
+			} else {
+				if _, queryTransactions = query.Fields["transactions"]; !queryTransactions {
+					return nil, errors.New("query has no fields to map")
 				}
 			}
-		}
+		*/
+		/*
+			if queryTransactions {
+				records, err := s.store.Get(ctx, subgraph, "Transaction", "height", heightStr)
+				if err != nil && err != memap.ErrRecordsNotFound {
+					return nil, err
+				}
+
+				if queryBlock {
+					for i, blockRecords := range recordsMap[query.Order] {
+						heightRecord, ok := blockRecords["height"]
+						if ok && heightRecord == hFloat {
+							recordsMap[query.Order][i]["transactions"] = records
+						}
+					}
+				} else {
+					recordsMap[query.Order] = records
+				}
+			}*/
 	}
 
 	return mapRecordsToResponse(queries.Queries, recordsMap)
 }
 
-func getHeight(params map[string]graphcall.Part) (hFloat float64, heightStr string, err error) {
-	heightPart, ok := params["height"]
+func getStringParam(name string, params map[string]graphcall.Part) (str string, err error) {
+	pPart, ok := params[name]
 	if !ok {
-		return 0, "", errors.New("missing required part: height")
+		return "", errors.New("missing required part: " + name)
 	}
 
-	heightParam, ok := heightPart.Params["height"]
+	pParam, ok := pPart.Params[name]
 	if !ok {
-		return 0, "", errors.New("missing required parameter: height")
+		return "", errors.New("missing required parameter: " + name)
 	}
 
-	switch heightParam.Variable {
+	switch pParam.Variable {
 	case "string":
-		heightStr = heightParam.Value.(string)
-		hInt, err := strconv.Atoi(heightStr)
-		if err != nil {
-			return 0, "", err
-		}
-		hFloat = float64(hInt)
+		str = pParam.Value.(string)
 	case "uint64":
-		hUint64 := heightParam.Value.(uint64)
-		heightStr = strconv.Itoa(int(hUint64))
-		hFloat = float64(hUint64)
+		hUint64 := pParam.Value.(uint64)
+		str = strconv.Itoa(int(hUint64))
+	case "float64":
+		hF64 := pParam.Value.(float64)
+		str = strconv.FormatFloat(hF64, 'E', -1, 64)
 	default:
-		return 0, "", fmt.Errorf("unexpected parameter variable %q", heightParam.Variable)
+		return "", fmt.Errorf("unexpected parameter variable %q", pParam.Variable)
 	}
 
-	return hFloat, heightStr, nil
+	return str, nil
 }
 
 func mapRecordsToResponse(queries []graphcall.Query, recordsMap qRecordsMap) ([]byte, error) {
