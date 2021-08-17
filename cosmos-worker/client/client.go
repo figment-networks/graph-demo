@@ -14,8 +14,8 @@ import (
 )
 
 type Presistor interface {
-	StoreTransactions(ctx context.Context, txs []structs.Transaction) error
-	StoreBlock(ctx context.Context, block structs.Block) error
+	StoreTransactions(ctx context.Context, txs []structs.Transaction) ([]string, error)
+	StoreBlock(ctx context.Context, block structs.Block) (string, error)
 }
 type ClientConfig struct {
 	TimeoutBlockCall    time.Duration

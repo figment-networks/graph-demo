@@ -8,8 +8,8 @@ import (
 )
 
 type ManagerService interface {
-	StoreBlock(ctx context.Context, block structs.Block) error
-	StoreTransactions(ctx context.Context, txs []structs.Transaction) error
+	StoreBlock(ctx context.Context, block structs.Block) (string, error)
+	StoreTransactions(ctx context.Context, txs []structs.Transaction) ([]string, error)
 }
 
 type Handler struct {

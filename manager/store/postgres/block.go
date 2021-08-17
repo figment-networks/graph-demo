@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/figment-networks/graph-demo/manager/structs"
@@ -20,36 +21,42 @@ const (
 	header = EXCLUDED.header,
 	data = EXCLUDED.data,
 	evidence = EXCLUDED.evidence,
-	last_commit = EXCLUDED.last_commit`
+	last_commit = EXCLUDED.last_commit
+	RETURNING id`
 
 	selectBlock = `SELECT hash, time, header, data, evidence, last_commit FROM public.blocks WHERE chain_id = $1 AND height = $2`
 )
 
 // StoreBlock appends data to buffer
-func (d *Driver) StoreBlock(ctx context.Context, b structs.Block) error {
+func (d *Driver) StoreBlock(ctx context.Context, b structs.Block) (string, error) {
 
 	header, err := json.Marshal(b.Header)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	data, err := json.Marshal(b.Data)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	evidence, err := json.Marshal(b.Evidence)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	lastCommit, err := json.Marshal(*b.LastCommit)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, err = d.db.Exec(insertBlock, b.ChainID, b.Height, b.Hash, b.Time, header, data, evidence, lastCommit)
-	return err
+	var id string
+	row := d.db.QueryRow(insertBlock, b.ChainID, b.Height, b.Hash, b.Time, header, data, evidence, lastCommit).Scan(&id)
+	if row != nil {
+		return "", errors.New(row.Error())
+	}
+
+	return id, err
 }
 
 func (d *Driver) GetBlockByHeight(ctx context.Context, height uint64, chainID string) (b structs.Block, err error) {

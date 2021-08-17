@@ -15,8 +15,8 @@ var (
 type Storager interface {
 	Close() error
 
-	StoreBlock(ctx context.Context, bl structs.Block) error
-	StoreTransactions(ctx context.Context, txs []structs.Transaction) error
+	StoreBlock(ctx context.Context, bl structs.Block) (string, error)
+	StoreTransactions(ctx context.Context, txs []structs.Transaction) ([]string, error)
 	GetBlockByHeight(ctx context.Context, height uint64, chainID string) (structs.Block, error)
 	GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) ([]structs.Transaction, error)
 
@@ -38,11 +38,11 @@ func (s *Store) Close() error {
 	return s.driver.Close()
 }
 
-func (s *Store) StoreBlock(ctx context.Context, b structs.Block) error {
+func (s *Store) StoreBlock(ctx context.Context, b structs.Block) (string, error) {
 	return s.driver.StoreBlock(ctx, b)
 }
 
-func (s *Store) StoreTransactions(ctx context.Context, txs []structs.Transaction) error {
+func (s *Store) StoreTransactions(ctx context.Context, txs []structs.Transaction) ([]string, error) {
 	return s.driver.StoreTransactions(ctx, txs)
 }
 

@@ -66,9 +66,10 @@ function handleBlock(newBlockEvent) {
         return;
     }
     graph_1.log.debug('GQL call data: ', JSON.stringify(data));
+    var id = newBlockEvent.id;
     var block = data.block;
     var hash = block.hash, height = block.height, time = block.time;
-    var entity = new BlockEntity({ hash, height,  myNote: "ok", time })
+    var entity = new BlockEntity({ id, hash, height,  myNote: "ok", time })
     graph_1.log.debug('Entity: ', JSON.stringify(entity));
     var storeErr = entity.save().storeErr;
     if (storeErr !== undefined) {
@@ -98,9 +99,19 @@ function handleTransaction(newTxnEvent) {
         return;
     }
     graph_1.log.debug('GQL call data: ', JSON.stringify(data));
-    data.transactions.forEach(tx => {
-        var hash = tx.hash, height = tx.height, time = tx.time;
-        var entity = new TransactionEntity({ hash, height,  myNote: "ok", time })
+    var blockID = newTxnEvent.block_id;
+    var txIDs = newTxnEvent.tx_ids;
+    var txIDsLen = txIDs.length;
+
+    data.transactions.forEach((tx, idx) => {
+        if (idx >= txIDsLen) {
+            graph_1.log.debug('Transaction ids slice is too short: ', txIDsLen);
+            return;
+        }
+        graph_1.log.debug("txIDs", txIDs, " idx: ", idx)
+
+        var hash = tx.hash, height = tx.height, time = tx.time, id = txIDs[idx];
+        var entity = new TransactionEntity({ id, blockID, hash, height,  myNote: "ok", time })
         graph_1.log.debug('Entity: ', JSON.stringify(entity));
         var storeErr = entity.save().storeErr;
         if (storeErr !== undefined) {
