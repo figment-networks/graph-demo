@@ -105,12 +105,10 @@ var GET_TRANSACTIONS = `query GetTransactions($height: Int = 0, $chain_id: Strin
 }`;
 
 function handleTransaction(newTxnEvent: TransactionEvent) {
-  const { tx_ids, block_id: blockID } = newTxnEvent;
-  const txIDsLen = tx_ids.length;
 
   log.debug('newTxnEvent: ' + JSON.stringify(newTxnEvent));
 
-  const {error, data} = graphql.call("cosmos" as Network, GET_TRANSACTIONS, { height: newTxnEvent.height, chain_id: "cosmoshub-4" }, "0.0.1");
+  const {error, data} = graphql.call("cosmos" as Network, GET_TRANSACTIONS, { height: newTxnEvent.hash, chain_id: "cosmoshub-4" }, "0.0.1");
 
   if (error) {
     log.debug('GQL call error: ' + JSON.stringify(error));
@@ -124,22 +122,16 @@ function handleTransaction(newTxnEvent: TransactionEvent) {
 
   log.debug('GQL call data: ' + JSON.stringify(data));
 
-  data.transactions.forEach((tx,idx) => {
-    if (idx >= txIDsLen) {
-      log.debug('Transaction ids slice is too short: ' + txIDsLen);
-      return;
-    }
 
-    const hash = tx.hash , height = tx.height, time = tx.time;
-    const entity = new TransactionEntity({id: tx_ids[idx], blockID, hash, height, myNote: "some additional data", time });
+  const {hash, height, time} = tx;
+  const entity = new TransactionEntity({id: hash+"", blockID, hash, height, myNote: "some additional data", time });
 
-    log.debug('Entity: ' + JSON.stringify(entity));
+  log.debug('Entity: ' + JSON.stringify(entity));
 
-    const {storeErr} = entity.save();
-    if (storeErr) {
-      log.debug('Error storing transaction: ' + JSON.stringify(storeErr));
-    } else {
-      log.debug('Transaction stored: ' + JSON.stringify(newTxnEvent));
-    }
-  });
+  const {storeErr} = entity.save();
+  if (storeErr) {
+    log.debug('Error storing transaction: ' + JSON.stringify(storeErr));
+  } else {
+    log.debug('Transaction stored: ' + JSON.stringify(newTxnEvent));
+  }
 }

@@ -95,11 +95,6 @@ func (s *Service) getQueryBlocksByHeights(ctx context.Context, params map[string
 
 	resp = make(map[uint64]structs.BlockAndTx)
 	for _, h := range heights {
-		/*	if r, ok := s.getBlockFromCache(chainID, h); ok {
-				resp[h] = r
-				continue
-			}
-		*/
 		bTx, err := s.GetByHeight(ctx, h, chainID)
 		if err != nil {
 			return nil, err

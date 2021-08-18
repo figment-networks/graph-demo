@@ -35,7 +35,6 @@ export interface BlockEvent {
 }
 
 export interface TransactionEvent {
-    block_id: string,
-    tx_ids: string[],
+    hash: string,
     height: number;
 }

@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	txInsert = `INSERT INTO public.transactions("chain_id", "height", "hash", "block_hash", "time", "code_space", "code", 
-	"result", "logs", "info", "tx_raw", "messages", "extension_options", "non_critical_extension_options", "auth_info", 
+	txInsert = `INSERT INTO public.transactions("chain_id", "height", "hash", "block_hash", "time", "code_space", "code",
+	"result", "logs", "info", "tx_raw", "messages", "extension_options", "non_critical_extension_options", "auth_info",
 	"signatures", "gas_wanted", "gas_used", "memo", "raw_log") VALUES
 	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 	ON CONFLICT (chain_id, hash, height)
@@ -38,9 +38,9 @@ const (
 	raw_log = EXCLUDED.raw_log
 	RETURNING id`
 
-	txSelect = `SELECT hash, block_hash, time, code_space, code, result, logs, info, tx_raw, messages, extension_options, 
+	txSelect = `SELECT hash, block_hash, time, code_space, code, result, logs, info, tx_raw, messages, extension_options,
 	non_critical_extension_options, auth_info, signatures, gas_wanted, gas_used, memo, raw_log
-	FROM public.transactions 
+	FROM public.transactions
 	WHERE chain_id = $1 AND height = $2`
 )
 
@@ -140,9 +140,6 @@ func (d *Driver) GetTransactionsByHeight(ctx context.Context, height uint64, cha
 	if rows == nil {
 		return nil, sql.ErrNoRows
 	}
-
-	// br := &bytes.Reader{}
-	// feeDec := json.NewDecoder(br)
 
 	for rows.Next() {
 		var authInfoBytes, eoBytes, logsBytes, msgsBytes, nceoBytes, txRawBytes []byte

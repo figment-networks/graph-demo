@@ -111,8 +111,6 @@ type Consensus struct {
 
 // Transaction contains the blockchain transaction details
 type Transaction struct {
-	// ID of transaction assigned on database write
-	ID uuid.UUID `json:"id,omitempty"`
 	// Created at
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// Updated at
