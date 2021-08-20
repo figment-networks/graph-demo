@@ -15,6 +15,7 @@ This codebase contains a proof-of-concept for integrating Figment's manager & wo
 
 The whole stack can be run with Docker Compose. To get started:
 
-```
-COSMOS_GRPC_ADDR=0.0.0.0:5555 docker-compose up
+```sh
+# This assumes a cosmoshub node is running on host.docker.internal:9090
+docker-compose up
 ```
