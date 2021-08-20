@@ -9,7 +9,7 @@ This codebase contains a proof-of-concept for integrating Figment's manager & wo
 - graphcall
 - manager - orchestrates worker process(es), interface to data store, and exposes API for querying Network Graph
 - runner - a mock of `graph-node`'s WASM mapping runtime
-- subgraphs - contains sample subgraphs
+- subgraphs - contains sample subgraphs for this demo
 
 ## Setup
 
