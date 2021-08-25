@@ -46,7 +46,6 @@ func (c *Client) SearchTx(ctx context.Context, block structs.Block) (txs []struc
 
 		pageTxs := make([]structs.Transaction, len(grpcRes.Txs))
 		for i, trans := range grpcRes.Txs {
-
 			if pageTxs[i], err = mapper.TransactionMapper(ctx, trans, grpcRes.TxResponses[i], block.Hash, block.Header.ChainID); err != nil {
 				return nil, err
 			}

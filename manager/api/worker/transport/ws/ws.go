@@ -26,8 +26,8 @@ type ErrorMessage struct {
 }
 
 type ManagerService interface {
-	StoreBlock(ctx context.Context, block structs.Block) (string, error)
-	StoreTransactions(ctx context.Context, txs []structs.Transaction) ([]string, error)
+	StoreBlock(ctx context.Context, block structs.Block) error
+	StoreTransactions(ctx context.Context, txs []structs.Transaction) error
 }
 
 type ProcessHandler struct {
@@ -98,22 +98,16 @@ func (ph *ProcessHandler) StoreBlock(ctx context.Context, req connectivity.Reque
 		return
 	}
 
-	id, err := ph.service.StoreBlock(ctx, block)
-
-	msgBytes, err := json.Marshal(connectivity.BlockID{
-		ID: id,
-	})
-
-	if err != nil {
+	if err := ph.service.StoreBlock(ctx, block); err != nil {
 		r.Errors = append(r.Errors, ErrorMessage{
-			Message: "Error marshaling response " + err.Error(),
+			Message: "Error storing block " + err.Error(),
 		})
 		enc.Encode(r)
 		resp.Send(json.RawMessage(b.Bytes()), nil)
 		return
 	}
 
-	resp.Send(json.RawMessage(msgBytes), err)
+	resp.Send(json.RawMessage([]byte(`"ACK"`)), nil)
 }
 
 func (ph *ProcessHandler) StoreTransactions(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
@@ -141,22 +135,18 @@ func (ph *ProcessHandler) StoreTransactions(ctx context.Context, req connectivit
 		return
 	}
 
-	ids, err := ph.service.StoreTransactions(ctx, txs)
-
-	msgBytes, err := json.Marshal(connectivity.TransactionIDs{
-		IDs: ids,
-	})
-
-	if err != nil {
+	if err := ph.service.StoreTransactions(ctx, txs); err != nil {
 		r.Errors = append(r.Errors, ErrorMessage{
-			Message: "Error marshaling response " + err.Error(),
+			Message: "Error storing block " + err.Error(),
 		})
 		enc.Encode(r)
 		resp.Send(json.RawMessage(b.Bytes()), nil)
 		return
 	}
 
-	resp.Send(json.RawMessage(msgBytes), err)
+	if err := resp.Send(json.RawMessage([]byte(`"ACK"`)), nil); err != nil {
+		return
+	}
 }
 
 func (ph *ProcessHandler) Register(ctx context.Context, req connectivity.Request, resp connectivity.Response) {

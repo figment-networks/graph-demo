@@ -2,8 +2,6 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS transactions
 (
-    id         uuid DEFAULT uuid_generate_v4(),
-    
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE,
@@ -13,7 +11,7 @@ CREATE TABLE IF NOT EXISTS transactions
     hash            TEXT NOT NULL,
     block_hash      TEXT NOT NULL,
     time       TIMESTAMP WITH TIME ZONE NOT NULL,
-    
+
     code_space  TEXT,
     code        INT,
     gas_wanted  DECIMAL(65, 0),
@@ -23,7 +21,7 @@ CREATE TABLE IF NOT EXISTS transactions
     result      TEXT,
     signatures  TEXT[],
 
-    auth_info                       JSONB,  
+    auth_info                       JSONB,
     extension_options               JSONB,
     logs                            JSONB,
     messages                        JSONB,

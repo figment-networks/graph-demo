@@ -88,8 +88,8 @@ function handleBlock(newBlockEvent: BlockEvent) {
 
   log.debug('Entity: ' + JSON.stringify(entity));
 
-  const {storeErr} = entity.save();
-  if (storeErr) {
+  const storeErr = entity.save();
+  if (storeErr !== undefined) {
     log.debug('Error storing block: ' + JSON.stringify(storeErr));
   } else {
     log.debug('Block stored: ' + JSON.stringify(newBlockEvent));
@@ -123,13 +123,13 @@ function handleTransaction(newTxnEvent: TransactionEvent) {
   log.debug('GQL call data: ' + JSON.stringify(data));
 
 
-  const {hash, height, time} = tx;
-  const entity = new TransactionEntity({id: hash+"", blockID, hash, height, myNote: "some additional data", time });
+  const {hash, height, time} = data;
+  const entity = new TransactionEntity({id: hash+"", hash, height, myNote: "some additional data", time });
 
   log.debug('Entity: ' + JSON.stringify(entity));
 
-  const {storeErr} = entity.save();
-  if (storeErr) {
+  const storeErr = entity.save();
+  if (storeErr !== undefined) {
     log.debug('Error storing transaction: ' + JSON.stringify(storeErr));
   } else {
     log.debug('Transaction stored: ' + JSON.stringify(newTxnEvent));

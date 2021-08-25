@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 
 	"github.com/figment-networks/graph-demo/manager/structs"
 	"github.com/lib/pq"
@@ -35,38 +34,30 @@ const (
 	gas_wanted = EXCLUDED.gas_wanted,
 	gas_used = EXCLUDED.gas_used,
 	memo = EXCLUDED.memo,
-	raw_log = EXCLUDED.raw_log
-	RETURNING id`
-
-	txSelect = `SELECT hash, block_hash, time, code_space, code, result, logs, info, tx_raw, messages, extension_options,
-	non_critical_extension_options, auth_info, signatures, gas_wanted, gas_used, memo, raw_log
-	FROM public.transactions
-	WHERE chain_id = $1 AND height = $2`
+	raw_log = EXCLUDED.raw_log`
 )
 
 // StoreTransactions adds transactions to storage buffer
-func (d *Driver) StoreTransactions(ctx context.Context, txs []structs.Transaction) (ids []string, err error) {
+func (d *Driver) StoreTransactions(ctx context.Context, txs []structs.Transaction) (err error) {
 	tx, err := d.db.Begin()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	ids = make([]string, len(txs))
-
-	for i, t := range txs {
+	for _, t := range txs {
 
 		mf, err := getMarshaledFields(t)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		if ids[i], err = d.storeTx(ctx, t, mf); err != nil {
-			return nil, err
+		if err = d.storeTx(ctx, t, mf); err != nil {
+			return err
 		}
 
 	}
 
-	return ids, tx.Commit()
+	return tx.Commit()
 }
 
 type marshaledFields struct {
@@ -108,18 +99,12 @@ func getMarshaledFields(tx structs.Transaction) (mf marshaledFields, err error) 
 	return
 }
 
-func (d *Driver) storeTx(ctx context.Context, t structs.Transaction, mf marshaledFields) (id string, err error) {
-
-	// TODO(lukanus): store  REAL transation
-	row := d.db.QueryRow(txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, t.CodeSpace, t.Code, t.Result, mf.logs,
+func (d *Driver) storeTx(ctx context.Context, t structs.Transaction, mf marshaledFields) (err error) {
+	_, err = d.db.ExecContext(ctx, txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, t.CodeSpace, t.Code, t.Result, mf.logs,
 		t.Info, mf.txRaw, mf.messages, mf.extensionOptions, mf.nonCriticalExtensionOptions, mf.authInfo, pq.Array(t.Signatures),
-		t.GasWanted, t.GasUsed, t.Memo, t.RawLog).Scan(&id)
+		t.GasWanted, t.GasUsed, t.Memo, t.RawLog)
 
-	if row != nil {
-		return "", errors.New(row.Error())
-	}
-
-	return id, nil
+	return err
 }
 
 // Removes ASCII hex 0-7 causing utf-8 error in db
@@ -132,7 +117,9 @@ func removeCharacters(r rune) rune {
 
 // GetTransactions gets transactions based on given criteria the order is forced to be time DESC
 func (d *Driver) GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) (txs []structs.Transaction, err error) {
-	rows, err := d.db.QueryContext(ctx, txSelect, chainID, height)
+	rows, err := d.db.QueryContext(ctx, `SELECT hash, block_hash, time, code_space, code, result, logs, info, tx_raw, messages, extension_options,
+		non_critical_extension_options, auth_info, signatures, gas_wanted, gas_used, memo, raw_log
+		FROM public.transactions WHERE chain_id = $1 AND height = $2`, chainID, height)
 	if err != nil {
 		return nil, err
 	}

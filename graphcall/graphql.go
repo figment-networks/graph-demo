@@ -3,6 +3,7 @@ package graphcall
 import (
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -215,6 +216,9 @@ func getValue(inputParams map[string]Param, v interface{}, field, variableType s
 	switch variableType {
 	case "Int":
 		var float64Val float64
+
+		log.Printf("lp %+v", v)
+
 		if float64Val, err = float64Value(v); err != nil {
 			return nil, err
 		}
@@ -223,6 +227,7 @@ func getValue(inputParams map[string]Param, v interface{}, field, variableType s
 	case "[]Int":
 		value = make([]uint64, len(v.([]float64)))
 		for i, str := range v.([]float64) {
+			log.Printf("lp %+v", v)
 			float64Val, err := float64Value(str)
 			if err != nil {
 				return nil, err
