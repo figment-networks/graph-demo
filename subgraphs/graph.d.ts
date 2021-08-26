@@ -24,13 +24,11 @@ export interface GraphQLResponse {
 }
 
 export interface BlockResponse {
-    id: string;
     height: number;
     time: Date;
 }
 
 export interface BlockEvent {
-    id: string,
     height: number;
 }
 

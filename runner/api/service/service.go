@@ -9,13 +9,10 @@ import (
 	"github.com/figment-networks/graph-demo/graphcall"
 	qStructs "github.com/figment-networks/graph-demo/graphcall/response"
 	"github.com/figment-networks/graph-demo/runner/store/memap"
-
-	"go.uber.org/zap"
 )
 
 type Service struct {
 	store *memap.SubgraphStore
-	log   *zap.Logger
 }
 
 func New(store *memap.SubgraphStore) *Service {
@@ -82,9 +79,7 @@ func mapRecordsToResponse(queries []graphcall.Query, recordsMap qRecordsMap) ([]
 
 	resp = make([]qStructs.MapItem, len(queries))
 	for _, query := range queries {
-
-		records, _ := recordsMap[query.Order]
-		response, err = mapBlockAndTxsToResponse(records, query.Fields)
+		response, err = mapBlockAndTxsToResponse(recordsMap[query.Order], query.Fields)
 		if err != nil {
 			return nil, err
 		}
@@ -133,7 +128,7 @@ func fieldsStructResponse(fields map[string]graphcall.Field, record map[string]i
 
 		var value interface{}
 		if field.Fields != nil {
-			txs := recordValue.(interface{}).([]map[string]interface{})
+			txs := recordValue.([]map[string]interface{})
 			txsMs := make([]qStructs.MapSlice, len(txs))
 			for i, tx := range txs {
 				txsMs[i], err = fieldsStructResponse(field.Fields, tx)
