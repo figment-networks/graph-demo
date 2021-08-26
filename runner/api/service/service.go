@@ -35,70 +35,26 @@ func (s *Service) ProcessGraphqlQuery(ctx context.Context, subgraph string, q []
 	recordsMap := make(qRecordsMap)
 
 	for _, query := range queries.Queries {
-		for n, f := range query.Fields {
-			for _, p := range f.Params {
-				sVal, err := getStringParam(p.Name, query.Params)
-				if err != nil {
-					return nil, err
-				}
-				records, err := s.store.Get(ctx, subgraph, n, p.Name, sVal)
-				if err != nil && err != memap.ErrRecordsNotFound {
-					return nil, err
-				}
-				recordsMap[query.Order] = records
-				break
+		for n, p := range query.Params {
+			sVal, err := getStringParam(n, p)
+			if err != nil {
+				return nil, err
 			}
-			//	_, queryTransactions = blockField.Fields["transactions"]
+			records, err := s.store.Get(ctx, subgraph, query.Name, n, sVal)
+			if err != nil && err != memap.ErrRecordsNotFound {
+				return nil, err
+			}
+			recordsMap[query.Order] = records
+			break
 		}
-		/*
-			var queryTransactions bool
-			blockField, queryBlock := query.Fields["block"]
-			if queryBlock {
-
-				records, err := s.store.Get(ctx, subgraph, "Block", "height", heightStr)
-				if err != nil && err != memap.ErrRecordsNotFound {
-					return nil, err
-				}
-				recordsMap[query.Order] = records
-
-				_, queryTransactions = blockField.Fields["transactions"]
-
-			} else {
-				if _, queryTransactions = query.Fields["transactions"]; !queryTransactions {
-					return nil, errors.New("query has no fields to map")
-				}
-			}
-		*/
-		/*
-			if queryTransactions {
-				records, err := s.store.Get(ctx, subgraph, "Transaction", "height", heightStr)
-				if err != nil && err != memap.ErrRecordsNotFound {
-					return nil, err
-				}
-
-				if queryBlock {
-					for i, blockRecords := range recordsMap[query.Order] {
-						heightRecord, ok := blockRecords["height"]
-						if ok && heightRecord == hFloat {
-							recordsMap[query.Order][i]["transactions"] = records
-						}
-					}
-				} else {
-					recordsMap[query.Order] = records
-				}
-			}*/
 	}
 
 	return mapRecordsToResponse(queries.Queries, recordsMap)
 }
 
-func getStringParam(name string, params map[string]graphcall.Part) (str string, err error) {
-	pPart, ok := params[name]
-	if !ok {
-		return "", errors.New("missing required part: " + name)
-	}
+func getStringParam(name string, param graphcall.Part) (str string, err error) {
 
-	pParam, ok := pPart.Params[name]
+	pParam, ok := param.Params[name]
 	if !ok {
 		return "", errors.New("missing required parameter: " + name)
 	}
