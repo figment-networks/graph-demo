@@ -120,7 +120,7 @@ func (d *Driver) GetTransactionsByParam(ctx context.Context, chainID string, par
 
 	txq := `SELECT height, hash, block_hash, time, code_space, code, result, logs, info, tx_raw, messages, extension_options,
 	non_critical_extension_options, auth_info, signatures, gas_wanted, gas_used, memo, raw_log
-	FROM public.transactions WHERE chain_id = $1 AND ` + param + ` = $2` // (lukanus): so error-prone! thanks god it's just a demo ;)
+	FROM public.transactions WHERE chain_id = $1 AND ` + param + ` = $2` // (lukanus): so errorprone! thanks god it's just a demo ;)
 	rows, err := d.db.QueryContext(ctx, txq, chainID, value)
 	if err != nil {
 		return nil, err

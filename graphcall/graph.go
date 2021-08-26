@@ -26,7 +26,7 @@ type Field struct {
 
 type Param struct {
 	Field    string
-	Type     string // TODO(lukanus): type
+	Type     string
 	Variable string
 	Value    interface{}
 }
