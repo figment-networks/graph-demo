@@ -44,7 +44,7 @@ func (c *Client) ProcessHeight(ctx context.Context, nc NetworkClient, height uin
 		return err
 	}
 
-	txs, err := c.st.GetTransactionsByHeight(ctx, height, "cosmoshub-4")
+	txs, err := c.st.GetTransactionsByParam(ctx, "cosmoshub-4", "height", height)
 	if err != nil {
 		return err
 	}

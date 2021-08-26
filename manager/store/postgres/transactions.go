@@ -116,10 +116,12 @@ func removeCharacters(r rune) rune {
 }
 
 // GetTransactions gets transactions based on given criteria the order is forced to be time DESC
-func (d *Driver) GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) (txs []structs.Transaction, err error) {
-	rows, err := d.db.QueryContext(ctx, `SELECT hash, block_hash, time, code_space, code, result, logs, info, tx_raw, messages, extension_options,
-		non_critical_extension_options, auth_info, signatures, gas_wanted, gas_used, memo, raw_log
-		FROM public.transactions WHERE chain_id = $1 AND height = $2`, chainID, height)
+func (d *Driver) GetTransactionsByParam(ctx context.Context, chainID string, param string, value interface{}) (txs []structs.Transaction, err error) {
+
+	txq := `SELECT height, hash, block_hash, time, code_space, code, result, logs, info, tx_raw, messages, extension_options,
+	non_critical_extension_options, auth_info, signatures, gas_wanted, gas_used, memo, raw_log
+	FROM public.transactions WHERE chain_id = $1 AND ` + param + ` = $2` // (lukanus): so error-prone! thanks god it's just a demo ;)
+	rows, err := d.db.QueryContext(ctx, txq, chainID, value)
 	if err != nil {
 		return nil, err
 	}
@@ -132,11 +134,10 @@ func (d *Driver) GetTransactionsByHeight(ctx context.Context, height uint64, cha
 		var authInfoBytes, eoBytes, logsBytes, msgsBytes, nceoBytes, txRawBytes []byte
 		var signatures pq.StringArray
 		tx := structs.Transaction{
-			Height:  height,
 			ChainID: chainID,
 		}
 
-		err = rows.Scan(&tx.Hash, &tx.BlockHash, &tx.Time, &tx.CodeSpace, &tx.Code, &tx.Result, &logsBytes,
+		err = rows.Scan(&tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &tx.CodeSpace, &tx.Code, &tx.Result, &logsBytes,
 			&tx.Info, &txRawBytes, &msgsBytes, &eoBytes, &nceoBytes, &authInfoBytes, &signatures,
 			&tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.RawLog)
 		if err != nil {

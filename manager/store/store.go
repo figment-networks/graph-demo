@@ -18,7 +18,7 @@ type Storager interface {
 	StoreBlock(ctx context.Context, bl structs.Block) error
 	StoreTransactions(ctx context.Context, txs []structs.Transaction) error
 	GetBlockByHeight(ctx context.Context, height uint64, chainID string) (structs.Block, error)
-	GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) ([]structs.Transaction, error)
+	GetTransactionsByParam(ctx context.Context, chainID string, param string, value interface{}) ([]structs.Transaction, error)
 
 	SetLatestHeight(ctx context.Context, chainID string, height uint64) (err error)
 	GetLatestHeight(ctx context.Context, chainID string) (height uint64, err error)
@@ -50,8 +50,8 @@ func (s *Store) GetBlockByHeight(ctx context.Context, height uint64, chainID str
 	return s.driver.GetBlockByHeight(ctx, height, chainID)
 }
 
-func (s *Store) GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) ([]structs.Transaction, error) {
-	return s.driver.GetTransactionsByHeight(ctx, height, chainID)
+func (s *Store) GetTransactionsByParam(ctx context.Context, chainID string, param string, value interface{}) ([]structs.Transaction, error) {
+	return s.driver.GetTransactionsByParam(ctx, chainID, param, value)
 }
 
 func (s *Store) GetLatestHeight(ctx context.Context, chainID string) (height uint64, err error) {
