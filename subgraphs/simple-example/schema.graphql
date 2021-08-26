@@ -1,6 +1,5 @@
 type Block @entity {
-  id: ID!
-  hash: String!
+  hash: ID!
   height: Int!
   myNote: String!
   time: String!
@@ -8,9 +7,8 @@ type Block @entity {
 }
 
 type Transaction @entity {
-  id: ID!
-  hash: String!
+  hash: ID!
   height: Int!
   time: String!
-  myNote: String!
+  myNote: String
 }

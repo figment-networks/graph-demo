@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"sync"
 
 	"github.com/figment-networks/graph-demo/connectivity"
@@ -97,8 +96,15 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Missing query (GraphQLRequest)",
 		})
-		enc.Encode(r)
-		resp.Send(b.Bytes(), nil)
+
+		if err := enc.Encode(r); err != nil {
+			ph.log.Error("error encoding data", zap.Error(err))
+			return
+		}
+
+		if err := resp.Send(b.Bytes(), nil); err != nil {
+			ph.log.Error("error sending data in GraphQLRequest", zap.Error(err))
+		}
 		return
 	}
 
@@ -107,8 +113,14 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Error unmarshaling query " + err.Error(),
 		})
-		enc.Encode(r)
-		resp.Send(b.Bytes(), nil)
+		if err := enc.Encode(r); err != nil {
+			ph.log.Error("error encoding data", zap.Error(err))
+			return
+		}
+
+		if err := resp.Send(b.Bytes(), nil); err != nil {
+			ph.log.Error("error sending data in GraphQLRequest", zap.Error(err))
+		}
 		return
 	}
 
@@ -118,8 +130,14 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 			r.Errors = append(r.Errors, ErrorMessage{
 				Message: "Error unmarshaling query variables " + err.Error(),
 			})
-			enc.Encode(r)
-			resp.Send(b.Bytes(), nil)
+			if err := enc.Encode(r); err != nil {
+				ph.log.Error("error encoding data", zap.Error(err))
+				return
+			}
+
+			if err := resp.Send(b.Bytes(), nil); err != nil {
+				ph.log.Error("error sending data in GraphQLRequest", zap.Error(err))
+			}
 			return
 		}
 	}
@@ -129,13 +147,25 @@ func (ph *ProcessHandler) GraphQLRequest(ctx context.Context, req connectivity.R
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Error while processing graphql query " + err.Error(),
 		})
-		enc.Encode(r)
-		resp.Send(b.Bytes(), nil)
+		if err := enc.Encode(r); err != nil {
+			ph.log.Error("error encoding data", zap.Error(err))
+			return
+		}
+
+		if err := resp.Send(b.Bytes(), nil); err != nil {
+			ph.log.Error("error sending data in GraphQLRequest", zap.Error(err))
+		}
 		return
 	}
 
-	enc.Encode(r)
-	resp.Send(b.Bytes(), err)
+	if err := enc.Encode(r); err != nil {
+		ph.log.Error("error encoding data", zap.Error(err))
+		return
+	}
+
+	if err := resp.Send(b.Bytes(), nil); err != nil {
+		ph.log.Error("error sending data in GraphQLRequest", zap.Error(err))
+	}
 }
 
 func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
@@ -148,8 +178,14 @@ func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Reques
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Missing subscription",
 		})
-		enc.Encode(r)
-		resp.Send(json.RawMessage(b.Bytes()), nil)
+		if err := enc.Encode(r); err != nil {
+			ph.log.Error("error encoding data", zap.Error(err))
+			return
+		}
+
+		if err := resp.Send(b.Bytes(), nil); err != nil {
+			ph.log.Error("error sending data in Subscribe", zap.Error(err))
+		}
 		return
 	}
 
@@ -159,9 +195,14 @@ func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Reques
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Missing subscription",
 		})
-		enc.Encode(r)
-		// TODO(lukanus): error
-		resp.Send(json.RawMessage(b.Bytes()), nil)
+		if err := enc.Encode(r); err != nil {
+			ph.log.Error("error encoding data", zap.Error(err))
+			return
+		}
+
+		if err := resp.Send(b.Bytes(), nil); err != nil {
+			ph.log.Error("error sending data in Subscribe", zap.Error(err))
+		}
 		return
 	}
 
@@ -170,7 +211,9 @@ func (ph *ProcessHandler) Subscribe(ctx context.Context, req connectivity.Reques
 		ph.log.Debug("added subscription for event", zap.String("id", req.ConnID()), zap.String("event", ev.Name), zap.Uint64("from", ev.StartingHeight))
 	}
 
-	resp.Send(json.RawMessage([]byte(`"ACK"`)), nil)
+	if err := resp.Send(json.RawMessage([]byte(`"ACK"`)), nil); err != nil {
+		ph.log.Error("error sending ACK in Subscribe", zap.Error(err))
+	}
 }
 
 func (ph *ProcessHandler) Unsubscribe(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
@@ -183,7 +226,11 @@ func (ph *ProcessHandler) Unsubscribe(ctx context.Context, req connectivity.Requ
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Missing subscription",
 		})
-		enc.Encode(r)
+		if err := enc.Encode(r); err != nil {
+			ph.log.Error("error encoding data", zap.Error(err))
+			return
+		}
+
 		resp.Send(json.RawMessage(b.Bytes()), nil)
 		return
 	}
@@ -194,10 +241,11 @@ func (ph *ProcessHandler) Unsubscribe(ctx context.Context, req connectivity.Requ
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Missing subscription",
 		})
-		enc.Encode(r)
-		// TODO(lukanus): error
+		if err := enc.Encode(r); err != nil {
+			ph.log.Error("error encoding data", zap.Error(err))
+			return
+		}
 		resp.Send(json.RawMessage(b.Bytes()), nil)
-
 		return
 	}
 
@@ -207,10 +255,12 @@ func (ph *ProcessHandler) Unsubscribe(ctx context.Context, req connectivity.Requ
 			r.Errors = append(r.Errors, ErrorMessage{
 				Message: "Missing subscription",
 			})
-			enc.Encode(r)
+			if err := enc.Encode(r); err != nil {
+				ph.log.Error("error encoding data", zap.Error(err))
+				return
+			}
 			return
 		}
-		// TODO(lukanus): error
 		ph.log.Debug("removed subscription for event", zap.String("id", req.ConnID()), zap.String("event", ev))
 	}
 
@@ -234,10 +284,6 @@ type SubscriptionInstance struct {
 }
 
 func (si *SubscriptionInstance) Send(ctx context.Context, height uint64, name string, resp json.RawMessage) error {
-
-	// TODO(l): send only if not initial
-	log.Println("log event", height, string(resp))
-
 	ss, ok := si.reg.Get(si.connID)
 	if !ok || ss == nil {
 		return errors.New("connection does not exists")
@@ -246,7 +292,6 @@ func (si *SubscriptionInstance) Send(ctx context.Context, height uint64, name st
 	_, err := ss.SendSync("event", []json.RawMessage{[]byte(`"` + name + `"`), resp})
 
 	return err
-
 }
 
 func (si *SubscriptionInstance) ID() string {

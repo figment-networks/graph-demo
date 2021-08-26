@@ -21,29 +21,7 @@ func (ms MapSlice) MarshalJSON() ([]byte, error) {
 	buf.Write([]byte{'{'})
 
 	for i, mi := range ms {
-		switch reflect.ValueOf(mi.Value).Type().String() {
-		case reflect.ValueOf([]MapSlice{}).Type().String():
-			sliceValue := mi.Value.([]MapSlice)
-			sliceLen := len(sliceValue)
-			sliceBytes := []byte{'['}
-			for i, ms := range sliceValue {
-				valueBytes, err := ms.MarshalJSON()
-				if err != nil {
-					return nil, err
-				}
-				sliceBytes = append(sliceBytes, valueBytes...)
-				if i < sliceLen-1 {
-					sliceBytes = append(sliceBytes, ',')
-				}
-			}
-			b = append(sliceBytes, ']')
-
-		case reflect.ValueOf(MapSlice{}).Type().String():
-			b, err = mi.Value.(MapSlice).MarshalJSON()
-		default:
-			b, err = json.Marshal(&mi.Value)
-		}
-
+		b, err = bytesValue(mi)
 		if err != nil {
 			return nil, err
 		}
@@ -60,4 +38,35 @@ func (ms MapSlice) MarshalJSON() ([]byte, error) {
 	buf.Write([]byte{'}'})
 
 	return buf.Bytes(), nil
+}
+
+func bytesValue(mi MapItem) (b []byte, err error) {
+	if mi.Value == nil {
+		return json.Marshal(&mi.Value)
+	}
+
+	switch reflect.ValueOf(mi.Value).Type().String() {
+	case reflect.ValueOf([]MapSlice{}).Type().String():
+		sliceValue := mi.Value.([]MapSlice)
+		sliceLen := len(sliceValue)
+		sliceBytes := []byte{'['}
+		for i, ms := range sliceValue {
+			valueBytes, err := ms.MarshalJSON()
+			if err != nil {
+				return nil, err
+			}
+			sliceBytes = append(sliceBytes, valueBytes...)
+			if i < sliceLen-1 {
+				sliceBytes = append(sliceBytes, ',')
+			}
+		}
+		b = append(sliceBytes, ']')
+
+	case reflect.ValueOf(MapSlice{}).Type().String():
+		b, err = mi.Value.(MapSlice).MarshalJSON()
+	default:
+		b, err = json.Marshal(&mi.Value)
+	}
+
+	return b, err
 }

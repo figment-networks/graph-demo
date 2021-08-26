@@ -13,7 +13,7 @@ import (
 const perPage = 100
 
 // GetAll fetches all data for given height
-func (c *Client) GetAll(ctx context.Context, height uint64) (blockID string, txIDs []string, er error) {
+func (c *Client) GetAll(ctx context.Context, height uint64) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, c.cfg.TimeoutBlockCall)
 	defer cancel()
 
@@ -22,7 +22,7 @@ func (c *Client) GetAll(ctx context.Context, height uint64) (blockID string, txI
 	b, err := c.tmServiceClient.GetBlockByHeight(ctx, &tmservice.GetBlockByHeightRequest{Height: int64(height)}, grpc.WaitForReady(true))
 	if err != nil {
 		c.log.Debug("[COSMOS-CLIENT] Error getting block by height", zap.Uint64("height", height), zap.Error(err))
-		return "", nil, err
+		return err
 	}
 
 	c.log.Debug("[COSMOS-WORKER] Got block", zap.Uint64("height", height))
@@ -30,26 +30,26 @@ func (c *Client) GetAll(ctx context.Context, height uint64) (blockID string, txI
 	block := mapper.BlockMapper(b)
 
 	if c.persistor != nil {
-		if blockID, err = c.persistor.StoreBlock(ctx, block); err != nil {
+		if err = c.persistor.StoreBlock(ctx, block); err != nil {
 			c.log.Debug("[COSMOS-CLIENT] Error storing block at height", zap.Uint64("height", height), zap.Error(err))
-			return "", nil, err
+			return err
 		}
 	}
 
 	txs, err := c.SearchTx(ctx, block)
 	if err != nil {
 		c.log.Debug("[COSMOS-CLIENT] Error getting transactions by height", zap.Uint64("height", height), zap.Error(err))
-		return "", nil, err
+		return err
 	}
 
 	if c.persistor != nil {
-		if txIDs, err = c.persistor.StoreTransactions(ctx, txs); err != nil {
+		if err = c.persistor.StoreTransactions(ctx, txs); err != nil {
 			c.log.Debug("[COSMOS-CLIENT] Error storing transaction at height", zap.Uint64("height", height), zap.Error(err))
-			return "", nil, err
+			return err
 		}
 	}
 
-	return blockID, txIDs, nil
+	return nil
 }
 
 // GetBlock fetches most recent block from chain

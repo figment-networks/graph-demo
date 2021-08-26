@@ -11,9 +11,8 @@ type EventNewBlock struct {
 }
 
 type EventNewTransaction struct {
-	BlockID string   `json:"block_id"`
-	TxIDs   []string `json:"tx_ids"`
-	Height  uint64   `json:"height"`
+	Height uint64 `json:"height"`
+	Hash   string `json:"hash"`
 }
 
 type Subs struct {

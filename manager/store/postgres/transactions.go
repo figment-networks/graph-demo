@@ -4,15 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 
 	"github.com/figment-networks/graph-demo/manager/structs"
 	"github.com/lib/pq"
 )
 
 const (
-	txInsert = `INSERT INTO public.transactions("chain_id", "height", "hash", "block_hash", "time", "code_space", "code", 
-	"result", "logs", "info", "tx_raw", "messages", "extension_options", "non_critical_extension_options", "auth_info", 
+	txInsert = `INSERT INTO public.transactions("chain_id", "height", "hash", "block_hash", "time", "code_space", "code",
+	"result", "logs", "info", "tx_raw", "messages", "extension_options", "non_critical_extension_options", "auth_info",
 	"signatures", "gas_wanted", "gas_used", "memo", "raw_log") VALUES
 	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 	ON CONFLICT (chain_id, hash, height)
@@ -35,38 +34,30 @@ const (
 	gas_wanted = EXCLUDED.gas_wanted,
 	gas_used = EXCLUDED.gas_used,
 	memo = EXCLUDED.memo,
-	raw_log = EXCLUDED.raw_log
-	RETURNING id`
-
-	txSelect = `SELECT hash, block_hash, time, code_space, code, result, logs, info, tx_raw, messages, extension_options, 
-	non_critical_extension_options, auth_info, signatures, gas_wanted, gas_used, memo, raw_log
-	FROM public.transactions 
-	WHERE chain_id = $1 AND height = $2`
+	raw_log = EXCLUDED.raw_log`
 )
 
 // StoreTransactions adds transactions to storage buffer
-func (d *Driver) StoreTransactions(ctx context.Context, txs []structs.Transaction) (ids []string, err error) {
+func (d *Driver) StoreTransactions(ctx context.Context, txs []structs.Transaction) (err error) {
 	tx, err := d.db.Begin()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	ids = make([]string, len(txs))
-
-	for i, t := range txs {
+	for _, t := range txs {
 
 		mf, err := getMarshaledFields(t)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		if ids[i], err = d.storeTx(ctx, t, mf); err != nil {
-			return nil, err
+		if err = d.storeTx(ctx, t, mf); err != nil {
+			return err
 		}
 
 	}
 
-	return ids, tx.Commit()
+	return tx.Commit()
 }
 
 type marshaledFields struct {
@@ -108,18 +99,12 @@ func getMarshaledFields(tx structs.Transaction) (mf marshaledFields, err error) 
 	return
 }
 
-func (d *Driver) storeTx(ctx context.Context, t structs.Transaction, mf marshaledFields) (id string, err error) {
-
-	// TODO(lukanus): store  REAL transation
-	row := d.db.QueryRow(txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, t.CodeSpace, t.Code, t.Result, mf.logs,
+func (d *Driver) storeTx(ctx context.Context, t structs.Transaction, mf marshaledFields) (err error) {
+	_, err = d.db.ExecContext(ctx, txInsert, t.ChainID, t.Height, t.Hash, t.BlockHash, t.Time, t.CodeSpace, t.Code, t.Result, mf.logs,
 		t.Info, mf.txRaw, mf.messages, mf.extensionOptions, mf.nonCriticalExtensionOptions, mf.authInfo, pq.Array(t.Signatures),
-		t.GasWanted, t.GasUsed, t.Memo, t.RawLog).Scan(&id)
+		t.GasWanted, t.GasUsed, t.Memo, t.RawLog)
 
-	if row != nil {
-		return "", errors.New(row.Error())
-	}
-
-	return id, nil
+	return err
 }
 
 // Removes ASCII hex 0-7 causing utf-8 error in db
@@ -131,8 +116,12 @@ func removeCharacters(r rune) rune {
 }
 
 // GetTransactions gets transactions based on given criteria the order is forced to be time DESC
-func (d *Driver) GetTransactionsByHeight(ctx context.Context, height uint64, chainID string) (txs []structs.Transaction, err error) {
-	rows, err := d.db.QueryContext(ctx, txSelect, chainID, height)
+func (d *Driver) GetTransactionsByParam(ctx context.Context, chainID string, param string, value interface{}) (txs []structs.Transaction, err error) {
+
+	txq := `SELECT height, hash, block_hash, time, code_space, code, result, logs, info, tx_raw, messages, extension_options,
+	non_critical_extension_options, auth_info, signatures, gas_wanted, gas_used, memo, raw_log
+	FROM public.transactions WHERE chain_id = $1 AND ` + param + ` = $2` // (lukanus): so errorprone! thanks god it's just a demo ;)
+	rows, err := d.db.QueryContext(ctx, txq, chainID, value)
 	if err != nil {
 		return nil, err
 	}
@@ -141,18 +130,14 @@ func (d *Driver) GetTransactionsByHeight(ctx context.Context, height uint64, cha
 		return nil, sql.ErrNoRows
 	}
 
-	// br := &bytes.Reader{}
-	// feeDec := json.NewDecoder(br)
-
 	for rows.Next() {
 		var authInfoBytes, eoBytes, logsBytes, msgsBytes, nceoBytes, txRawBytes []byte
 		var signatures pq.StringArray
 		tx := structs.Transaction{
-			Height:  height,
 			ChainID: chainID,
 		}
 
-		err = rows.Scan(&tx.Hash, &tx.BlockHash, &tx.Time, &tx.CodeSpace, &tx.Code, &tx.Result, &logsBytes,
+		err = rows.Scan(&tx.Height, &tx.Hash, &tx.BlockHash, &tx.Time, &tx.CodeSpace, &tx.Code, &tx.Result, &logsBytes,
 			&tx.Info, &txRawBytes, &msgsBytes, &eoBytes, &nceoBytes, &authInfoBytes, &signatures,
 			&tx.GasWanted, &tx.GasUsed, &tx.Memo, &tx.RawLog)
 		if err != nil {

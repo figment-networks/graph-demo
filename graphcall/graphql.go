@@ -89,11 +89,10 @@ func ParseQuery(query []byte, variables map[string]interface{}) (GraphQuery, err
 	})
 
 	if err != nil {
-		return GraphQuery{}, fmt.Errorf("error while parsing graphql query: %w", err)
+		return GraphQuery{}, err
 	}
 
 	q := GraphQuery{}
-
 	inputObjects := make(map[string]Param)
 
 	for _, definition := range doc.Definitions {
@@ -414,14 +413,14 @@ func queryFields(selections []ast.Selection) map[string]Field {
 
 func float64Value(val interface{}) (float64, error) {
 	if reflect.TypeOf(val).Kind() != reflect.Float64 {
-		return 0, errors.New("value is not float64")
+		return 0, fmt.Errorf("value is not float64, it is %+v", reflect.TypeOf(val).Kind())
 	}
 	return val.(float64), nil
 }
 
 func stringValue(val interface{}) (string, error) {
 	if reflect.TypeOf(val).Kind() != reflect.String {
-		return "", errors.New("value is not string")
+		return "", fmt.Errorf("value is not string, it is %+v", reflect.TypeOf(val).Kind())
 	}
 	return val.(string), nil
 }

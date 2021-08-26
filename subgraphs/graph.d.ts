@@ -14,9 +14,8 @@ export declare namespace graphql {
 export enum Network {
     COSMOS = 'cosmos',
 }
-// type SubgraphId = string;
-// type Self = 'Self';
-export type GraphQLSourceIdentifier = Network; // | SubgraphId | Self;
+
+export type GraphQLSourceIdentifier = Network;
 
 export interface GraphQLResponse {
     error: Error;
@@ -24,7 +23,6 @@ export interface GraphQLResponse {
 }
 
 export interface BlockResponse {
-    id: string;
     height: number;
     time: Date;
 }
@@ -34,5 +32,6 @@ export interface BlockEvent {
 }
 
 export interface TransactionEvent {
+    hash: string,
     height: number;
 }

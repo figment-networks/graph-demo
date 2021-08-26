@@ -4,8 +4,6 @@ import (
 	"errors"
 	"math/big"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 var (
@@ -23,8 +21,6 @@ type BlockAndTx struct {
 
 // Block contains the block details
 type Block struct {
-	// ID of transaction assigned on database write
-	ID uuid.UUID `json:"id,omitempty"`
 	// Created at
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// Updated at
@@ -111,8 +107,6 @@ type Consensus struct {
 
 // Transaction contains the blockchain transaction details
 type Transaction struct {
-	// ID of transaction assigned on database write
-	ID uuid.UUID `json:"id,omitempty"`
 	// Created at
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// Updated at

@@ -39,10 +39,14 @@ func (s *Scheduler) Start(ctx context.Context, nc client.NetworkClient, connID, 
 		h++
 	}
 
-	tckr := time.NewTicker(10 * time.Second)
+	tckr := time.NewTicker(1 * time.Second)
 	defer tckr.Stop()
+
+LatestPrefetch:
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-tckr.C:
 			lb, err := s.c.GetLatest(ctx, nc)
 			if err != nil {
@@ -55,11 +59,18 @@ func (s *Scheduler) Start(ctx context.Context, nc client.NetworkClient, connID, 
 			} else {
 				tckr.Reset(10 * time.Second)
 			}
+			break LatestPrefetch
+		}
+	}
 
+	for {
+		select {
+		case <-tckr.C:
 			// Here we can create multiple queries depending on number of currently connected workers
 			err = s.c.ProcessHeight(ctx, nc, h)
 			if err != nil {
 				s.log.Error("error getting height", zap.Uint64("height", h), zap.Error(err))
+				tckr.Reset(10 * time.Second)
 				continue
 			}
 

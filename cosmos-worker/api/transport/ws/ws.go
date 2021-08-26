@@ -25,7 +25,7 @@ type ErrorMessage struct {
 }
 
 type CosmosClient interface {
-	GetAll(ctx context.Context, height uint64) (string, []string, error)
+	GetAll(ctx context.Context, height uint64) error
 	GetLatest(ctx context.Context) (uint64, error)
 }
 
@@ -109,8 +109,7 @@ func (ph *ProcessHandler) GetAll(ctx context.Context, req connectivity.Request, 
 		return
 	}
 
-	blockID, txIDs, err := ph.service.GetAll(ctx, height)
-	if err != nil {
+	if err := ph.service.GetAll(ctx, height); err != nil {
 		r.Errors = append(r.Errors, ErrorMessage{
 			Message: "Error unmarshaling query " + err.Error(),
 		})
@@ -118,22 +117,7 @@ func (ph *ProcessHandler) GetAll(ctx context.Context, req connectivity.Request, 
 		resp.Send(json.RawMessage(b.Bytes()), nil)
 		return
 	}
-
-	msgBytes, err := json.Marshal(connectivity.BlockAndTransactionIDs{
-		BlockID: blockID,
-		TxsIDs:  txIDs,
-	})
-
-	if err != nil {
-		r.Errors = append(r.Errors, ErrorMessage{
-			Message: "Error marshaling response " + err.Error(),
-		})
-		enc.Encode(r)
-		resp.Send(json.RawMessage(b.Bytes()), nil)
-		return
-	}
-
-	resp.Send(json.RawMessage(msgBytes), nil)
+	resp.Send(json.RawMessage([]byte(`"ACK"`)), nil)
 }
 
 func (ph *ProcessHandler) GetLatest(ctx context.Context, req connectivity.Request, resp connectivity.Response) {
@@ -163,46 +147,36 @@ func (ph *ProcessHandler) GetLatest(ctx context.Context, req connectivity.Reques
 	resp.Send(encoded, nil)
 }
 
-func (ph *ProcessHandler) StoreTransactions(ctx context.Context, txs []structs.Transaction) ([]string, error) {
+func (ph *ProcessHandler) StoreTransactions(ctx context.Context, txs []structs.Transaction) error {
 	txsM, err := json.Marshal(txs)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	resp, err := ph.sess.SendSync("store_transactions", []json.RawMessage{txsM})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if resp.Error != nil && resp.Error.Message != "" {
-		return nil, errors.New(resp.Error.Message)
+		return errors.New(resp.Error.Message)
 	}
 
-	var response connectivity.TransactionIDs
-	if err = json.Unmarshal(resp.Result, &response); err != nil {
-		return nil, err
-	}
-
-	return response.IDs, err
+	return nil
 }
 
-func (ph *ProcessHandler) StoreBlock(ctx context.Context, block structs.Block) (string, error) {
+func (ph *ProcessHandler) StoreBlock(ctx context.Context, block structs.Block) error {
 	blockM, err := json.Marshal(block)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	resp, err := ph.sess.SendSync("store_block", []json.RawMessage{blockM})
 	if err != nil {
-		return "", err
+		return err
 	}
 	if resp.Error != nil && resp.Error.Message != "" {
-		return "", errors.New(resp.Error.Message)
+		return errors.New(resp.Error.Message)
 	}
 
-	var response connectivity.BlockID
-	if err = json.Unmarshal(resp.Result, &response); err != nil {
-		return "", err
-	}
-
-	return response.ID, nil
+	return nil
 }

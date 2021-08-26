@@ -55,8 +55,7 @@ function handleBlock(newBlockEvent) {
         return;
     }
     graph_1.log.debug('GQL call data: ' + JSON.stringify(data));
-    var _b = data.block, hash = _b.hash, height = _b.height, time = _b.time;
-    var entity = new BlockEntity({ id: height + "", hash: hash, height: height, myNote: "some additional data", time: time });
+    var entity = new BlockEntity({ hash: data.block.hash, height: data.block.height, myNote: "some additional data", time: data.block.time });
     graph_1.log.debug('Entity: ' + JSON.stringify(entity));
     var storeErr = entity.save();
     if (storeErr !== undefined) {
@@ -66,10 +65,10 @@ function handleBlock(newBlockEvent) {
         graph_1.log.debug('Block stored: ' + JSON.stringify(newBlockEvent));
     }
 }
-var GET_TRANSACTIONS = "query GetTransactions($height: Int = 0, $chain_id: String = \"mainnet\") {\n  transactions(height: $height, chain_id: $chain_id) {\n    hash\n    height\n    time\n  }\n}";
+var GET_TRANSACTIONS = "query GetTransactions($hash: String, $chain_id: String = \"mainnet\") {\n  transaction(hash: $hash, chain_id: $chain_id) {\n    hash\n    height\n    time\n  }\n}";
 function handleTransaction(newTxnEvent) {
     graph_1.log.debug('newTxnEvent: ' + JSON.stringify(newTxnEvent));
-    var _a = graph_1.graphql.call("cosmos", GET_TRANSACTIONS, { height: newTxnEvent.height, chain_id: "cosmoshub-4" }, "0.0.1"), error = _a.error, data = _a.data;
+    var _a = graph_1.graphql.call("cosmos", GET_TRANSACTIONS, { hash: newTxnEvent.hash, chain_id: "cosmoshub-4" }, "0.0.1"), error = _a.error, data = _a.data;
     if (error) {
         graph_1.log.debug('GQL call error: ' + JSON.stringify(error));
         return;
@@ -79,16 +78,14 @@ function handleTransaction(newTxnEvent) {
         return;
     }
     graph_1.log.debug('GQL call data: ' + JSON.stringify(data));
-    data.transactions.forEach(function (tx) {
-        var hash = tx.hash, height = tx.height, time = tx.time;
-        var entity = new TransactionEntity({ id: hash, hash: hash, height: height, myNote: "some additional data", time: time });
-        graph_1.log.debug('Entity: ' + JSON.stringify(entity));
-        var storeErr = entity.save();
-        if (storeErr !== undefined) {
-            graph_1.log.debug('Error storing transaction: ' + JSON.stringify(storeErr));
-        }
-        else {
-            graph_1.log.debug('Transaction stored: ' + JSON.stringify(newTxnEvent));
-        }
-    });
+    var tx = data.transaction[0];
+    var entity = new TransactionEntity({ hash: tx.hash, height: tx.height, myNote: "some additional data", time: tx.time });
+    graph_1.log.debug('Entity: ' + JSON.stringify(entity));
+    var storeErr = entity.save();
+    if (storeErr !== undefined) {
+        graph_1.log.debug('Error storing transaction: ' + JSON.stringify(storeErr));
+    }
+    else {
+        graph_1.log.debug('Transaction stored: ' + JSON.stringify(newTxnEvent));
+    }
 }

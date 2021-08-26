@@ -6,11 +6,15 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/figment-networks/graph-demo/runner/store"
 )
 
-var ErrSubgraphNotFound = fmt.Errorf("subgraph not found")
+var (
+	ErrRecordsNotFound  = fmt.Errorf("not found")
+	ErrSubgraphNotFound = fmt.Errorf("subgraph not found")
+)
 
 type Stor struct {
 	ID              string
@@ -77,7 +81,7 @@ func (ss *SubgraphStore) NewStore(name, structure string, indexed []store.NT) {
 		mms = NewMemoryMapStore()
 	}
 
-	mms.storages[structure] = s
+	mms.storages[strings.ToLower(structure)] = s
 	ss.s[name] = mms
 }
 
@@ -99,7 +103,7 @@ func (ss *SubgraphStore) Get(ctx context.Context, name, structure, key, value st
 
 // map[height]map[Block/Transaction][]*Records
 func (mm *MemoryMapStore) Store(ctx context.Context, data map[string]interface{}, structure string) error {
-	s, ok := mm.storages[structure]
+	s, ok := mm.storages[strings.ToLower(structure)]
 	if !ok {
 		return fmt.Errorf("storage does not exists for structure %q", structure)
 	}
@@ -156,7 +160,7 @@ func (mm *MemoryMapStore) Store(ctx context.Context, data map[string]interface{}
 }
 
 func (mm *MemoryMapStore) Get(ctx context.Context, structure, key, value string) (records []map[string]interface{}, err error) {
-	k := mm.storages[structure]
+	k := mm.storages[strings.ToLower(structure)]
 	record, ok := k.Indexes[key]
 	if !ok {
 		return nil, fmt.Errorf(" (%s) is not an indexed field", key)
@@ -164,7 +168,7 @@ func (mm *MemoryMapStore) Get(ctx context.Context, structure, key, value string)
 
 	found, ok := record[value]
 	if !ok {
-		return nil, fmt.Errorf("not found")
+		return nil, ErrRecordsNotFound
 	}
 
 	for _, f := range found {
