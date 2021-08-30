@@ -26,6 +26,7 @@ Keep in mind that for the sake of the demo it presents only basic functions most
 
 The whole stack can be run with Docker Compose. To get started:
 
+// FB: can we give instructions on how to run this with datahub? ie cosmoshub-4--grpc--archive.grpc.datahub.figment.io ? I don't imagine everyone having access to a cosmos node, so DH would be nice to use
 The default config assumes a cosmoshub-4 node is running on `localhost:9090`
 It is currently defined in docker-compose config as `host.docker.internal:9090` this parameter may not work on linux - in this case you may need to refer to the default gateway or the host address.
 
@@ -33,6 +34,11 @@ It is currently defined in docker-compose config as `host.docker.internal:9090` 
 docker-compose build
 docker-compose up
 ```
+
+// FB: I ran this as is and it didn't work, issue with migration files - so made some fixes and reran migrations.
+// Should migrations also be run separately to allow time for postgres to boot?  If yes, should include that in the instructions.
+
+// FB: Is there an api to fetch txs? Can we provide instructions on how to interact with the data somewhere in this readme? At the moment, I really have to dig into the code and readmes to figure out what to call, which isn't a nice user experience (and after looking at the config and other readmes, i'm still not sure what to do lol. I think I'm supposed to interact with graphql in the subgraphs repo?). Ideally, I'd like to get this up and running and then be able to make some calls to fetch data with as little friction as possible
 
 ### The Debug (Visual Studio Code)
 
@@ -45,4 +51,4 @@ Docker-compose configuration is just using driver overlay/attachable. so it shou
 Project includes `Makefile` that builds almost everything. To do so you need to have the latest version of golang compiler installed.
 Then just run `make build all`.
 
-What `make` does not automatically do is generation of javascript files in subgraph, leaving that to the author of .
+What `make` does not automatically do is generation of javascript files in subgraph, leaving that to the author of . // FB:  author of ...?
