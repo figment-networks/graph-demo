@@ -1,6 +1,6 @@
 # Subgraphs
 
-The subgraphs defined in this directory are examples and not compatible with Graph Node. These are meant to be run by the V8 runtime ([runner](./runner/README.md)) included in this demo.
+The subgraphs defined in this directory are examples and not compatible with Graph Node. These are meant to be run by the V8 runtime ([runner](../runner/README.md)) included in this demo.
 
 # Building Subgraphs
 
