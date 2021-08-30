@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS blocks
     header      JSONB NOT NULL,
     data        JSONB NOT NULL,
     evidence    JSONB,
-    last_commit JSONB,
+    last_commit JSONB
 );
 
 
