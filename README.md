@@ -4,7 +4,7 @@ This codebase contains a proof-of-concept for integrating Figment's manager & wo
 
 The flow covered in the demo presents the unoptimized way of subgraph data processing.
 
-In this flow we can distinct two different data flows:
+In this flow we have two distinct data flows:
 
 - Network data ingestion - a process between manager and worker where network data is synced.
 - Subgraph generation - a process between runtime and manager that allows runtime to fetch the data.
