@@ -4,7 +4,7 @@ This codebase contains a proof-of-concept for integrating Figment's manager & wo
 
 The flow covered in the demo presents the unoptimized way of subgraph data processing.
 
-In this flow we can distinct two different data flows:
+In this flow we have two distinct data flows:
 
 - Network data ingestion - a process between manager and worker where network data is synced.
 - Subgraph generation - a process between runtime and manager that allows runtime to fetch the data.
@@ -45,4 +45,33 @@ Docker-compose configuration is just using driver overlay/attachable. so it shou
 Project includes `Makefile` that builds almost everything. To do so you need to have the latest version of golang compiler installed.
 Then just run `make build all`.
 
-What `make` does not automatically do is generation of javascript files in subgraph, leaving that to the author of .
+What `make` does not automatically do is generation of javascript files in subgraph, leaving that to the author of the subgraph.
+
+
+### Data Fetch
+
+To fetch data the mocked version of repository servers it under `http://0.0.0.0:8098/subgraph/{subgraph-name}`.
+
+For for the default subgraph, making POST request to `http://0.0.0.0:8098/subgraph/simple-example`:
+
+```graphQL
+
+query GetX($height: Int!) {
+    transaction(height: $height) {
+            height
+            time
+            hash
+    }
+}
+
+```
+
+with variables (for the indexed height):
+
+```graphQL
+
+{"height": 5203308}
+
+```
+
+should return the data.
